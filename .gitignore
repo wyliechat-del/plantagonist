@@ -1,0 +1,18 @@
+# Built place files (made by `rojo build`)
+/build/
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# Secrets: API keys live here or in your shell, never in Git
+.env
+.env.*
+!.env.example
+
+# Editor and OS clutter
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+sourcemap.json
