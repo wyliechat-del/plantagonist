@@ -16,6 +16,7 @@ A Roblox game. All code lives in this repo and syncs into Roblox Studio with
 | `scripts/check.sh` | Runs the four checks. |
 | `models/` | Blender source files (`.blend`) for 3D models. See `docs/blender.md`. |
 | `scripts/blender/` | Blender scripts: `export_roblox.py` checks a model and exports it for Studio. |
+| `art/` | 2D art (textures, icons, UI, concepts). Drafts from `scripts/images/generate.py` land in `art/generated/`. See `docs/images.md`. |
 
 Rojo puts `src/shared` in ReplicatedStorage as `Shared`, `src/server` in
 ServerScriptService as `Server`, and `src/client` in StarterPlayerScripts as
@@ -55,6 +56,11 @@ GitHub runs the same checks on every push and pull request.
 
 Models are made in Blender and imported into Studio as MeshParts. Setup,
 rules and the export command are in [docs/blender.md](docs/blender.md).
+
+## Generated images
+
+Textures, icons and concept art can be drafted with Cloudflare's Flux image
+model. Setup and the command are in [docs/images.md](docs/images.md).
 
 ## Secrets
 

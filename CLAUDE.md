@@ -31,6 +31,9 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 - 3D models: `.blend` sources in `models/`, 1 Blender unit = 1 stud (Unit
   System None). Export and check with `scripts/blender/export_roblox.py`
   (fails over 20,000 triangles per mesh). Guide: `docs/blender.md`.
+- 2D art: draft with `scripts/images/generate.py` (Cloudflare Flux, keys
+  `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in `.env`). Drafts go to
+  gitignored `art/generated/`; keepers move into `art/`. Guide: `docs/images.md`.
 
 ## Known traps
 - Selene's `roblox` std rejects string requires (`require("./x")`), so `src`
