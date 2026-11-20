@@ -44,7 +44,7 @@ Run `./scripts/check.sh` (on Windows, run it from Git Bash). It runs:
 
 1. `rojo build` (the project builds into a place file)
 2. `lune run tests` (unit tests)
-3. `selene src tests` (lint)
+3. `selene src` and `selene --config tests/selene.toml tests` (lint; tests use plain Luau rules because they run in Lune)
 4. `stylua --check src tests` (format; run `stylua src tests` to fix)
 
 GitHub runs the same checks on every push and pull request.

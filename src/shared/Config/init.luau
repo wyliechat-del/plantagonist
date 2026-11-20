@@ -5,8 +5,8 @@
 
 	Rules for this folder:
 	- Plain Luau tables only. No Roblox objects, services or `game`.
-	- Split by topic as it grows, one module per topic, for example
-	  `Config/Plants.luau`, and add it below with `require("@self/Plants")`.
+	- Split by topic as it grows, one child module per topic, for example
+	  `Config/Plants.luau`. Modules here require nothing.
 	- The returned table is frozen so nothing changes config at runtime.
 ]]
 

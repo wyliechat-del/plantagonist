@@ -1,6 +1,0 @@
-# Selene standard library add-on: allow string requires (Luau require-by-string),
-# which both Lune and current Roblox support.
-globals:
-  require:
-    args:
-      - type: any

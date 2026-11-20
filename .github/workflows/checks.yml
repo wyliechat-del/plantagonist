@@ -23,7 +23,9 @@ jobs:
         run: lune run tests
 
       - name: Lint
-        run: selene src tests
+        run: |
+          selene src
+          selene --config tests/selene.toml tests
 
       - name: Format
         run: stylua --check src tests

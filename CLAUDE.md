@@ -16,15 +16,20 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 5. API keys only in environment variables or an untracked `.env`. Never commit
    or print one.
 6. All four checks must pass before a change is done: `./scripts/check.sh`
-   (Rojo build, `lune run tests`, `selene src tests`, `stylua --check src tests`).
+   (Rojo build, `lune run tests`, Selene lint, `stylua --check src tests`).
 7. When a bug costs real time, add a line to "Known traps" below with the
    cause, so it isn't repeated.
 
 ## Conventions
 - Files use the `.luau` extension. Folders that are modules use `init.luau`.
-- Inside a folder module, require children with `require("@self/Name")`.
+- Modules in `Config/` and `Rules/` require nothing, so they load the same in
+  Roblox and in Lune. Rules take Config values as arguments. Game scripts
+  require them with `require(ReplicatedStorage.Shared.Rules.Growth)`; tests
+  with `require("../src/shared/Rules/Growth")`.
 - Tests are `tests/<Name>.spec.luau`, returning `function(t)`; see
   `tests/lib/Test.luau` for `t.test`, `t.expect`, `t.expectEqual`.
 
 ## Known traps
-- (none yet)
+- Selene's `roblox` std rejects string requires (`require("./x")`), so `src`
+  uses Instance requires and `tests/` is linted with its own
+  `tests/selene.toml` (plain Luau std).

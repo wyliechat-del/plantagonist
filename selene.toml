@@ -1,3 +1,1 @@
-# roblox: Roblox globals. lune: lets tests and modules use string requires
-# such as require("@self/Name") and require("@lune/fs").
-std = "roblox+lune"
+std = "roblox"

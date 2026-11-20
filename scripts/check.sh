@@ -11,7 +11,8 @@ echo "2/4 Unit tests (Lune)"
 lune run tests
 
 echo "3/4 Lint (Selene)"
-selene src tests
+selene src
+selene --config tests/selene.toml tests
 
 echo "4/4 Format (StyLua)"
 stylua --check src tests
