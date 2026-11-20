@@ -3,6 +3,12 @@
 A Roblox game. All code lives in this repo and syncs into Roblox Studio with
 [Rojo](https://rojo.space). Code is never typed straight into Studio.
 
+## Setup guide
+
+Everything set up for this game (tools, the published place, API keys and
+how to recreate them, Blender, image generation) is in
+[docs/SETUP.md](docs/SETUP.md).
+
 ## Layout
 
 | Path | What goes there |
