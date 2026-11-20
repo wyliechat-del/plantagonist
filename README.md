@@ -14,6 +14,8 @@ A Roblox game. All code lives in this repo and syncs into Roblox Studio with
 | `src/client/` | Client scripts (StarterPlayerScripts). |
 | `tests/` | Unit tests, run with Lune on a normal computer. |
 | `scripts/check.sh` | Runs the four checks. |
+| `models/` | Blender source files (`.blend`) for 3D models. See `docs/blender.md`. |
+| `scripts/blender/` | Blender scripts: `export_roblox.py` checks a model and exports it for Studio. |
 
 Rojo puts `src/shared` in ReplicatedStorage as `Shared`, `src/server` in
 ServerScriptService as `Server`, and `src/client` in StarterPlayerScripts as
@@ -48,6 +50,11 @@ Run `./scripts/check.sh` (on Windows, run it from Git Bash). It runs:
 4. `stylua --check src tests` (format; run `stylua src tests` to fix)
 
 GitHub runs the same checks on every push and pull request.
+
+## 3D models
+
+Models are made in Blender and imported into Studio as MeshParts. Setup,
+rules and the export command are in [docs/blender.md](docs/blender.md).
 
 ## Secrets
 
