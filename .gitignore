@@ -24,3 +24,6 @@ sourcemap.json
 
 # Generated art drafts (move keepers into art/ to commit them)
 /art/generated/
+
+# Python bytecode
+__pycache__/
