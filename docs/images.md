@@ -37,13 +37,14 @@ Never paste the token into chat or commit `.env`.
 ## Making images
 
 ```sh
-python3 scripts/images/generate.py "PROMPT" [--name NAME] [--seed N] [--steps 1-8]
+python3 scripts/images/generate.py "PROMPT" [--name NAME] [--steps 1-8]
 ```
 
 - Output goes to `art/generated/` (Git ignores it). Each `.jpg` has a `.json`
-  beside it with the prompt, seed and model, so a result can be remade.
-- `--seed 42` gives the same picture for the same prompt. Change the seed for
-  variations.
+  beside it with the prompt, steps and model.
+- Running the same prompt again gives a new variation each time. Flux Schnell
+  on Workers AI has no seed setting, so a result can't be repeated exactly:
+  keep the images you like.
 - `--steps` trades speed for detail. 4 is the default, 8 the maximum.
 - Images come out 1024 x 1024.
 

@@ -3,11 +3,11 @@
 
 Usage (from the repo root):
     python3 scripts/images/generate.py "a cartoon sunflower icon, flat colors"
-    python3 scripts/images/generate.py "mossy stone texture" --name moss --seed 7
+    python3 scripts/images/generate.py "mossy stone texture" --name moss
 
 Needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, read from the shell or
 from the repo's .env file. Writes art/generated/<name>.jpg plus a .json file
-holding the prompt, seed and model, so a picture can be made again.
+holding the prompt, steps and model.
 
 Standard library only, so it runs on the Mac's built-in python3. Guide:
 docs/images.md.
@@ -17,7 +17,6 @@ import argparse
 import base64
 import json
 import os
-import random
 import re
 import sys
 import urllib.error
@@ -56,7 +55,6 @@ def parse_args(argv):
     p.add_argument("prompt", help="what to draw, in plain words")
     p.add_argument("--name", help="file name without extension (default: from the prompt)")
     p.add_argument("--steps", type=int, default=4, help=f"1 to {MAX_STEPS}; more is slower and sharper (default 4)")
-    p.add_argument("--seed", type=int, help="fix the seed to repeat a result (default: random)")
     p.add_argument("--model", default=DEFAULT_MODEL, help=f"Workers AI model (default {DEFAULT_MODEL})")
     p.add_argument("--out-dir", type=Path, default=OUT_DIR, help="folder to write to (default art/generated)")
     args = p.parse_args(argv)
@@ -103,8 +101,8 @@ def main(argv=None):
     if missing:
         sys.exit(f"Missing {', '.join(missing)}. Add the missing values to .env (see docs/images.md).")
 
-    seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
-    payload = {"prompt": args.prompt, "steps": args.steps, "seed": seed}
+    # Flux Schnell on Workers AI takes only prompt and steps; it rejects a seed.
+    payload = {"prompt": args.prompt, "steps": args.steps}
     image = run_model(account_id, token, args.model, payload)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -117,14 +115,13 @@ def main(argv=None):
     out.write_bytes(image)
     meta = {
         "prompt": args.prompt,
-        "seed": seed,
         "steps": args.steps,
         "model": args.model,
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     out.with_suffix(".json").write_text(json.dumps(meta, indent=2) + "\n")
     shown = out.relative_to(REPO) if out.is_relative_to(REPO) else out
-    print(f"Saved {shown} (seed {seed})")
+    print(f"Saved {shown}")
 
 
 if __name__ == "__main__":
