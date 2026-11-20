@@ -28,6 +28,9 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
   with `require("../src/shared/Rules/Growth")`.
 - Tests are `tests/<Name>.spec.luau`, returning `function(t)`; see
   `tests/lib/Test.luau` for `t.test`, `t.expect`, `t.expectEqual`.
+- 3D models: `.blend` sources in `models/`, 1 Blender unit = 1 stud (Unit
+  System None). Export and check with `scripts/blender/export_roblox.py`
+  (fails over 20,000 triangles per mesh). Guide: `docs/blender.md`.
 
 ## Known traps
 - Selene's `roblox` std rejects string requires (`require("./x")`), so `src`

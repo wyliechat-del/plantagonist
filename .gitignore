@@ -16,3 +16,8 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 sourcemap.json
+
+# Blender: backups and exports (exports are rebuilt from the .blend)
+*.blend1
+*.blend2
+/models/export/
