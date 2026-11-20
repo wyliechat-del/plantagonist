@@ -21,3 +21,6 @@ sourcemap.json
 *.blend1
 *.blend2
 /models/export/
+
+# Generated art drafts (move keepers into art/ to commit them)
+/art/generated/
