@@ -82,12 +82,4 @@ function Growth.rainRings(ringConfig: any, level: number): number
 	return ringConfig.rainPerLevel * level
 end
 
--- Rings lost to wilting over `seconds` of continuous time at `level`.
-function Growth.wiltLoss(ringConfig: any, level: number, seconds: number): number
-	if level < ringConfig.wiltFromLevel then
-		return 0
-	end
-	return math.floor(seconds / ringConfig.wiltEverySeconds) * ringConfig.wiltRings
-end
-
 return table.freeze(Growth)

@@ -54,10 +54,7 @@ return function(t)
 		t.expectEqual(Growth.flyRings(Rings, 3), 0)
 	end)
 
-	t.test("rain pays per level and level 6 wilts", function()
+	t.test("rain pays per level", function()
 		t.expectEqual(Growth.rainRings(Rings, 4), 4)
-		t.expectEqual(Growth.wiltLoss(Rings, 5, 60), 0)
-		t.expectEqual(Growth.wiltLoss(Rings, 6, 60), 6)
-		t.expectEqual(Growth.wiltLoss(Rings, 6, 9), 0)
 	end)
 end

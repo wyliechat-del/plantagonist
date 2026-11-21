@@ -1,5 +1,6 @@
 --[[
 	Where rings come from (other than biting plants, which is in Combat).
+	Nothing in the world takes rings away; only other plants' bites do.
 ]]
 
 local Rings = {}
@@ -18,11 +19,5 @@ Rings.fertilisedMax = 6
 
 -- Touching rain gives this many rings per level.
 Rings.rainPerLevel = 1
-
--- Wilting: plants at or above `wiltFromLevel` lose `wiltRings` every
--- `wiltEverySeconds`, so taking root becomes the smart move.
-Rings.wiltFromLevel = 6
-Rings.wiltRings = 1
-Rings.wiltEverySeconds = 10
 
 return table.freeze(Rings)

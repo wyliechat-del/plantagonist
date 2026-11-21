@@ -69,7 +69,6 @@ function Simulator.session(profile: any, sessionSeconds: number, rng: Random.Ran
 	local now, rings, fertilised = 0, Levels.respawnRings, false
 	local nextRain =
 		rng:int(Environment.Rain.minIntervalSeconds, Environment.Rain.maxIntervalSeconds)
-	local wiltClock = 0
 	local reachedAt = { [1] = 0 }
 	local ringsFrom = { flies = 0, creatures = 0, plants = 0, rain = 0, lost = 0 }
 
@@ -130,18 +129,6 @@ function Simulator.session(profile: any, sessionSeconds: number, rng: Random.Ran
 			local before = rings
 			rings = Growth.dropFloor(Levels.list, level)
 			ringsFrom.lost += before - rings
-		end
-
-		-- Wilting at the top level.
-		level = Growth.levelFor(Levels.list, rings)
-		if level >= Rings.wiltFromLevel then
-			wiltClock += seconds
-			local loss = Growth.wiltLoss(Rings, level, wiltClock)
-			wiltClock -= loss / Rings.wiltRings * Rings.wiltEverySeconds
-			rings = Growth.addRings(rings, -loss, Levels.rootRings)
-			ringsFrom.lost += loss
-		else
-			wiltClock = 0
 		end
 
 		if Growth.canRoot(rings, Levels.rootRings) then
