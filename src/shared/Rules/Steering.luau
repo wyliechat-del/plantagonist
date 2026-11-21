@@ -47,6 +47,27 @@ function Steering.fleeDirection(
 	return dx / nearestDistance, dz / nearestDistance
 end
 
+-- A last-moment dodge away from a threat at (tx, tz): mostly sideways, a
+-- little away. `side` is 1 or -1. Returns a unit X, Z direction.
+function Steering.dodgeDirection(
+	x: number,
+	z: number,
+	tx: number,
+	tz: number,
+	side: number
+): (number, number)
+	local ax, az = x - tx, z - tz
+	local length = math.sqrt(ax * ax + az * az)
+	if length < 0.001 then
+		ax, az, length = 1, 0, 1
+	end
+	ax, az = ax / length, az / length
+	-- Sideways is the away direction turned a quarter turn.
+	local dx, dz = -az * side * 0.8 + ax * 0.6, ax * side * 0.8 + az * 0.6
+	local size = math.sqrt(dx * dx + dz * dz)
+	return dx / size, dz / size
+end
+
 -- A wander target within `radius` of (x, z). `random()` returns [0, 1).
 function Steering.wanderTarget(
 	x: number,

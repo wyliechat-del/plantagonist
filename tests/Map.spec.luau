@@ -65,4 +65,20 @@ return function(t)
 		t.expect(height(2) < Map.Forest.logClearance, "level 2 fits a log")
 		t.expect(height(3) > Map.Forest.logClearance, "level 3 doesn't")
 	end)
+
+	t.test("spawn mix: mostly native, some neighbours, a few from opposite", function()
+		local neighbours, opposite = MapRules.relatives(Map, "Grassland")
+		t.expectEqual(#neighbours, 2)
+		t.expectEqual(opposite, "River")
+		local mix = { native = 0.7, neighbour = 0.2, opposite = 0.1 }
+		local function fixed(value)
+			return function()
+				return value
+			end
+		end
+		t.expectEqual(MapRules.spawnSource(Map, "Grassland", mix, fixed(0.5)), "Grassland")
+		local neighbour = MapRules.spawnSource(Map, "Grassland", mix, fixed(0.8))
+		t.expect(neighbour == "Forest" or neighbour == "Hills", "neighbour")
+		t.expectEqual(MapRules.spawnSource(Map, "Grassland", mix, fixed(0.95)), "River")
+	end)
 end

@@ -77,4 +77,21 @@ return function(t)
 		t.expectEqual(#slots.attack, 3)
 		t.expectEqual(#slots.defence, 2)
 	end)
+
+	t.test("a boost rides on the oldest matching slot and goes when it's used", function()
+		local slots = Slots.new(3, 0)
+		Slots.add(slots, "attack", "eel")
+		Slots.add(slots, "attack", "spider")
+		Slots.add(slots, "attack", "wasp")
+		local function venom(id)
+			return id == "spider" or id == "wasp"
+		end
+		t.expectEqual(Slots.addBoost(slots, "bee", venom), 2)
+		t.expectEqual(Slots.addBoost(slots, "bee", venom), 3, "second bee on the next venom slot")
+		t.expectEqual(Slots.addBoost(slots, "bee", venom), nil, "no venom slot left")
+		t.expectEqual(Slots.takeBoost(slots, 2), "bee")
+		t.expectEqual(Slots.takeBoost(slots, 2), nil)
+		Slots.take(slots, "attack", 3)
+		t.expectEqual(slots.attack[3].boost, nil, "emptying a slot loses its boost")
+	end)
 end

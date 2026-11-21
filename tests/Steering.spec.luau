@@ -29,4 +29,11 @@ return function(t)
 		local x, z = Steering.wanderTarget(0, 0, 10, random)
 		t.expect(math.sqrt(x * x + z * z) <= 10.0001)
 	end)
+
+	t.test("dodges mostly sideways, a little away", function()
+		local dx, dz = Steering.dodgeDirection(0, 0, 5, 0, 1)
+		t.expect(math.abs(math.sqrt(dx * dx + dz * dz) - 1) < 1e-6, "unit length")
+		t.expect(dx < 0, "a little away from the threat")
+		t.expect(math.abs(dz) > math.abs(dx), "mostly sideways")
+	end)
 end

@@ -37,6 +37,19 @@ Tick each one, and note anything that looks wrong.
 To test rooting quickly, change `Levels.respawnRings` in
 `src/shared/Config/Levels.luau` from 1 to 90, play, then change it back.
 
+## 2b. New in build 2 (after playtest 1)
+
+Check these first:
+
+1. **Flies** are slower and only feed a plant up to 4 rings.
+2. **Creatures** walk slower, only dodge when you're close (about 6 studs), and walk round hills instead of through them. About 3 in 10 spawn outside their home territory.
+3. **Boosts**: bee, mantis and bombardier beetle no longer take a slot. With a matching attack loaded, the slot gets a dot; without one you see "Bee needs a Venom attack."
+   - Bee: the venom attack's lockout lasts twice as long.
+   - Mantis: the boosted attack is kept once instead of used up.
+   - Bombardier beetle: the hit also knocks out the victim's oldest power up.
+4. **Slot buttons** say the attack type (Venom, Bite and slash, Strangle) or the move (Fly, Puff, Dash, Hide). Ranged has a triangle, melee is a square button, specials are round.
+5. **Rain warning**: a dark shadow, the cloud overhead, glowing rings that close in on the spot, then lightning and thunder in the last 3 seconds.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

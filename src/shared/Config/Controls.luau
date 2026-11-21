@@ -14,6 +14,12 @@ Controls.biteButtonSize = 110
 Controls.slotButtonSize = 70
 Controls.buttonGap = 12
 
+-- Slot buttons show the attack type. Ranged attacks get a triangle and melee
+-- attacks a square button; specials stay round. A boost shows as a dot.
+Controls.kindMarks = table.freeze({ range = "▲", melee = "■" })
+Controls.squareCornerScale = 0.15
+Controls.boostDotSize = 18
+
 -- The HUD scales with the screen's short side; this many pixels is 1x.
 Controls.referenceShortSide = 400
 Controls.maxUiScale = 1.6

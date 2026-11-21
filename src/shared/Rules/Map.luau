@@ -112,6 +112,35 @@ function MapRules.randomPointIn(map: any, territory: string, random: () -> numbe
 	return x * info.signX, z * info.signZ
 end
 
+-- Neighbouring and opposite territories of `territory` (by quarter).
+function MapRules.relatives(map: any, territory: string): ({ string }, string?)
+	local info = map.territories[territory]
+	local neighbours, opposite = {}, nil
+	for name, other in map.territories do
+		if other.signX == -info.signX and other.signZ == -info.signZ then
+			opposite = name
+		elseif name ~= territory then
+			table.insert(neighbours, name)
+		end
+	end
+	table.sort(neighbours)
+	return neighbours, opposite
+end
+
+-- Which territory's creatures spawn in `territory` this time, using `mix`
+-- ({ native, neighbour, opposite } shares). `random()` returns [0, 1).
+function MapRules.spawnSource(map: any, territory: string, mix: any, random: () -> number): string
+	local roll = random()
+	if roll < mix.native then
+		return territory
+	end
+	local neighbours, opposite = MapRules.relatives(map, territory)
+	if roll < mix.native + mix.neighbour and #neighbours > 0 then
+		return neighbours[math.floor(random() * #neighbours) + 1]
+	end
+	return opposite or territory
+end
+
 -- Keeps a point inside a territory's quarter (and outside the field).
 function MapRules.clampToTerritory(
 	map: any,

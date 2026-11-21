@@ -11,6 +11,7 @@ Sounds.ids = table.freeze({
 	burp = "rbxasset://sounds/uuhhh.mp3",
 	fart = "rbxasset://sounds/uuhhh.mp3",
 	rain = "rbxasset://sounds/impact_water.mp3",
+	thunder = "rbxasset://sounds/snap.mp3",
 	levelUp = "rbxasset://sounds/electronicpingshort.wav",
 	levelDown = "rbxasset://sounds/snap.mp3",
 	powerUp = "rbxasset://sounds/electronicpingshort.wav",

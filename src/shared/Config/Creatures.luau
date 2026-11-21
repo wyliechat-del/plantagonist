@@ -11,12 +11,22 @@ Creatures.capPerTerritory = 18
 -- Seconds between spawn checks.
 Creatures.spawnEverySeconds = 2
 
--- Movement in studs per second. Creatures are a little slower than a
--- Seedling (14) so new players can catch them.
-Creatures.wanderSpeed = 5
-Creatures.fleeSpeed = 11
--- A creature flees from plants closer than this.
-Creatures.fleeDistance = 18
+-- Movement in studs per second. Catching creatures shouldn't be the
+-- challenge, so they are much slower than every plant (a Rex runs at 6).
+Creatures.wanderSpeed = 3
+-- A creature only dodges at the last moment: when a plant comes within
+-- `dodgeDistance` studs it sidesteps at `dodgeSpeed` for `dodgeSeconds`,
+-- then can't dodge again for `dodgeCooldown` seconds.
+Creatures.dodgeDistance = 6
+Creatures.dodgeSpeed = 8
+Creatures.dodgeSeconds = 1
+Creatures.dodgeCooldown = 2
+-- Creatures won't walk up anything steeper than this many studs per step,
+-- so they go round hills instead of through them.
+Creatures.maxClimb = 1.5
+-- Where creatures spawn: share in their own territory, in the two
+-- neighbouring territories, and in the opposite one.
+Creatures.spawnMix = table.freeze({ native = 0.7, neighbour = 0.2, opposite = 0.1 })
 -- A wandering creature picks a new spot within this distance.
 Creatures.wanderRadius = 30
 
@@ -26,7 +36,7 @@ Creatures.bodySize = table.freeze({ Small = 1.5, Medium = 2.5, Large = 3.5 })
 -- Flies in the conservatory and field.
 Creatures.flies = table.freeze({
 	cap = 25,
-	speed = 6,
+	speed = 3,
 	size = 0.8,
 	hoverHeight = 3,
 })

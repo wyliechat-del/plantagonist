@@ -16,6 +16,17 @@ Environment.Rain = table.freeze({
 	shadowStartRadius = 60,
 	cloudRadius = 14,
 	cloudHeight = 45,
+	shadowTransparency = 0.15,
+	-- Glowing rings sweep in across the territory to the spot where rain
+	-- will fall: `ringCount` rings, each made of `ringSegments` pieces,
+	-- shrinking from `ringStartRadius` over `ringSeconds`, one after another.
+	ringCount = 3,
+	ringSegments = 36,
+	ringStartRadius = 150,
+	ringSeconds = 3,
+	-- Lightning flashes from the cloud in the last seconds before the rain.
+	lightningFlashes = 3,
+	lightningSeconds = 3,
 })
 
 Environment.Rooting = table.freeze({

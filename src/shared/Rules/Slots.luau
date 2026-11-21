@@ -9,13 +9,17 @@
 	Every power up gets an increasing `order` number when it's added, so
 	"oldest" and "latest" are well defined.
 
+	An attack slot can also carry one boost (bee, mantis, bombardier beetle):
+	the boost is used with that slot's power up, and is lost if the slot is
+	emptied or replaced.
+
 	These functions change the `Slots` table they are given.
 ]]
 
 local Slots = {}
 
 export type SlotType = "attack" | "defence"
-export type Slot = { id: string?, order: number }
+export type Slot = { id: string?, order: number, boost: string? }
 export type Slots = {
 	attack: { Slot },
 	defence: { Slot },
@@ -62,7 +66,35 @@ function Slots.add(slots: Slots, slotType: SlotType, id: string): (number?, stri
 	return target, replaced
 end
 
--- Empties one slot and returns what it held.
+-- Puts boost `boostId` on the oldest attack slot whose power up passes
+-- `matches(id)` and has no boost yet. Returns the slot index, or nil when
+-- no slot fits (the boost is then lost).
+function Slots.addBoost(slots: Slots, boostId: string, matches: (string) -> boolean): number?
+	local bestIndex: number? = nil
+	local bestOrder = math.huge
+	for index, slot in slots.attack do
+		if slot.id and slot.boost == nil and matches(slot.id) and slot.order < bestOrder then
+			bestIndex, bestOrder = index, slot.order
+		end
+	end
+	if bestIndex then
+		slots.attack[bestIndex].boost = boostId
+	end
+	return bestIndex
+end
+
+-- Removes and returns the boost on an attack slot, if any.
+function Slots.takeBoost(slots: Slots, index: number): string?
+	local slot = slots.attack[index]
+	if slot == nil then
+		return nil
+	end
+	local boost = slot.boost
+	slot.boost = nil
+	return boost
+end
+
+-- Empties one slot and returns what it held (its boost is lost).
 function Slots.take(slots: Slots, slotType: SlotType, index: number): string?
 	local slot = slots[slotType][index]
 	if slot == nil or slot.id == nil then

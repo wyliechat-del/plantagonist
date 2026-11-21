@@ -6,7 +6,8 @@
 	(times any `damageMultiplier`) and apply their effect. "special" power ups
 	act on the user. "defence" power ups sit in defence slots and block one
 	power up attack of their own family, then are used up. Defences never
-	block the basic bite.
+	block the basic bite. "boost" power ups ride on an attack of their family
+	and change what it does once.
 ]]
 
 local PowerUps = {}
@@ -25,8 +26,6 @@ export type SelfEffect = {
 	speedBurst: number?, -- speed units while the burst lasts
 	speedBurstSeconds: number,
 	invisibleSeconds: number,
-	keepNextFamilyPowerUp: string?, -- family whose next use isn't used up
-	reuseSeconds: number,
 }
 
 local function creature(powerUps: any, id: string): any
@@ -49,9 +48,18 @@ function PowerUps.kindOf(powerUps: any, id: string): string
 	return creature(powerUps, id).kind
 end
 
-function PowerUps.slotTypeFor(powerUps: any, id: string): "attack" | "defence"
-	if creature(powerUps, id).kind == "defence" then
+function PowerUps.isBoost(powerUps: any, id: string): boolean
+	return creature(powerUps, id).kind == "boost"
+end
+
+-- Which slots a power up goes in: "attack", "defence" or "boost" (rides on
+-- an attack slot, see `canBoost`).
+function PowerUps.slotTypeFor(powerUps: any, id: string): "attack" | "defence" | "boost"
+	local kind = creature(powerUps, id).kind
+	if kind == "defence" then
 		return "defence"
+	elseif kind == "boost" then
+		return "boost"
 	end
 	return "attack"
 end
@@ -61,17 +69,37 @@ function PowerUps.isAttack(powerUps: any, id: string): boolean
 	return kind == "melee" or kind == "range"
 end
 
--- The effect of attack power up `id` used by a plant of `attackerLevel`.
-function PowerUps.attackEffect(powerUps: any, id: string, attackerLevel: number): AttackEffect
+-- Can boost `boostId` ride on the attack power up `attackId`?
+function PowerUps.canBoost(powerUps: any, boostId: string, attackId: string): boolean
+	return PowerUps.isBoost(powerUps, boostId)
+		and PowerUps.isAttack(powerUps, attackId)
+		and PowerUps.familyOf(powerUps, boostId) == PowerUps.familyOf(powerUps, attackId)
+end
+
+-- The effect of attack power up `id` used by a plant of `attackerLevel`,
+-- changed by `boostId` when the slot carries a boost.
+function PowerUps.attackEffect(
+	powerUps: any,
+	id: string,
+	attackerLevel: number,
+	boostId: string?
+): AttackEffect
 	assert(PowerUps.isAttack(powerUps, id), `"{id}" is not an attack power up`)
 	local effect = PowerUps.effectOf(powerUps, id)
-	return {
+	local result: AttackEffect = {
 		damageMultiplier = effect.damageMultiplier or 1,
 		lockoutSeconds = (effect.lockoutSecondsPerLevel or 0) * attackerLevel,
 		holdSeconds = (effect.holdSecondsPerLevel or 0) * attackerLevel,
 		removeOldestPowerUp = effect.removeOldestPowerUp == true,
 		sticky = effect.sticky == true,
 	}
+	if boostId and PowerUps.canBoost(powerUps, boostId, id) then
+		local boost = PowerUps.effectOf(powerUps, boostId)
+		result.lockoutSeconds *= boost.lockoutMultiplier or 1
+		result.sticky = result.sticky or boost.sticky == true
+		result.removeOldestPowerUp = result.removeOldestPowerUp or boost.removeOldestPowerUp == true
+	end
+	return result
 end
 
 -- The effect of special power up `id` used by a plant of `level`.
@@ -84,10 +112,6 @@ function PowerUps.selfEffect(powerUps: any, id: string, level: number): SelfEffe
 		speedBurst = effect.speedBurst,
 		speedBurstSeconds = (effect.speedBurstSecondsPerLevel or 0) * level,
 		invisibleSeconds = (effect.invisibleSecondsPerLevel or 0) * level,
-		keepNextFamilyPowerUp = if effect.keepNextFamilyPowerUp
-			then PowerUps.familyOf(powerUps, id)
-			else nil,
-		reuseSeconds = effect.reuseSeconds or 0,
 	}
 end
 
@@ -98,17 +122,23 @@ function PowerUps.defenceBlocks(powerUps: any, defenceId: string, attackId: stri
 		and PowerUps.familyOf(powerUps, defenceId) == PowerUps.familyOf(powerUps, attackId)
 end
 
--- Is an attack power up used up when used? Not when a mantis charge for its
--- family is active (`keepFamily`). Returns (usedUp, chargeSpent).
-function PowerUps.isUsedUp(powerUps: any, id: string, keepFamily: string?): (boolean, boolean)
-	if
-		keepFamily ~= nil
-		and PowerUps.isAttack(powerUps, id)
-		and PowerUps.familyOf(powerUps, id) == keepFamily
-	then
-		return false, true
+-- Is a power up used up when used? Not when its slot carries a boost that
+-- keeps it (mantis). Returns (usedUp, reuseSeconds).
+function PowerUps.isUsedUp(powerUps: any, id: string, boostId: string?): (boolean, number)
+	if boostId and PowerUps.canBoost(powerUps, boostId, id) then
+		local boost = PowerUps.effectOf(powerUps, boostId)
+		if boost.keepPowerUp then
+			return false, boost.reuseSeconds or 0
+		end
 	end
-	return true, false
+	return true, 0
+end
+
+-- What a slot button shows: the family name for attacks ("Venom"), or the
+-- move name for special moves ("Fly").
+function PowerUps.buttonLabel(powerUps: any, id: string): string
+	local info = creature(powerUps, id)
+	return info.moveName or powerUps.families[info.family].name
 end
 
 return table.freeze(PowerUps)

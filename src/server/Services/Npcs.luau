@@ -12,6 +12,7 @@ local Map = require(ReplicatedStorage.Shared.Config.Map)
 local NpcConfig = require(ReplicatedStorage.Shared.Config.Npc)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
+local Rings = require(ReplicatedStorage.Shared.Config.Rings)
 local Bite = require(ReplicatedStorage.Shared.Rules.Bite)
 local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
 local NpcRules = require(ReplicatedStorage.Shared.Rules.Npc)
@@ -92,7 +93,7 @@ local function seen(brain: Brain): ({ NpcRules.Seen }, { NpcRules.Seen })
 	for _, creature in Creatures.all() do
 		local there = creature.part.Position
 		local isFly = creature.id == "fly"
-		local usable = if isFly then me.level <= Map.Field.maxLevel else true
+		local usable = if isFly then me.rings < Rings.fliesMaxRings else true
 		if usable and Util.flatDistance(position, there) <= NpcConfig.sightDistance then
 			local inField = MapRules.inField(Map, there.X, there.Z)
 			if not inField or MapRules.canBeInField(Map, me.level) then

@@ -71,8 +71,8 @@ function Growth.creatureRings(
 	return rings
 end
 
-function Growth.flyRings(ringConfig: any, level: number): number
-	if level <= ringConfig.fliesMaxLevel then
+function Growth.flyRings(ringConfig: any, rings: number): number
+	if rings < ringConfig.fliesMaxRings then
 		return ringConfig.perFly
 	end
 	return 0

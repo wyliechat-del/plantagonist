@@ -33,6 +33,10 @@ export type Creature = {
 	phase: number,
 	radius: number,
 	alive: boolean,
+	dodgeUntil: number,
+	dodgeReadyAt: number,
+	dodgeX: number,
+	dodgeZ: number,
 }
 
 type Cow = {
@@ -121,6 +125,10 @@ local function spawnCreature(id: string, territory: string)
 		phase = Util.random() * math.pi * 2,
 		radius = size / 2,
 		alive = true,
+		dodgeUntil = 0,
+		dodgeReadyAt = 0,
+		dodgeX = 0,
+		dodgeZ = 0,
 	}
 	table.insert(creatures, creature)
 	byPart[part] = creature
@@ -133,7 +141,10 @@ local function spawnTick()
 	end
 	for territory, ids in idsByTerritory do
 		if (counts[territory] or 0) < CreaturesConfig.capPerTerritory then
-			spawnCreature(Util.pick(ids), territory)
+			-- Mostly native creatures, some from next door, a few from across the map.
+			local source =
+				MapRules.spawnSource(Map, territory, CreaturesConfig.spawnMix, Util.random)
+			spawnCreature(Util.pick(idsByTerritory[source] or ids), territory)
 		end
 	end
 	if (counts.Field or 0) < CreaturesConfig.flies.cap then
@@ -166,25 +177,34 @@ local function moveTick(dt: number)
 	local parts, frames = {}, {}
 	for _, creature in creatures do
 		local isFly = creature.id == "fly"
-		local fx, fz = nil, nil
-		if not isFly then
-			fx, fz = Steering.fleeDirection(
-				creature.x,
-				creature.z,
-				threats,
-				CreaturesConfig.fleeDistance
-			)
-		end
 		local oldX, oldZ = creature.x, creature.z
-		if fx and fz then
-			local step = CreaturesConfig.fleeSpeed * dt
-			local nx, nz = creature.x + fx * step, creature.z + fz * step
-			creature.x, creature.z = MapRules.clampToTerritory(Map, creature.territory, nx, nz)
-			creature.targetX, creature.targetZ = creature.x, creature.z
+		local oldGround = MapBuilder.groundY(oldX, oldZ)
+		if not isFly and now >= creature.dodgeUntil and now >= creature.dodgeReadyAt then
+			-- Dodge only at the last moment, then carry on.
+			local nearest, nearestDistance = nil, CreaturesConfig.dodgeDistance
+			for _, threat in threats do
+				local distance = math.sqrt((threat.x - oldX) ^ 2 + (threat.z - oldZ) ^ 2)
+				if distance < nearestDistance then
+					nearest, nearestDistance = threat, distance
+				end
+			end
+			if nearest then
+				local side = if Util.random() < 0.5 then 1 else -1
+				creature.dodgeX, creature.dodgeZ =
+					Steering.dodgeDirection(oldX, oldZ, nearest.x, nearest.z, side)
+				creature.dodgeUntil = now + CreaturesConfig.dodgeSeconds
+				creature.dodgeReadyAt = creature.dodgeUntil + CreaturesConfig.dodgeCooldown
+			end
+		end
+		local nx, nz
+		if now < creature.dodgeUntil then
+			local step = CreaturesConfig.dodgeSpeed * dt
+			nx, nz = creature.x + creature.dodgeX * step, creature.z + creature.dodgeZ * step
+			nx, nz = MapRules.clampToTerritory(Map, creature.territory, nx, nz)
 		else
 			local speed = if isFly then CreaturesConfig.flies.speed else CreaturesConfig.wanderSpeed
 			local arrived
-			creature.x, creature.z, arrived = Steering.moveTowards(
+			nx, nz, arrived = Steering.moveTowards(
 				creature.x,
 				creature.z,
 				creature.targetX,
@@ -195,7 +215,14 @@ local function moveTick(dt: number)
 				newTarget(creature)
 			end
 		end
-		local ground = MapBuilder.groundY(creature.x, creature.z)
+		local ground = MapBuilder.groundY(nx, nz)
+		if not isFly and ground - oldGround > CreaturesConfig.maxClimb then
+			-- Too steep (a hill or wall): stay put and head somewhere else.
+			nx, nz, ground = oldX, oldZ, oldGround
+			creature.dodgeUntil = 0
+			newTarget(creature)
+		end
+		creature.x, creature.z = nx, nz
 		local height = if isFly
 			then CreaturesConfig.flies.hoverHeight + Steering.bob(now, creature.phase, 1)
 			else creature.radius + Steering.bob(now, creature.phase, creature.radius * 0.6)

@@ -20,7 +20,7 @@ return function(t)
 	end)
 
 	t.test("every creature has a valid family, kind, territory and size", function()
-		local kinds = { melee = true, range = true, special = true, defence = true }
+		local kinds = { melee = true, range = true, special = true, defence = true, boost = true }
 		local territories = { Grassland = true, Hills = true, River = true, Forest = true }
 		local count = 0
 		for id, creature in PowerUps.creatures do

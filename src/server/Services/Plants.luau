@@ -50,7 +50,6 @@ export type Plant = {
 	burstUntil: number,
 	invisibleUntil: number,
 	stickyUntil: number,
-	keepFamily: string?,
 	fertilised: boolean,
 	inField: boolean,
 	droppedSinceSpawn: boolean,
@@ -126,6 +125,9 @@ local function slotIds(plant: Plant): { string }
 			if slot.id then
 				table.insert(ids, slot.id)
 			end
+			if slot.boost then
+				table.insert(ids, slot.boost)
+			end
 		end
 	end
 	return ids
@@ -153,6 +155,7 @@ function Plants.sync(plant: Plant)
 		local slot = plant.slots.attack[index]
 		player:SetAttribute(`Attack{index}`, if slot and slot.id then slot.id else "")
 		player:SetAttribute(`Attack{index}ReadyAt`, plant.slotReadyAt[index] or 0)
+		player:SetAttribute(`Attack{index}Boost`, if slot and slot.boost then slot.boost else "")
 	end
 	for index = 1, 2 do
 		local slot = plant.slots.defence[index]
@@ -220,8 +223,23 @@ end
 -- Puts a power up into a slot of the right type. Returns true if it was kept.
 function Plants.givePowerUp(plant: Plant, id: string): boolean
 	local slotType = PowerUps.slotTypeFor(PowerUpsConfig, id)
-	local index, replaced = Slots.add(plant.slots, slotType, id)
 	local name = PowerUpsConfig.creatures[id].name
+	if slotType == "boost" then
+		-- Boosts ride on a loaded attack of their family, or are lost.
+		local boosted = Slots.addBoost(plant.slots, id, function(attackId)
+			return PowerUps.canBoost(PowerUpsConfig, id, attackId)
+		end)
+		local familyName = PowerUpsConfig.families[PowerUpsConfig.creatures[id].family].name
+		if boosted == nil then
+			Effects.notify(plant.player, `{name} needs a {familyName} attack.`, "info")
+			return false
+		end
+		Effects.notify(plant.player, `{name} boosted your {familyName} attack!`, "good")
+		Effects.send(plant.player, "sound", { name = "powerUp" })
+		Plants.sync(plant)
+		return true
+	end
+	local index, replaced = Slots.add(plant.slots, slotType, id)
 	if index == nil then
 		Effects.notify(
 			plant.player,
@@ -268,7 +286,6 @@ local function resetTimers(plant: Plant, now: number)
 	plant.burstUntil = 0
 	plant.invisibleUntil = 0
 	plant.stickyUntil = 0
-	plant.keepFamily = nil
 	plant.fertilised = false
 	plant.droppedSinceSpawn = false
 	plant.fightStartLevels = {}
@@ -329,7 +346,6 @@ function Plants.register(model: Model, player: Player?, name: string): Plant?
 		burstUntil = 0,
 		invisibleUntil = 0,
 		stickyUntil = 0,
-		keepFamily = nil,
 		fertilised = false,
 		inField = false,
 		droppedSinceSpawn = false,

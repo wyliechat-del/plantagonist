@@ -86,11 +86,11 @@ function Simulator.session(profile: any, sessionSeconds: number, rng: Random.Ran
 		local level = Growth.levelFor(Levels.list, rings)
 		local seconds = 0
 
-		if level <= Rings.fliesMaxLevel then
+		if rings < Rings.fliesMaxRings then
 			-- Conservatory: eat flies until they stop paying.
 			seconds = profile.flySeconds
 			now += seconds
-			gain("flies", Growth.flyRings(Rings, level))
+			gain("flies", Growth.flyRings(Rings, rings))
 		elseif rng:chance(profile.fightChance) then
 			local fightSeconds, gained = fight(rng, profile, level)
 			seconds = fightSeconds

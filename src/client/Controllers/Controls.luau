@@ -1,6 +1,7 @@
 --[[
 	Touch-friendly controls: a big bite button, up to 3 attack slot buttons
-	(family colours), defence slot badges and a Take Root button. Movement
+	(family colours, named by attack type: a triangle for ranged, a square
+	button for melee, a dot when a boost is loaded), defence slot badges and a Take Root button. Movement
 	uses Roblox's own thumbstick on phones and WASD on desktop. Keys: E bites,
 	1 to 3 use slots, R takes root.
 
@@ -19,6 +20,7 @@ local Levels = require(ReplicatedStorage.Shared.Config.Levels)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local Aim = require(ReplicatedStorage.Shared.Rules.Aim)
+local PowerUps = require(ReplicatedStorage.Shared.Rules.PowerUps)
 local Bite = require(ReplicatedStorage.Shared.Rules.Bite)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -30,6 +32,7 @@ local Controls = {}
 local player = Players.LocalPlayer
 local highlight: Highlight
 local attackButtons: { TextButton } = {}
+local boostDots: { Frame } = {}
 local defenceBadges: { TextLabel } = {}
 local rootButton: TextButton
 local currentTarget: Instance? = nil
@@ -168,14 +171,33 @@ local function refreshSlots()
 		local creature = if type(id) == "string" then PowerUpsConfig.creatures[id] else nil
 		local readyAt = player:GetAttribute(`Attack{index}ReadyAt`)
 		local waiting = type(readyAt) == "number" and now < readyAt
+		local corner = button:FindFirstChildOfClass("UICorner")
+		local square = creature ~= nil and creature.kind == "melee"
+		if corner then
+			corner.CornerRadius =
+				UDim.new(if square then ControlsConfig.squareCornerScale else 0.5, 0)
+		end
 		if creature then
+			local mark = ControlsConfig.kindMarks[creature.kind]
+			local label = PowerUps.buttonLabel(PowerUpsConfig, id :: string)
 			button.BackgroundColor3 = Ui.colour(PowerUpsConfig.families[creature.family].colour)
-			button.Text = if locked then "Venom!" else creature.name
+			button.Text = if locked then "Venom!" elseif mark then `{mark}\n{label}` else label
 			button.BackgroundTransparency = if locked or waiting then 0.6 else 0
 		else
 			button.BackgroundColor3 = EMPTY_COLOUR
 			button.Text = "Empty"
 			button.BackgroundTransparency = 0.4
+		end
+		local boost = player:GetAttribute(`Attack{index}Boost`)
+		local boosted = creature ~= nil and type(boost) == "string" and boost ~= ""
+		local dot = boostDots[index]
+		dot.Visible = boosted
+		if boosted then
+			local boostCreature = PowerUpsConfig.creatures[boost :: string]
+			if boostCreature then
+				dot.BackgroundColor3 =
+					Ui.colour(PowerUpsConfig.families[boostCreature.family].colour)
+			end
 		end
 	end
 	for index, badge in defenceBadges do
@@ -185,7 +207,9 @@ local function refreshSlots()
 		badge.BackgroundColor3 = if creature
 			then Ui.colour(PowerUpsConfig.families[creature.family].colour)
 			else EMPTY_COLOUR
-		badge.Text = if creature then `Shield: {creature.name}` else "Shield: empty"
+		badge.Text = if creature
+			then `Shield: {PowerUpsConfig.families[creature.family].name}`
+			else "Shield: empty"
 	end
 	local rings = player:GetAttribute("Rings") or 0
 	rootButton.Visible = rings >= Levels.rootRings
@@ -214,6 +238,17 @@ local function buildButtons()
 			useSlot(index)
 		end)
 		attackButtons[index] = button
+		local dotSize = ControlsConfig.boostDotSize
+		boostDots[index] = Ui.make("Frame", {
+			Name = "BoostDot",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -dotSize / 4, 0, dotSize / 4),
+			Size = UDim2.fromOffset(dotSize, dotSize),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			Visible = false,
+			ZIndex = 2,
+			Parent = button,
+		}, { Ui.corner(), Ui.stroke(Color3.new(1, 1, 1), 2) })
 	end
 
 	for index = 1, 2 do
@@ -268,6 +303,7 @@ function Controls.start()
 	for index = 1, 3 do
 		player:GetAttributeChangedSignal(`Attack{index}`):Connect(refreshSlots)
 		player:GetAttributeChangedSignal(`Attack{index}ReadyAt`):Connect(refreshSlots)
+		player:GetAttributeChangedSignal(`Attack{index}Boost`):Connect(refreshSlots)
 	end
 	for index = 1, 2 do
 		player:GetAttributeChangedSignal(`Defence{index}`):Connect(refreshSlots)

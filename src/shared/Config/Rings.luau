@@ -8,9 +8,10 @@ local Rings = {}
 -- Rings for eating a creature, by its size.
 Rings.bySize = table.freeze({ Small = 1, Medium = 2, Large = 3 })
 
--- Flies give rings only while the eater is at or below `fliesMaxLevel`.
+-- Flies give rings only while the eater has fewer than `fliesMaxRings`
+-- rings, so they feed Seedlings and never take anyone past 4 rings.
 Rings.perFly = 1
-Rings.fliesMaxLevel = 2
+Rings.fliesMaxRings = 4
 
 -- Cow poo sets the Fertiliser flag: the next creature eaten gives a random
 -- number of rings in this range instead of its size value.

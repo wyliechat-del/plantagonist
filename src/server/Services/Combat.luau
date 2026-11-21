@@ -115,7 +115,7 @@ local function eatCreature(plant: Plant, creature: Creatures.Creature)
 	local player = plant.player
 	Effects.sound("chomp", plant.root.Position)
 	if creature.id == "fly" then
-		local rings = Growth.flyRings(Rings, plant.level)
+		local rings = Growth.flyRings(Rings, plant.rings)
 		if rings == 0 then
 			Effects.notify(player, "Flies are too small to fill you up now. Go hunting!", "info")
 		end
@@ -175,7 +175,7 @@ end
 
 -- A power up attack lands on a victim. Defences and the blowfish ball can
 -- stop it. Returns true if it hit at all.
-function Combat.powerUpHit(attacker: Plant, victim: Plant, id: string): boolean
+function Combat.powerUpHit(attacker: Plant, victim: Plant, id: string, boost: string?): boolean
 	local now = Plants.now()
 	if not victim.alive or victim == attacker then
 		return false
@@ -190,7 +190,7 @@ function Combat.powerUpHit(attacker: Plant, victim: Plant, id: string): boolean
 	if Plants.isProtected(victim, now) then
 		return false
 	end
-	local effect = PowerUps.attackEffect(PowerUpsConfig, id, attacker.level)
+	local effect = PowerUps.attackEffect(PowerUpsConfig, id, attacker.level, boost)
 	local defenceIndex = Slots.findDefence(victim.slots, function(defenceId)
 		return PowerUps.defenceBlocks(PowerUpsConfig, defenceId, id)
 	end)
@@ -247,11 +247,19 @@ function Combat.powerUpHit(attacker: Plant, victim: Plant, id: string): boolean
 end
 
 -- Ranged power ups fly as a ball at the projectile speed and can be dodged.
-local projectiles: { { part: BasePart, owner: Plant, id: string, velocity: Vector3, travelled: number, range: number } } =
-	{}
+type Shot = {
+	part: BasePart,
+	owner: Plant,
+	id: string,
+	boost: string?,
+	velocity: Vector3,
+	travelled: number,
+	range: number,
+}
+local projectiles: { Shot } = {}
 local projectileFolder: Folder
 
-local function fireProjectile(attacker: Plant, id: string, target: Plant?)
+local function fireProjectile(attacker: Plant, id: string, target: Plant?, boost: string?)
 	local start = attacker.root.Position + Vector3.new(0, 2 * Plants.scale(attacker), 0)
 	local aim = if target
 		then target.root.Position
@@ -276,6 +284,7 @@ local function fireProjectile(attacker: Plant, id: string, target: Plant?)
 	table.insert(projectiles, {
 		part = part,
 		owner = attacker,
+		boost = boost,
 		id = id,
 		velocity = direction * CombatConfig.projectileStudsPerSecond,
 		travelled = 0,
@@ -303,7 +312,7 @@ local function stepProjectiles(dt: number)
 		end
 		if hit or shot.travelled >= shot.range or not shot.owner.alive then
 			if hit and shot.owner.alive then
-				Combat.powerUpHit(shot.owner, hit, shot.id)
+				Combat.powerUpHit(shot.owner, hit, shot.id, shot.boost)
 			end
 			shot.part:Destroy()
 			table.remove(projectiles, index)
@@ -349,16 +358,7 @@ local function useSpecial(plant: Plant, id: string, now: number)
 		plant.invisibleUntil = now + effect.invisibleSeconds
 		PlantModel.setInvisible(plant.model, true)
 	end
-	if effect.keepNextFamilyPowerUp then
-		plant.keepFamily = effect.keepNextFamilyPowerUp
-		Effects.notify(
-			plant.player,
-			"Mantis ready: your next Bite and slash power up won't be used up.",
-			"good"
-		)
-	else
-		Effects.notify(plant.player, `{name}!`, "good")
-	end
+	Effects.notify(plant.player, `{name}!`, "good")
 	Data.record(plant.player, function(progress)
 		AwardRules.recordUsed(progress, id)
 	end)
@@ -383,6 +383,7 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?): boolean
 		return false
 	end
 	local id = slot.id
+	local boost = slot.boost
 	local kind = PowerUps.kindOf(PowerUpsConfig, id)
 	local victim = Plants.fromModel(target)
 	if victim == plant or (victim and victim.model:GetAttribute("Invisible") == true) then
@@ -399,23 +400,23 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?): boolean
 			Effects.notify(plant.player, `{victim.name} is safe right now.`, "info")
 			return false
 		end
-		Combat.powerUpHit(plant, victim, id)
+		Combat.powerUpHit(plant, victim, id, boost)
 	elseif kind == "range" then
 		local range = Bite.rangeStuds(CombatConfig, plant.level) + PlantsConfig.hitTolerance
 		if victim and gapTo(plant, victim.root.Position, Plants.radius(victim)) > range then
 			victim = nil
 		end
-		fireProjectile(plant, id, victim)
+		fireProjectile(plant, id, victim, boost)
 	elseif kind == "special" then
 		useSpecial(plant, id, now)
 	else
 		return false
 	end
 
-	local usedUp, chargeSpent = PowerUps.isUsedUp(PowerUpsConfig, id, plant.keepFamily)
-	if chargeSpent then
-		plant.keepFamily = nil
-		local reuse = PowerUpsConfig.creatures.mantis.effect.reuseSeconds
+	-- The boost is spent with this use; a mantis keeps the power up.
+	Slots.takeBoost(plant.slots, index)
+	local usedUp, reuse = PowerUps.isUsedUp(PowerUpsConfig, id, boost)
+	if not usedUp then
 		plant.slotReadyAt[index] = now + reuse
 		Effects.notify(plant.player, "Mantis kept it! Ready again in a moment.", "good")
 	end

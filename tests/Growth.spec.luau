@@ -49,9 +49,9 @@ return function(t)
 		t.expectEqual(Growth.creatureRings(Rings, "Small", true, roll), 6)
 	end)
 
-	t.test("flies stop paying after level 2", function()
-		t.expectEqual(Growth.flyRings(Rings, 2), 1)
-		t.expectEqual(Growth.flyRings(Rings, 3), 0)
+	t.test("flies stop paying at 4 rings", function()
+		t.expectEqual(Growth.flyRings(Rings, 3), 1)
+		t.expectEqual(Growth.flyRings(Rings, 4), 0)
 	end)
 
 	t.test("rain pays per level", function()
