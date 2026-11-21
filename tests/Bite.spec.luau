@@ -15,15 +15,17 @@ local function bitesToEat(attacker: number, rings: number): number
 end
 
 return function(t)
-	t.test("bites needed match the table in the design doc", function()
-		local tops = { 3, 9, 21, 45, 69, 93 }
+	-- Bites for a plant at the top of each level, with the ring ranges from
+	-- playtest 2 (rooting at 80).
+	t.test("bites needed to eat a plant at the top of each level", function()
+		local tops = { 3, 9, 19, 35, 56, 79 }
 		local expected = {
-			{ 3, 9, 21, 45, 69, 93 },
-			{ 2, 5, 11, 23, 35, 47 },
-			{ 1, 3, 7, 15, 23, 31 },
-			{ 1, 3, 6, 12, 18, 24 },
-			{ 1, 3, 6, 11, 16, 21 },
-			{ 1, 2, 4, 8, 12, 16 },
+			{ 3, 9, 19, 35, 56, 79 },
+			{ 2, 5, 10, 18, 29, 41 },
+			{ 1, 3, 7, 13, 20, 28 },
+			{ 1, 3, 6, 10, 16, 22 },
+			{ 1, 3, 5, 9, 14, 19 },
+			{ 1, 2, 4, 7, 11, 15 },
 		}
 		for attacker, row in expected do
 			for victim, bites in row do
@@ -37,9 +39,9 @@ return function(t)
 	end)
 
 	t.test("damage stops at a level drop", function()
-		local result = Bite.resolve(Combat, 6, 71, Growth.dropFloor(Levels.list, 6))
+		local result = Bite.resolve(Combat, 6, 58, Growth.dropFloor(Levels.list, 6))
 		t.expectEqual(result.taken, 2)
-		t.expectEqual(result.victimRings, 69)
+		t.expectEqual(result.victimRings, 56)
 		t.expect(result.droppedLevel)
 		t.expect(not result.eaten)
 	end)
@@ -82,9 +84,9 @@ return function(t)
 		t.expect(Bite.canBite(Combat, 21.5, nil, safeUntil))
 	end)
 
-	t.test("range is 10 studs plus 5 per level", function()
-		t.expectEqual(Bite.rangeStuds(Combat, 1), 15)
-		t.expectEqual(Bite.rangeStuds(Combat, 6), 40)
+	t.test("range is 15 studs plus 5 per level", function()
+		t.expectEqual(Bite.rangeStuds(Combat, 1), 20)
+		t.expectEqual(Bite.rangeStuds(Combat, 4), 35)
 		t.expectEqual(Bite.flightSeconds(Combat, 40), 2)
 	end)
 end

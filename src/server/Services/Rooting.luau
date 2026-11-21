@@ -1,5 +1,5 @@
 --[[
-	Taking root: at 94 rings a player can choose to root as a Deciduodocus.
+	Taking root: at `Levels.rootRings` (80) rings a player can choose to root as a Deciduodocus.
 	The tree stands for about 2 minutes, drops fruit every 20 seconds and
 	counts on the Treederboard (the Trees column of the player list). The
 	player starts again as a Seedling with a fruit to eat.

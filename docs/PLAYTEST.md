@@ -32,7 +32,7 @@ Tick each one, and note anything that looks wrong.
 - [ ] A rain cloud: a dark shadow shrinks over a territory, then rains. Standing in it gives rings.
 - [ ] The swamp slows big plants, lily pads don't slow small ones, the river slows everyone off the bridges.
 - [ ] Small plants fit through hollow logs (forest) and caves (hills); level 4 and up don't.
-- [ ] At 94 rings a **TAKE ROOT** button appears. Rooting flashes the screen, builds a tree, adds 1 to Trees in the player list, and you start again as a Seedling with a fruit nearby.
+- [ ] At 80 rings a **TAKE ROOT** button appears. Rooting flashes the screen, builds a tree, adds 1 to Trees in the player list, and you start again as a Seedling with a fruit nearby.
 
 To test rooting quickly, change `Levels.respawnRings` in
 `src/shared/Config/Levels.luau` from 1 to 90, play, then change it back.

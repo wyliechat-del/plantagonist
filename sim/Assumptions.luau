@@ -12,11 +12,17 @@ Assumptions.sessionSeconds = 600
 Assumptions.sessionsPerProfile = 2000
 Assumptions.seed = 20261121
 
--- Where a good player should be, from the design doc.
+-- Where a typical player should be (Wylie, after playtest 2): a quick run
+-- to level 4, level 5 by about 3 minutes, rooting by about 8. The simulated
+-- good player was always faster than real playtests, so the targets are
+-- checked against the casual player. `tolerance` is the share either side
+-- that still counts as on target.
+Assumptions.targetProfile = "Casual player"
+Assumptions.tolerance = 0.2
 Assumptions.targets = {
-	{ label = "Level 4", level = 4, seconds = 180 },
-	{ label = "Level 6", level = 6, seconds = 420 },
-	{ label = "Root", level = 7, seconds = 540 },
+	{ label = "Level 4", level = 4, seconds = 60 },
+	{ label = "Level 5", level = 5, seconds = 180 },
+	{ label = "Root", level = 7, seconds = 480 },
 }
 
 Assumptions.profiles = {

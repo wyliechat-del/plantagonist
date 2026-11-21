@@ -16,33 +16,33 @@ Levels.list = table.freeze({
 		minRings = 1,
 		attackSlots = 1,
 		defenceSlots = 0,
-		speed = 3.5,
+		speed = 4.2,
 	}),
-	table.freeze({ name = "Budteryx", minRings = 4, attackSlots = 2, defenceSlots = 0, speed = 3 }),
+	table.freeze({ name = "Budteryx", minRings = 4, attackSlots = 2, defenceSlots = 0, speed = 3.6 }),
 	table.freeze({
 		name = "Saplodocus",
 		minRings = 10,
 		attackSlots = 2,
 		defenceSlots = 1,
-		speed = 2.5,
+		speed = 3,
 	}),
 	table.freeze({
 		name = "Shrubosaurus",
-		minRings = 22,
+		minRings = 20,
 		attackSlots = 3,
 		defenceSlots = 1,
 		speed = 2,
 	}),
 	table.freeze({
 		name = "Bushiraptor",
-		minRings = 46,
+		minRings = 36,
 		attackSlots = 3,
 		defenceSlots = 2,
 		speed = 1.75,
 	}),
 	table.freeze({
 		name = "Snaposaurus Rex",
-		minRings = 70,
+		minRings = 57,
 		attackSlots = 3,
 		defenceSlots = 2,
 		speed = 1.5,
@@ -50,9 +50,10 @@ Levels.list = table.freeze({
 })
 
 -- At this many rings a plant may choose to take root. Rings never go higher.
-Levels.rootRings = 94
+Levels.rootRings = 80
 
--- 1 speed unit = 4 studs per second, so a Seedling runs at 14 and a Rex at 6.
+-- 1 speed unit = 4 studs per second, so a Seedling runs at about 17 and a Rex at 6.
+-- Levels 1 to 3 are 20% faster than first planned, so the run to level 4 is quick.
 Levels.studsPerSpeedUnit = 4
 
 -- Rings a plant has when it respawns as a Seedling.

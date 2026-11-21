@@ -28,7 +28,7 @@ Combat.spawnProtectionSeconds = 3
 
 -- Ranged power ups reach `rangeBaseStuds + rangeStudsPerLevel * level` and fly
 -- at `projectileStudsPerSecond`, so they can be dodged.
-Combat.rangeBaseStuds = 10
+Combat.rangeBaseStuds = 15
 Combat.rangeStudsPerLevel = 5
 Combat.projectileStudsPerSecond = 20
 

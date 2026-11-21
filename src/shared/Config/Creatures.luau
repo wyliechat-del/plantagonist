@@ -13,13 +13,13 @@ Creatures.spawnEverySeconds = 2
 
 -- Movement in studs per second. Catching creatures shouldn't be the
 -- challenge, so they are much slower than every plant (a Rex runs at 6).
-Creatures.wanderSpeed = 3
+Creatures.wanderSpeed = 2
 -- A creature only dodges at the last moment: when a plant comes within
--- `dodgeDistance` studs it sidesteps at `dodgeSpeed` for `dodgeSeconds`,
+-- `dodgeDistance` studs it runs at `dodgeSpeed` for `dodgeSeconds`,
 -- then can't dodge again for `dodgeCooldown` seconds.
 Creatures.dodgeDistance = 6
-Creatures.dodgeSpeed = 8
-Creatures.dodgeSeconds = 1
+Creatures.dodgeSpeed = 4
+Creatures.dodgeSeconds = 1.5
 Creatures.dodgeCooldown = 2
 -- Creatures won't walk up anything steeper than this many studs per step,
 -- so they go round hills instead of through them.

@@ -3,7 +3,7 @@
 
 	Plays thousands of sessions per player profile (see sim/Assumptions.luau)
 	with the real Rules and Config and prints how long it takes to reach each
-	level, compared with the targets in the design doc.
+	level, compared with the targets in sim/Assumptions.luau.
 ]]
 
 local Levels = require("./src/shared/Config/Levels")
@@ -56,13 +56,18 @@ for _, profile in Assumptions.profiles do
 			from.lost
 		)
 	)
-	if profile == Assumptions.profiles[1] then
+	if profile.name == Assumptions.targetProfile then
 		for _, target in Assumptions.targets do
 			local median = result.levels[target.level].median
 			local verdict = if median == nil
 				then "missed (under half the sessions got there)"
-				elseif median <= target.seconds then "on target"
-				else "slower than target"
+				elseif
+					median < target.seconds * (1 - Assumptions.tolerance)
+				then "faster than target"
+				elseif
+					median > target.seconds * (1 + Assumptions.tolerance)
+				then "slower than target"
+				else "on target"
 			print(
 				`  Target {target.label} by {clock(target.seconds)}: median {clock(median)}, {verdict}`
 			)
