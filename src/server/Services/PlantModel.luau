@@ -205,6 +205,22 @@ end
 function PlantModel.setInvisible(character: Model, on: boolean)
 	setVisible(character, if on then INVISIBLE else 0)
 	character:SetAttribute("Invisible", on)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local label = root and root:FindFirstChild("Label")
+	if not on and label and label:IsA("BillboardGui") then
+		label.Enabled = true
+	end
+end
+
+-- Fully hidden (while the player watches their new tree grow).
+function PlantModel.setHidden(character: Model, on: boolean)
+	setVisible(character, if on then HIDDEN else 0)
+	character:SetAttribute("Invisible", on)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local label = root and root:FindFirstChild("Label")
+	if label and label:IsA("BillboardGui") then
+		label.Enabled = not on
+	end
 end
 
 -- Blowfish: a spiky ball round the plant.

@@ -1,8 +1,11 @@
 --[[
 	Taking root: at `Levels.rootRings` (80) rings a player can choose to root as a Deciduodocus.
 	The tree stands for about 2 minutes, drops fruit every 20 seconds and
-	counts on the Treederboard (the Trees column of the player list). The
-	player starts again as a Seedling with a fruit to eat.
+	counts on the Treederboard (the Trees column of the player list).
+
+	After rooting, the player watches the tree grow and drop its first fruit
+	(their plant is hidden and safe meanwhile). Then they press Respawn, or
+	wait `watchSeconds`, and start again as a Seedling with a fruit to eat.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,6 +22,7 @@ local Effects = require(script.Parent.Effects)
 local Log = require(script.Parent.Log)
 local MapBuilder = require(script.Parent.MapBuilder)
 local Pickups = require(script.Parent.Pickups)
+local PlantModel = require(script.Parent.PlantModel)
 local Plants = require(script.Parent.Plants)
 local Util = require(script.Parent.Util)
 
@@ -73,9 +77,54 @@ local function buildTree(position: Vector3, owner: string): Model
 	return model
 end
 
+-- Grows a new tree from tiny to full size, then drops its first fruit.
+-- Keeps the trunk standing on the ground (scaling keeps the trunk's centre).
+local function standOnGround(tree: Model, ground: Vector3)
+	local pivot = tree:GetPivot()
+	local trunk = tree.PrimaryPart :: BasePart
+	-- The trunk is a cylinder on its side, so its height is Size.X.
+	local bottom = pivot.Position.Y - trunk.Size.X / 2
+	tree:PivotTo(pivot + Vector3.new(0, ground.Y - bottom, 0))
+end
+
+local function growTree(tree: Model, ground: Vector3)
+	tree:ScaleTo(Rule.growStartScale)
+	standOnGround(tree, ground)
+	task.spawn(function()
+		for step = 1, Rule.growSteps do
+			task.wait(Rule.growSeconds / Rule.growSteps)
+			if tree.Parent == nil then
+				return
+			end
+			local share = step / Rule.growSteps
+			tree:ScaleTo(Rule.growStartScale + (1 - Rule.growStartScale) * share)
+			standOnGround(tree, ground)
+		end
+		Pickups.dropRandomFruit(ground)
+	end)
+end
+
+-- Stops watching the tree: the player starts again as a Seedling.
+local function finishWatching(plant: Plants.Plant)
+	if not plant.watchingTree then
+		return
+	end
+	plant.watchingTree = false
+	PlantModel.setHidden(plant.model, false)
+	local player = plant.player
+	if player then
+		player:SetAttribute("WatchTree", nil)
+		player:SetAttribute("RespawnReadyAt", nil)
+	end
+	Plants.respawn(plant, "rooted")
+	for _ = 1, Rule.respawnFruit do
+		Pickups.dropRandomFruit(plant.root.Position)
+	end
+end
+
 local function root(player: Player)
 	local plant = Plants.forPlayer(player)
-	if plant == nil or not Growth.canRoot(plant.rings, Levels.rootRings) then
+	if plant == nil or plant.watchingTree or not Growth.canRoot(plant.rings, Levels.rootRings) then
 		return
 	end
 	local position = plant.root.Position
@@ -102,10 +151,18 @@ local function root(player: Player)
 	Effects.sendAll("flash", { position = ground })
 	Effects.sound("choir", ground)
 
-	Plants.respawn(plant, "rooted")
-	for _ = 1, Rule.respawnFruit do
-		Pickups.dropRandomFruit(plant.root.Position)
-	end
+	-- Watch the tree grow: the plant is hidden, held still and safe.
+	local now = Plants.now()
+	plant.watchingTree = true
+	plant.root.Anchored = true
+	PlantModel.setHidden(plant.model, true)
+	player:SetAttribute("WatchTree", ground + Vector3.new(0, Rule.trunkHeight / 2, 0))
+	player:SetAttribute("RespawnReadyAt", now + Rule.growSeconds)
+	Plants.sync(plant)
+	growTree(tree, ground)
+	task.delay(Rule.watchSeconds, function()
+		finishWatching(plant)
+	end)
 
 	task.spawn(function()
 		local ends = os.clock() + Rule.treeSeconds
@@ -129,6 +186,13 @@ end
 function Rooting.start()
 	folder = Util.folder("Trees")
 	Remotes.event("Root").OnServerEvent:Connect(root)
+	Remotes.event("Respawn").OnServerEvent:Connect(function(player)
+		local plant = Plants.forPlayer(player)
+		local ready = player:GetAttribute("RespawnReadyAt")
+		if plant and type(ready) == "number" and Plants.now() >= ready then
+			finishWatching(plant)
+		end
+	end)
 end
 
 return Rooting

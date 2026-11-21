@@ -51,7 +51,9 @@ local function gapTo(attacker: Plant, position: Vector3, radius: number): number
 end
 
 local function canAct(plant: Plant, now: number): boolean
-	return plant.alive and now - plant.spawnedAt >= PlantsConfig.spawnBiteDelay
+	return plant.alive
+		and not plant.watchingTree
+		and now - plant.spawnedAt >= PlantsConfig.spawnBiteDelay
 end
 
 -- Bites one plant by another. `multiplier` doubles damage for Bite and slash.

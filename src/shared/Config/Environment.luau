@@ -39,6 +39,17 @@ Environment.Rooting = table.freeze({
 	fruitMax = 6,
 	-- The rooted player respawns with one fruit (a random power up) to eat.
 	respawnFruit = 1,
+	-- After rooting the player watches the tree grow for `growSeconds` (from
+	-- `growStartScale` of its size) and drop its first fruit. Then a Respawn
+	-- button shows; the player respawns anyway after `watchSeconds`.
+	growSeconds = 3,
+	growStartScale = 0.05,
+	growSteps = 30,
+	watchSeconds = 20,
+	-- The camera circles the tree at this distance and height while watching.
+	cameraDistance = 80,
+	cameraHeight = 40,
+	cameraDegreesPerSecond = 12,
 	-- Trees can't root inside the safe field or closer than this to another tree.
 	minTreeSpacing = 30,
 	-- Placeholder tree size in studs.

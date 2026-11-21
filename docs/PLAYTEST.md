@@ -32,7 +32,7 @@ Tick each one, and note anything that looks wrong.
 - [ ] A rain cloud: a dark shadow shrinks over a territory, then rains. Standing in it gives rings.
 - [ ] The swamp slows big plants, lily pads don't slow small ones, the river slows everyone off the bridges.
 - [ ] Small plants fit through hollow logs (forest) and caves (hills); level 4 and up don't.
-- [ ] At 80 rings a **TAKE ROOT** button appears. Rooting flashes the screen, builds a tree, adds 1 to Trees in the player list, and you start again as a Seedling with a fruit nearby.
+- [ ] At 80 rings a **TAKE ROOT** button appears. Rooting flashes the screen, grows a tree while the camera circles it, adds 1 to Trees in the player list, then shows RESPAWN; you start again as a Seedling with a fruit nearby.
 
 To test rooting quickly, change `Levels.respawnRings` in
 `src/shared/Config/Levels.luau` from 1 to 90, play, then change it back.
@@ -58,6 +58,18 @@ Check these first:
 4. **Creatures** wander slower and run for 1.5 s when you get close.
 5. **Range**: ranged attacks reach 15 studs plus 5 per level (35 at level 4).
 6. **Cows**: at level 5 or more, bite a cow to pick it up; after a second it is tossed. No rings.
+
+## 2d. New in build 4 (after playtest 3)
+
+1. **Speed**: levels 1 to 3 run at about 17 studs a second, levels 4 to 6 at 12.
+2. **Reach**: bites and melee power ups reach 7.5 studs from the plant's edge at every level; ranged attacks reach 45.
+3. **Roar**: a level 4 to 6 plant biting or melee hitting a plant roars first (its head flashes red for 0.25 s). Dart out of reach during the roar and it misses. Bites on creatures don't roar.
+4. **Lift and toss**: when a level 4 to 6 plant hits a smaller plant, the small plant is held in its mouth for 0.5 s, then tossed the way the big plant faces.
+5. **Rooting**: the camera circles your tree while it grows (3 s) and drops its first fruit. Then RESPAWN shows; after 20 s you respawn anyway.
+6. **Flight**: Fly rises to about 18 studs, zooms at 25 studs a second for 6 s (steer with WASD or the thumbstick), then glides down. Ranged shots fired while flying home in on the plant nearest your click.
+7. **Creatures** hop when frightened and run at 6 for 1.5 s.
+
+Studio risks for build 4: the lifted plant is anchored and moved by the server, so check it lets go cleanly; flight uses a LinearVelocity on your own client, so check it steers on a phone too.
 
 ## 3. Things Claude couldn't check without Studio
 

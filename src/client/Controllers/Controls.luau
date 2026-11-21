@@ -7,7 +7,8 @@
 	triangle for ranged, a square button for melee, a dot when a boost is
 	loaded). Tapping a melee or ranged slot (or pressing 1 to 3) primes it for
 	the next click; tapping it again cancels. Moves (Fly, Puff, Dash, Hide) go
-	off straight away. Defence slot badges and a Take Root button too.
+	off straight away. Defence slot badges and a Take Root button too. After
+	rooting, the camera circles the new tree until you press Respawn.
 
 	Movement uses Roblox's own thumbstick on phones and WASD on desktop.
 	Keys: E bites where the mouse points, 1 to 3 prime slots, R takes root.
@@ -21,6 +22,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.Combat)
 local ControlsConfig = require(ReplicatedStorage.Shared.Config.Controls)
+local Environment = require(ReplicatedStorage.Shared.Config.Environment)
 local Levels = require(ReplicatedStorage.Shared.Config.Levels)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
@@ -40,6 +42,7 @@ local attackButtons: { TextButton } = {}
 local boostDots: { Frame } = {}
 local defenceBadges: { TextLabel } = {}
 local rootButton: TextButton
+local respawnButton: TextButton
 -- The attack slot that the next click uses, if any.
 local primedSlot: number? = nil
 
@@ -302,7 +305,10 @@ local function refreshSlots()
 			else "Shield: empty"
 	end
 	local rings = player:GetAttribute("Rings") or 0
-	rootButton.Visible = rings >= Levels.rootRings
+	local watching = typeof(player:GetAttribute("WatchTree")) == "Vector3"
+	local readyAt = player:GetAttribute("RespawnReadyAt")
+	rootButton.Visible = rings >= Levels.rootRings and not watching
+	respawnButton.Visible = watching and type(readyAt) == "number" and now >= readyAt
 end
 
 local function buildButtons()
@@ -365,6 +371,23 @@ local function buildButtons()
 	rootButton.Activated:Connect(function()
 		Remotes.event("Root"):FireServer()
 	end)
+
+	respawnButton = Ui.make("TextButton", {
+		Name = "Respawn",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24),
+		Size = UDim2.fromOffset(200, 54),
+		BackgroundColor3 = Color3.fromRGB(70, 160, 70),
+		Text = "RESPAWN",
+		TextScaled = true,
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = Color3.new(1, 1, 1),
+		Visible = false,
+		Parent = Hud.gui(),
+	}, { Ui.corner(UDim.new(0, 14)), Ui.stroke(Color3.new(0, 0, 0), 2) })
+	respawnButton.Activated:Connect(function()
+		Remotes.event("Respawn"):FireServer()
+	end)
 end
 
 -- Outlines what a click would bite: under the mouse on desktop, the nearest
@@ -390,6 +413,29 @@ local function updateHighlight()
 	highlight.Adornee = target
 end
 
+-- After rooting, the camera circles the new tree until the player respawns.
+local function updateTreeCamera(started: number)
+	local camera = workspace.CurrentCamera
+	local tree = player:GetAttribute("WatchTree")
+	if camera == nil then
+		return
+	end
+	if typeof(tree) ~= "Vector3" then
+		if camera.CameraType == Enum.CameraType.Scriptable then
+			camera.CameraType = Enum.CameraType.Custom
+			local character = player.Character
+			camera.CameraSubject = character and character:FindFirstChildOfClass("Humanoid")
+		end
+		return
+	end
+	local rule = Environment.Rooting
+	camera.CameraType = Enum.CameraType.Scriptable
+	local angle = math.rad((os.clock() - started) * rule.cameraDegreesPerSecond)
+	local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * rule.cameraDistance
+	local eye = tree + offset + Vector3.new(0, rule.cameraHeight, 0)
+	camera.CFrame = CFrame.lookAt(eye, tree)
+end
+
 function Controls.start()
 	buildButtons()
 	highlight = Ui.make("Highlight", {
@@ -400,7 +446,7 @@ function Controls.start()
 		Parent = workspace,
 	})
 
-	for _, name in { "AttackSlots", "DefenceSlots", "Rings", "LockoutUntil" } do
+	for _, name in { "AttackSlots", "DefenceSlots", "Rings", "LockoutUntil", "WatchTree" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshSlots)
 	end
 	for index = 1, 3 do
@@ -450,7 +496,12 @@ function Controls.start()
 	end)
 
 	local lastRefresh = 0
+	local watchStarted = os.clock()
+	player:GetAttributeChangedSignal("WatchTree"):Connect(function()
+		watchStarted = os.clock()
+	end)
 	RunService.RenderStepped:Connect(function()
+		updateTreeCamera(watchStarted)
 		updateHighlight()
 		-- Timers (venom, mantis) run out without an attribute change.
 		local now = os.clock()

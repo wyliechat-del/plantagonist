@@ -48,6 +48,8 @@ export type Plant = {
 	holdUntil: number,
 	-- Set while another plant holds this one in its mouth.
 	heldToken: {}?,
+	-- True while the player watches their new tree grow after rooting.
+	watchingTree: boolean,
 	flyUntil: number,
 	ballUntil: number,
 	burstUntil: number,
@@ -118,7 +120,7 @@ end
 
 function Plants.isProtected(plant: Plant, now: number?): boolean
 	local t = now or Plants.now()
-	return plant.inField or t < plant.protectedUntil or t < plant.ballUntil
+	return plant.inField or plant.watchingTree or t < plant.protectedUntil or t < plant.ballUntil
 end
 
 local function slotIds(plant: Plant): { string }
@@ -390,6 +392,7 @@ function Plants.register(model: Model, player: Player?, name: string): Plant?
 		protectedUntil = 0,
 		lockoutUntil = 0,
 		holdUntil = 0,
+		watchingTree = false,
 		flyUntil = 0,
 		ballUntil = 0,
 		burstUntil = 0,
