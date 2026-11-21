@@ -43,7 +43,7 @@ return function(t)
 	end)
 
 	t.test("special moves scale with level", function()
-		t.expectEqual(PowerUps.selfEffect(Config, "bat", 3).flySeconds, 3)
+		t.expectEqual(PowerUps.selfEffect(Config, "bat", 3).flySeconds, 6)
 		t.expectEqual(PowerUps.selfEffect(Config, "stickInsect", 2).invisibleSeconds, 2)
 		local burst = PowerUps.selfEffect(Config, "centipede", 4)
 		t.expectEqual(burst.speedBurst, 6)

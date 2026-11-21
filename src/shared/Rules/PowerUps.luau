@@ -107,7 +107,7 @@ function PowerUps.selfEffect(powerUps: any, id: string, level: number): SelfEffe
 	assert(creature(powerUps, id).kind == "special", `"{id}" is not a special power up`)
 	local effect = PowerUps.effectOf(powerUps, id)
 	return {
-		flySeconds = (effect.flySecondsPerLevel or 0) * level,
+		flySeconds = (effect.flySeconds or 0) + (effect.flySecondsPerLevel or 0) * level,
 		ballSeconds = effect.ballSeconds or 0,
 		speedBurst = effect.speedBurst,
 		speedBurstSeconds = (effect.speedBurstSecondsPerLevel or 0) * level,

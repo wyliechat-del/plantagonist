@@ -79,15 +79,30 @@ function Combat.bitePlant(
 	Pickups.dropNuts(victimPosition, result.toNuts)
 	Effects.sound("chomp", victimPosition)
 
-	-- Big against small: chew and toss.
-	if Bite.isChewAndToss(attacker.level, victimLevel) then
-		local away = victimPosition - attacker.root.Position
-		local flat = Vector3.new(away.X, 0, away.Z)
-		local direction = if flat.Magnitude > 0.01 then flat.Unit else Vector3.xAxis
-		Plants.push(
-			victim,
-			direction * PlantsConfig.tossSpeed + Vector3.new(0, PlantsConfig.tossUpSpeed, 0)
-		)
+	-- Big against small: chew and toss. Levels 4 to 6 lift the victim into
+	-- their mouth first and toss it the way they face.
+	if not result.eaten and Bite.isChewAndToss(attacker.level, victimLevel) then
+		local function toss(direction: Vector3)
+			local flat = Vector3.new(direction.X, 0, direction.Z)
+			flat = if flat.Magnitude > 0.01 then flat.Unit else Vector3.xAxis
+			Plants.push(
+				victim,
+				flat * PlantsConfig.tossSpeed + Vector3.new(0, PlantsConfig.tossUpSpeed, 0)
+			)
+		end
+		if Bite.lifts(CombatConfig, attacker.level, victimLevel) and victim.heldToken == nil then
+			Plants.hold(
+				victim,
+				attacker,
+				CombatConfig.liftSeconds,
+				CombatConfig.liftHeight,
+				function()
+					toss(attacker.root.CFrame.LookVector)
+				end
+			)
+		else
+			toss(victimPosition - attacker.root.Position)
+		end
 	end
 
 	if result.droppedLevel and not result.eaten then
@@ -154,6 +169,27 @@ local function miss(attacker: Plant, point: Vector3?, now: number)
 	Effects.sound("miss", position)
 end
 
+-- Big plants roar first: everyone sees the head flash and hears it, then
+-- after `roarSeconds` the hit lands if the victim is still in `reach` and not
+-- protected; otherwise it is a miss.
+local function afterRoar(attacker: Plant, victim: Plant, reach: number, land: () -> ())
+	Effects.sendAll("roar", { model = attacker.model, seconds = CombatConfig.roarSeconds })
+	Effects.sound("roar", attacker.root.Position)
+	task.delay(CombatConfig.roarSeconds, function()
+		if not attacker.alive then
+			return
+		end
+		local inReach = victim.alive
+			and victim.root.Parent ~= nil
+			and gapTo(attacker, victim.root.Position, Plants.radius(victim)) <= reach
+		if inReach and not Plants.isProtected(victim) then
+			land()
+		else
+			miss(attacker, victim.root.Position, Plants.now())
+		end
+	end)
+end
+
 -- A bite at a target (a creature part, a cow or a plant model). With no
 -- target it is a miss at `point`.
 function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boolean
@@ -215,6 +251,12 @@ function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boole
 		if Plants.isProtected(victim, now) then
 			Effects.notify(attacker.player, `{victim.name} is safe right now.`, "info")
 			return false
+		end
+		if Bite.roars(CombatConfig, attacker.level) then
+			afterRoar(attacker, victim, reach, function()
+				Combat.bitePlant(attacker, victim, 1, "bite")
+			end)
+			return true
 		end
 		return Combat.bitePlant(attacker, victim, 1, "bite")
 	end
@@ -303,6 +345,8 @@ type Shot = {
 	velocity: Vector3,
 	travelled: number,
 	range: number,
+	-- Shots fired while flying home in on this plant.
+	homing: Plant?,
 }
 local projectiles: { Shot } = {}
 local projectileFolder: Folder
@@ -317,8 +361,29 @@ local function fireProjectile(
 	point: Vector3?
 )
 	local start = attacker.root.Position + Vector3.new(0, 2 * Plants.scale(attacker), 0)
+	local now = Plants.now()
+	local flying = now < attacker.flyUntil
+	local range = Bite.rangeStuds(CombatConfig, attacker.level)
+	local homing: Plant? = nil
+	if flying then
+		range *= PlantsConfig.guideRangeMultiplier
+		homing = target
+		if homing == nil and point then
+			-- Guided: the plant nearest the click, if one is close to it.
+			local best = PlantsConfig.guideRadius
+			for _, other in Plants.all() do
+				local distance = (other.root.Position - point).Magnitude - Plants.radius(other)
+				local hidden = other.model:GetAttribute("Invisible") == true
+				if other ~= attacker and other.alive and not hidden and distance < best then
+					homing, best = other, distance
+				end
+			end
+		end
+	end
 	local aim = if target
 		then target.root.Position
+		elseif homing then homing.root.Position
+		elseif point and flying then point
 		elseif point then Vector3.new(point.X, start.Y, point.Z)
 		else start + attacker.root.CFrame.LookVector * 10
 	local direction = aim - start
@@ -343,9 +408,12 @@ local function fireProjectile(
 		owner = attacker,
 		boost = boost,
 		id = id,
-		velocity = direction * CombatConfig.projectileStudsPerSecond,
+		velocity = direction * CombatConfig.projectileStudsPerSecond * (if homing
+			then PlantsConfig.guideSpeedMultiplier
+			else 1),
 		travelled = 0,
-		range = Bite.rangeStuds(CombatConfig, attacker.level),
+		range = range,
+		homing = homing,
 	})
 end
 
@@ -353,6 +421,13 @@ local function stepProjectiles(dt: number)
 	local plants = Plants.all()
 	for index = #projectiles, 1, -1 do
 		local shot = projectiles[index]
+		local homing = shot.homing
+		if homing and homing.alive and homing.root.Parent then
+			local towards = homing.root.Position - shot.part.Position
+			if towards.Magnitude > 0.01 then
+				shot.velocity = towards.Unit * shot.velocity.Magnitude
+			end
+		end
 		local step = shot.velocity * dt
 		local position = shot.part.Position + step
 		shot.travelled += step.Magnitude
@@ -381,13 +456,10 @@ local function useSpecial(plant: Plant, id: string, now: number)
 	local effect = PowerUps.selfEffect(PowerUpsConfig, id, plant.level)
 	local name = PowerUpsConfig.creatures[id].name
 	if effect.flySeconds > 0 then
-		plant.flyUntil = now + effect.flySeconds
+		-- Shots stay guided while gliding down too.
+		plant.flyUntil = now + effect.flySeconds + PlantsConfig.flyGlideMaxSeconds
 		if plant.player then
-			Effects.send(
-				plant.player,
-				"fly",
-				{ seconds = effect.flySeconds, lift = PlantsConfig.flyLiftSpeed }
-			)
+			Effects.send(plant.player, "fly", { seconds = effect.flySeconds })
 		else
 			Plants.push(plant, Vector3.new(0, PlantsConfig.flyLiftSpeed * 2, 0))
 		end
@@ -458,7 +530,15 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?, point: V
 			Effects.notify(plant.player, `{victim.name} is safe right now.`, "info")
 			return false
 		end
-		Combat.powerUpHit(plant, victim, id, boost)
+		local struck = victim :: Plant
+		if Bite.roars(CombatConfig, plant.level) then
+			-- Like a ranged shot, a melee hit dodged during the roar is spent.
+			afterRoar(plant, struck, reach, function()
+				Combat.powerUpHit(plant, struck, id, boost)
+			end)
+		else
+			Combat.powerUpHit(plant, struck, id, boost)
+		end
 	elseif kind == "range" then
 		local range = Bite.rangeStuds(CombatConfig, plant.level) + PlantsConfig.hitTolerance
 		if victim and gapTo(plant, victim.root.Position, Plants.radius(victim)) > range then

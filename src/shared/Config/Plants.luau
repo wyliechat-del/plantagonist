@@ -27,8 +27,27 @@ Plants.jumpHeight = 7.2
 -- Blowfish ball: bounce speed away from danger.
 Plants.ballBounceSpeed = 60
 
--- Bat flight: lift speed when taking off, in studs per second.
+-- Bat flight: rise at `flyLiftSpeed` to `flyHeight` studs above the ground
+-- (above a level 6 plant), fly at `flySpeedMultiplier` times level 1 speed for
+-- the bat's flight time, then glide down at `flyGlideSpeed`, for at most
+-- `flyGlideMaxSeconds`.
 Plants.flyLiftSpeed = 20
+Plants.flyHeight = 18
+Plants.flySpeedMultiplier = 1.5
+Plants.flyGlideSpeed = 8
+Plants.flyGlideMaxSeconds = 4
+-- How hard the plant climbs back toward `flyHeight` (studs per second per
+-- stud short), and how close to the ground a glide counts as landed.
+Plants.flyHeightGain = 3
+Plants.flyLandingStuds = 0.5
+-- While flying, a ranged shot homes in on the plant nearest the click, within
+-- `guideRadius` studs of it, flying `guideSpeedMultiplier` times faster and
+-- reaching `guideRangeMultiplier` times further. Clicks count as on a plant
+-- within `flyClickSlackStuds` of it.
+Plants.guideRadius = 15
+Plants.guideSpeedMultiplier = 2
+Plants.guideRangeMultiplier = 1.5
+Plants.flyClickSlackStuds = 8
 
 -- A plant's body radius in studs at scale 1 (multiplied by the level's scale).
 Plants.radiusAtScale1 = 1.5

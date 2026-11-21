@@ -39,6 +39,20 @@ Combat.projectileStudsPerSecond = 20
 Combat.biteReachBaseStuds = 7.5
 Combat.biteReachStudsPerLevel = 0
 
+-- Big plants (from `roarFromLevel`) roar for `roarSeconds` before a bite or
+-- melee hit on a plant lands, so small plants can dart in and out. Bites on
+-- creatures don't roar. A target that gets out of reach during the roar is
+-- missed.
+Combat.roarFromLevel = 4
+Combat.roarSeconds = 0.25
+
+-- Big plants (from `liftFromLevel`) that bite or melee hit a smaller plant
+-- hold it in their mouth for `liftSeconds`, then toss it (like a cow).
+-- `liftHeight` is studs above the biter's root per unit of the biter's scale.
+Combat.liftFromLevel = 4
+Combat.liftSeconds = 0.5
+Combat.liftHeight = 3.5
+
 -- When a defence blocks a power up attack, does the attack's normal bite
 -- damage still land? The design says defences don't block the basic bite.
 Combat.defenceBlocksBiteDamage = false

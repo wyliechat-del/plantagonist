@@ -57,6 +57,16 @@ function Bite.isChewAndToss(attackerLevel: number, victimLevel: number): boolean
 	return attackerLevel > victimLevel
 end
 
+-- Does this plant roar before biting a plant?
+function Bite.roars(combat: any, attackerLevel: number): boolean
+	return attackerLevel >= combat.roarFromLevel
+end
+
+-- Does the biter lift the victim into its mouth before the toss?
+function Bite.lifts(combat: any, attackerLevel: number, victimLevel: number): boolean
+	return attackerLevel >= combat.liftFromLevel and attackerLevel > victimLevel
+end
+
 -- Can `now` be a bite? Checks the biter's cooldown and the victim's
 -- protection (escape moment or spawn protection) timers.
 function Bite.canBite(

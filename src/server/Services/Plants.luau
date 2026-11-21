@@ -9,6 +9,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Levels = require(ReplicatedStorage.Shared.Config.Levels)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
@@ -45,6 +46,8 @@ export type Plant = {
 	protectedUntil: number,
 	lockoutUntil: number,
 	holdUntil: number,
+	-- Set while another plant holds this one in its mouth.
+	heldToken: {}?,
 	flyUntil: number,
 	ballUntil: number,
 	burstUntil: number,
@@ -275,6 +278,49 @@ function Plants.push(plant: Plant, velocity: Vector3)
 	end
 end
 
+-- Holds a plant in another plant's mouth for `seconds`, then calls
+-- `release`. The victim's root is anchored and moved by the server meanwhile.
+-- Stops early if either plant dies or leaves.
+function Plants.hold(
+	victim: Plant,
+	holder: Plant,
+	seconds: number,
+	height: number,
+	release: () -> ()
+)
+	local root = victim.root
+	local token = {}
+	victim.heldToken = token
+	root.Anchored = true
+	local untilAt = os.clock() + seconds
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		local done = os.clock() >= untilAt
+			or victim.heldToken ~= token
+			or not victim.alive
+			or not holder.alive
+			or root.Parent == nil
+			or holder.root.Parent == nil
+		if not done then
+			local mouth = holder.root.CFrame
+				* CFrame.new(0, height * Plants.scale(holder), -Plants.radius(holder))
+			victim.model:PivotTo(mouth)
+			return
+		end
+		connection:Disconnect()
+		local stillHeld = victim.heldToken == token
+		if stillHeld then
+			victim.heldToken = nil
+			if root.Parent then
+				root.Anchored = false
+			end
+		end
+		if stillHeld and victim.alive and holder.alive then
+			release()
+		end
+	end)
+end
+
 local function resetTimers(plant: Plant, now: number)
 	plant.lastBiteAt = now - 10
 	plant.spawnedAt = now
@@ -302,6 +348,9 @@ function Plants.respawn(plant: Plant, reason: string, position: Vector3?)
 		Slots.add(plant.slots, "attack", kept)
 	end
 	resetTimers(plant, now)
+	-- Let go if another plant was holding it.
+	plant.heldToken = nil
+	plant.root.Anchored = false
 	plant.rings = Levels.respawnRings
 	plant.level = 1
 	applyScale(plant)

@@ -18,6 +18,7 @@ Sounds.ids = table.freeze({
 	choir = "rbxasset://sounds/electronicpingshort.wav",
 	button = "rbxasset://sounds/button.wav",
 	miss = "rbxasset://sounds/swordlunge.wav",
+	roar = "rbxasset://sounds/uuhhh.mp3",
 	toss = "rbxasset://sounds/uuhhh.mp3",
 })
 

@@ -169,7 +169,7 @@ PowerUps.creatures = table.freeze({
 		kind = "special",
 		territory = "Hills",
 		size = "Large",
-		effect = table.freeze({ flySecondsPerLevel = 1 }),
+		effect = table.freeze({ flySeconds = 6 }),
 	}),
 	-- Blowfish: ignore all attacks, puff into a ball and bounce away. The
 	-- design gives no duration yet; 2 seconds is a placeholder.

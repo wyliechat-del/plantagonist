@@ -174,6 +174,10 @@ end
 -- A click or tap in the world.
 local function clickAt(ray: Ray, isTouch: boolean)
 	local slack = if isTouch then ControlsConfig.tapSlackStuds else ControlsConfig.clickSlackStuds
+	if player:GetAttribute("FlyingLocal") == true then
+		-- Aiming from the air is hard, so clicks near a plant count.
+		slack = math.max(slack, PlantsConfig.flyClickSlackStuds)
+	end
 	local kind = primedKind()
 	if primedSlot and (kind == "range" or kind == "melee") then
 		local target, _, worldPoint = pickAt(ray, true, primedReach(), slack)

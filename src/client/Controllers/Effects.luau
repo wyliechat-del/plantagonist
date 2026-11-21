@@ -6,10 +6,13 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local ControlsConfig = require(ReplicatedStorage.Shared.Config.Controls)
+local Levels = require(ReplicatedStorage.Shared.Config.Levels)
+local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -71,25 +74,76 @@ local function push(velocity: Vector3)
 	end)
 end
 
-local function fly(seconds: number, lift: number)
+-- Bat flight: rise above the tallest plants, zoom around at speed for
+-- `seconds`, then glide down. A LinearVelocity sets the whole velocity, so
+-- gravity doesn't drag the plant down and the move keys steer it.
+local flightToken: {}? = nil
+
+local function fly(seconds: number)
 	local part = root()
-	if part == nil then
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if part == nil or humanoid == nil then
 		return
 	end
-	local attachment = Instance.new("Attachment")
+	local token = {}
+	flightToken = token
+	local old = part:FindFirstChild("BatWings")
+	if old then
+		old:Destroy()
+	end
+	local attachment = part:FindFirstChild("FlyAttachment") or Instance.new("Attachment")
 	attachment.Name = "FlyAttachment"
 	attachment.Parent = part
-	local force = Instance.new("VectorForce")
-	force.Name = "BatWings"
-	force.Attachment0 = attachment
-	force.RelativeTo = Enum.ActuatorRelativeTo.World
-	force.ApplyAtCenterOfMass = true
-	force.Force = Vector3.new(0, part.AssemblyMass * workspace.Gravity, 0)
-	force.Parent = part
-	part.AssemblyLinearVelocity += Vector3.new(0, lift, 0)
-	task.delay(seconds, function()
-		force:Destroy()
-		attachment:Destroy()
+	local wings = Instance.new("LinearVelocity")
+	wings.Name = "BatWings"
+	wings.Attachment0 = attachment :: Attachment
+	wings.RelativeTo = Enum.ActuatorRelativeTo.World
+	wings.MaxForce = math.huge
+	wings.VectorVelocity = Vector3.zero
+	wings.Parent = part
+	player:SetAttribute("FlyingLocal", true)
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+
+	local speed = Levels.list[1].speed * Levels.studsPerSpeedUnit * PlantsConfig.flySpeedMultiplier
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character :: Instance }
+	local started = os.clock()
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		local elapsed = os.clock() - started
+		local gliding = elapsed >= seconds
+		local done = flightToken ~= token
+			or part.Parent == nil
+			or elapsed >= seconds + PlantsConfig.flyGlideMaxSeconds
+		local below = workspace:Raycast(part.Position, Vector3.new(0, -500, 0), params)
+		local height = if below then part.Position.Y - below.Position.Y else math.huge
+		if gliding and height < humanoid.HipHeight + part.Size.Y + PlantsConfig.flyLandingStuds then
+			done = true
+		end
+		if done then
+			connection:Disconnect()
+			wings:Destroy()
+			if flightToken == token then
+				flightToken = nil
+				player:SetAttribute("FlyingLocal", false)
+			end
+			return
+		end
+		local move = humanoid.MoveDirection * speed
+		local vertical
+		if gliding then
+			vertical = -PlantsConfig.flyGlideSpeed
+		else
+			local gap = PlantsConfig.flyHeight - height
+			vertical = math.clamp(
+				gap * PlantsConfig.flyHeightGain,
+				-PlantsConfig.flyLiftSpeed,
+				PlantsConfig.flyLiftSpeed
+			)
+		end
+		wings.VectorVelocity = Vector3.new(move.X, vertical, move.Z)
 	end)
 end
 
@@ -120,6 +174,24 @@ local function missPuff(position: Vector3, scale: number)
 	tween:Play()
 end
 
+-- A big plant roars before it bites: its head flashes red and swells a
+-- little for the roar, then goes back.
+local function roar(model: Instance, seconds: number)
+	local visual = model:FindFirstChild("PlantVisual")
+	local head = visual and visual:FindFirstChild("Head")
+	if head == nil or not head:IsA("BasePart") then
+		return
+	end
+	local colour = head.Color
+	local info =
+		TweenInfo.new(seconds / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, true)
+	local tween = TweenService:Create(head, info, { Color = Color3.fromRGB(255, 40, 40) })
+	tween.Completed:Connect(function()
+		head.Color = colour
+	end)
+	tween:Play()
+end
+
 function Effects.start()
 	Remotes.event("Effect").OnClientEvent:Connect(function(kind, data)
 		local info = if type(data) == "table" then data else {}
@@ -129,10 +201,12 @@ function Effects.start()
 			Hud.flash()
 		elseif kind == "push" and typeof(info.velocity) == "Vector3" then
 			push(info.velocity)
+		elseif kind == "roar" and typeof(info.model) == "Instance" then
+			roar(info.model, if type(info.seconds) == "number" then info.seconds else 0.25)
 		elseif kind == "miss" and typeof(info.position) == "Vector3" then
 			missPuff(info.position, if type(info.scale) == "number" then info.scale else 1)
 		elseif kind == "fly" and type(info.seconds) == "number" then
-			fly(info.seconds, if type(info.lift) == "number" then info.lift else 20)
+			fly(info.seconds)
 		end
 	end)
 end
