@@ -10,8 +10,8 @@ A Roblox game. All code lives in this repo and syncs into Roblox Studio with
 | `src/shared/Config/` | Every tweakable number (speeds, costs, timers). Plain tables only. |
 | `src/shared/Rules/` | Game logic as plain Luau functions, testable without Roblox. |
 | `src/shared/Remotes.luau` | The one list of every client/server message. |
-| `src/server/` | Server scripts (ServerScriptService). |
-| `src/client/` | Client scripts (StarterPlayerScripts). |
+| `src/server/` | Server scripts (ServerScriptService). `Services/` holds one module per system (map, plants, creatures, combat, rain, rooting, NPCs, data). |
+| `src/client/` | Client scripts (StarterPlayerScripts). `Controllers/` holds the HUD, controls and effects. |
 | `tests/` | Unit tests, run with Lune on a normal computer. |
 | `sim/` | Ring economy simulator: `lune run sim`. Player behaviour guesses are in `sim/Assumptions.luau`. |
 | `scripts/check.sh` | Runs the four checks. |
@@ -51,6 +51,10 @@ Run `./scripts/check.sh` (on Windows, run it from Git Bash). It runs:
 4. `stylua --check src tests sim` (format; run `stylua src tests sim` to fix)
 
 GitHub runs the same checks on every push and pull request.
+
+## Playtesting
+
+How to run the game in Studio and what to check: [docs/PLAYTEST.md](docs/PLAYTEST.md).
 
 ## 3D models
 
