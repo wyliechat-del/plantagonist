@@ -7,10 +7,12 @@ The first job is a short solo test to catch crashes, then a group playtest.
 
 1. In Terminal: `cd ~/plantagonist && git fetch && git checkout claude/project-thread-4x3db6 && git pull`
 2. Run `rojo serve`, open the Plantagonist place, then Plugins > Rojo > Connect.
-3. For saving to work in Studio: Home > Game Settings > Security > turn on
-   **Enable Studio Access to API Services**. Without it the game still runs;
+3. For saving to work in Studio: in the Mac menu bar, open **File > Game
+   Settings** (newer Studio versions call it **Experience Settings**), go to
+   **Security** and turn on **Enable Studio Access to API Services**. Without it the game still runs;
    it prints one warning that saving is off.
-4. Press **Play**. Keep the **Output** window open (View > Output). Any line
+4. Press **Play**. The map, creatures and HUD are built when the game
+   starts, so in edit mode you only see the empty baseplate. Keep the **Output** window open (View > Output). Any line
    in red, or starting with `[Plantagonist] ... failed to start`, is a bug:
    copy it to Claude.
 
