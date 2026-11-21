@@ -10,9 +10,10 @@ A Roblox game. All code lives in this repo and syncs into Roblox Studio with
 | `src/shared/Config/` | Every tweakable number (speeds, costs, timers). Plain tables only. |
 | `src/shared/Rules/` | Game logic as plain Luau functions, testable without Roblox. |
 | `src/shared/Remotes.luau` | The one list of every client/server message. |
-| `src/server/` | Server scripts (ServerScriptService). |
-| `src/client/` | Client scripts (StarterPlayerScripts). |
+| `src/server/` | Server scripts (ServerScriptService). `Services/` holds one module per system (map, plants, creatures, combat, rain, rooting, NPCs, data). |
+| `src/client/` | Client scripts (StarterPlayerScripts). `Controllers/` holds the HUD, controls and effects. |
 | `tests/` | Unit tests, run with Lune on a normal computer. |
+| `sim/` | Ring economy simulator: `lune run sim`. Player behaviour guesses are in `sim/Assumptions.luau`. |
 | `scripts/check.sh` | Runs the four checks. |
 | `models/` | Blender source files (`.blend`) for 3D models. See `docs/blender.md`. |
 | `scripts/blender/` | Blender scripts: `export_roblox.py` checks a model and exports it for Studio. |
@@ -46,10 +47,14 @@ Run `./scripts/check.sh` (on Windows, run it from Git Bash). It runs:
 
 1. `rojo build` (the project builds into a place file)
 2. `lune run tests` (unit tests)
-3. `selene src` and `selene --config tests/selene.toml tests` (lint; tests use plain Luau rules because they run in Lune)
-4. `stylua --check src tests` (format; run `stylua src tests` to fix)
+3. `selene src` and `selene --config tests/selene.toml tests sim` (lint; tests and the simulator use plain Luau rules because they run in Lune)
+4. `stylua --check src tests sim` (format; run `stylua src tests sim` to fix)
 
 GitHub runs the same checks on every push and pull request.
+
+## Playtesting
+
+How to run the game in Studio and what to check: [docs/PLAYTEST.md](docs/PLAYTEST.md).
 
 ## 3D models
 
@@ -61,3 +66,10 @@ rules and the export command are in [docs/blender.md](docs/blender.md).
 API keys (such as the Roblox Open Cloud key) go in environment variables or a
 local `.env` file, never in Git or chat. Copy `.env.example` to `.env` to start.
 `.env` is ignored by Git.
+
+## Balancing the game
+
+Game numbers live in `src/shared/Config/`. After changing one, run
+`lune run sim` to see how long players take to reach each level, compared
+with the targets in the design doc. The simulator uses the real Rules and
+Config, plus guesses about player behaviour in `sim/Assumptions.luau`.

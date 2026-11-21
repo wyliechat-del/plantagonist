@@ -1,0 +1,451 @@
+--[[
+	Builds the blockout map from Config/Map when the server starts: ground for
+	each territory, the conservatory and safe field, river and swamp, caves,
+	forest and grassland. Everything is plain parts in Workspace.Map, so custom
+	art can replace it later.
+
+	Parts with a `RaisedMaxLevel` attribute (bridges, lily pads) cancel water
+	and mud slowdown for plants up to that level.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Map = require(ReplicatedStorage.Shared.Config.Map)
+local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
+
+local Util = require(script.Parent.Util)
+
+local MapBuilder = {}
+
+local folder: Folder
+local rayParams = RaycastParams.new()
+
+local GROUND = Map.groundY
+local BARK = Color3.fromRGB(110, 75, 45)
+local LEAVES = Color3.fromRGB(50, 130, 55)
+
+local function tree(parent: Instance, x: number, z: number, height: number, crown: number)
+	local base = MapBuilder.groundY(x, z)
+	Util.part({
+		Name = "Trunk",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(height, 2.5, 2.5),
+		CFrame = CFrame.new(x, base + height / 2, z) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = BARK,
+		Material = Enum.Material.Wood,
+		Parent = parent,
+	})
+	Util.part({
+		Name = "Crown",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(crown, crown, crown),
+		Position = Vector3.new(x, base + height, z),
+		Color = LEAVES,
+		Material = Enum.Material.Grass,
+		Parent = parent,
+	})
+end
+
+local function buildGround()
+	local ground = Instance.new("Folder")
+	ground.Name = "Ground"
+	ground.Parent = folder
+	local half = Map.halfSize
+	for name, territory in Map.territories do
+		Util.part({
+			Name = name,
+			Size = Vector3.new(half, 4, half),
+			Position = Vector3.new(
+				territory.signX * half / 2,
+				GROUND - 2,
+				territory.signZ * half / 2
+			),
+			Color = Util.colour(territory.colour),
+			Material = Enum.Material.Grass,
+			Parent = ground,
+		})
+	end
+	-- Invisible walls round the edge.
+	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+		local sx, sz = side[1], side[2]
+		Util.part({
+			Name = "EdgeWall",
+			Size = if sx ~= 0
+				then Vector3.new(2, Map.wallHeight, half * 2)
+				else Vector3.new(half * 2, Map.wallHeight, 2),
+			Position = Vector3.new(sx * (half + 1), GROUND + Map.wallHeight / 2, sz * (half + 1)),
+			Transparency = 1,
+			Parent = ground,
+		})
+	end
+end
+
+local function buildField()
+	local field = Instance.new("Folder")
+	field.Name = "Field"
+	field.Parent = folder
+	local radius = Map.Field.radius
+	Util.part({
+		Name = "Lawn",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.2, radius * 2, radius * 2),
+		CFrame = CFrame.new(0, GROUND + 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(140, 210, 110),
+		Material = Enum.Material.Grass,
+		CanCollide = false,
+		Parent = field,
+	})
+	-- Ring of trees with 12 gaps.
+	local angle = 0
+	while angle < 360 do
+		if not MapRules.isExitAngle(Map, angle) then
+			local radians = math.rad(angle)
+			tree(field, math.cos(radians) * (radius + 1), math.sin(radians) * (radius + 1), 9, 7)
+		end
+		angle += Map.Field.treeSpacingDegrees
+	end
+end
+
+local function buildConservatory()
+	local house = Instance.new("Folder")
+	house.Name = "Conservatory"
+	house.Parent = folder
+	local c = Map.Conservatory
+	local glass = {
+		Color = Color3.fromRGB(200, 235, 255),
+		Transparency = 0.6,
+		Material = Enum.Material.Glass,
+	}
+	local sideLength = c.halfSize * 2
+	local segment = (sideLength - c.doorWidth) / 2
+	for _, facing in { 0, 90, 180, 270 } do
+		local rotation = CFrame.Angles(0, math.rad(facing), 0)
+		local function wall(name: string, size: Vector3, offset: Vector3)
+			local props = table.clone(glass)
+			props.Name = name
+			props.Size = size
+			props.CFrame = rotation * CFrame.new(offset)
+			props.Parent = house
+			Util.part(props)
+		end
+		local along = c.doorWidth / 2 + segment / 2
+		wall(
+			"Wall",
+			Vector3.new(segment, c.height, 1),
+			Vector3.new(-along, GROUND + c.height / 2, c.halfSize)
+		)
+		wall(
+			"Wall",
+			Vector3.new(segment, c.height, 1),
+			Vector3.new(along, GROUND + c.height / 2, c.halfSize)
+		)
+		wall(
+			"Lintel",
+			Vector3.new(c.doorWidth, c.height - c.doorHeight, 1),
+			Vector3.new(0, GROUND + c.doorHeight + (c.height - c.doorHeight) / 2, c.halfSize)
+		)
+	end
+	local roof = table.clone(glass)
+	roof.Name = "Roof"
+	roof.Size = Vector3.new(sideLength, 1, sideLength)
+	roof.Position = Vector3.new(0, GROUND + c.height, 0)
+	roof.Parent = house
+	Util.part(roof)
+	-- Potted plants and a sculpture for decoration.
+	for index = 1, 8 do
+		local radians = math.rad(index * 45)
+		local x, z = math.cos(radians) * (c.halfSize - 6), math.sin(radians) * (c.halfSize - 6)
+		Util.part({
+			Name = "Pot",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(3, 4, 4),
+			CFrame = CFrame.new(x, GROUND + 1.5, z) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Color3.fromRGB(190, 100, 60),
+			Parent = house,
+		})
+		Util.part({
+			Name = "Plant",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(5, 5, 5),
+			Position = Vector3.new(x, GROUND + 5, z),
+			Color = LEAVES,
+			CanCollide = false,
+			Parent = house,
+		})
+	end
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "ConservatorySpawn"
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Size = Vector3.new(8, 1, 8)
+	spawn.Position = Vector3.new(0, GROUND + 0.5, 0)
+	spawn.Color = Color3.fromRGB(240, 220, 120)
+	spawn.Parent = house
+end
+
+local function buildRiverAndSwamp()
+	local wet = Instance.new("Folder")
+	wet.Name = "RiverAndSwamp"
+	wet.Parent = folder
+	local river = Map.River
+	local riverWidth = river.maxZ - river.minZ
+	local riverMidZ = (river.minZ + river.maxZ) / 2
+	Util.part({
+		Name = "River",
+		Size = Vector3.new(river.maxX - river.minX, 0.4, riverWidth),
+		Position = Vector3.new((river.minX + river.maxX) / 2, GROUND + 0.2, riverMidZ),
+		Color = Color3.fromRGB(60, 130, 200),
+		Material = Enum.Material.Glass,
+		Transparency = 0.3,
+		CanCollide = false,
+		Parent = wet,
+	})
+	for _, x in river.bridgeXs do
+		local length = riverWidth + 6
+		local bridge = Util.part({
+			Name = "Bridge",
+			Size = Vector3.new(river.bridgeWidth, river.bridgeHeight, length),
+			Position = Vector3.new(x, GROUND + river.bridgeHeight / 2, riverMidZ),
+			Color = BARK,
+			Material = Enum.Material.Wood,
+			Parent = wet,
+		})
+		bridge:SetAttribute("RaisedMaxLevel", 6)
+		for _, direction in { 1, -1 } do
+			local ramp = Instance.new("WedgePart")
+			ramp.Name = "BridgeRamp"
+			ramp.Anchored = true
+			ramp.Size = Vector3.new(river.bridgeWidth, river.bridgeHeight, 8)
+			ramp.CFrame = CFrame.new(
+				x,
+				GROUND + river.bridgeHeight / 2,
+				riverMidZ + direction * (length / 2 + 4)
+			) * CFrame.Angles(0, if direction == 1 then math.pi else 0, 0)
+			ramp.Color = BARK
+			ramp.Material = Enum.Material.Wood
+			ramp:SetAttribute("RaisedMaxLevel", 6)
+			ramp.Parent = wet
+		end
+	end
+	local swamp = Map.Swamp
+	Util.part({
+		Name = "Mud",
+		Size = Vector3.new(swamp.maxX - swamp.minX, 0.2, swamp.maxZ - swamp.minZ),
+		Position = Vector3.new(
+			(swamp.minX + swamp.maxX) / 2,
+			GROUND + 0.1,
+			(swamp.minZ + swamp.maxZ) / 2
+		),
+		Color = Color3.fromRGB(90, 85, 50),
+		Material = Enum.Material.Mud,
+		CanCollide = false,
+		Parent = wet,
+	})
+	for _ = 1, swamp.lilyPads do
+		local x = swamp.minX + Util.random() * (swamp.maxX - swamp.minX)
+		local z = swamp.minZ + Util.random() * (swamp.maxZ - swamp.minZ)
+		local pad = Util.part({
+			Name = "LilyPad",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.6, 6, 6),
+			CFrame = CFrame.new(x, GROUND + 0.3, z) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Color3.fromRGB(80, 170, 70),
+			Parent = wet,
+		})
+		-- Only small plants hop across on lily pads.
+		pad:SetAttribute("RaisedMaxLevel", Map.Swamp.slowFromLevel - 1)
+	end
+end
+
+local function buildHills()
+	local hills = Instance.new("Folder")
+	hills.Name = "Hills"
+	hills.Parent = folder
+	local rock = Color3.fromRGB(130, 120, 100)
+	local caves = Map.Caves
+	for _, cave in caves.list do
+		local width = 60
+		local sideWidth = (width - caves.width) / 2
+		for _, side in { -1, 1 } do
+			Util.part({
+				Name = "CaveHill",
+				Size = Vector3.new(cave.length, cave.hillHeight, sideWidth),
+				Position = Vector3.new(
+					cave.x,
+					GROUND + cave.hillHeight / 2,
+					cave.z + side * (caves.width / 2 + sideWidth / 2)
+				),
+				Color = rock,
+				Material = Enum.Material.Rock,
+				Parent = hills,
+			})
+		end
+		Util.part({
+			Name = "CaveRoof",
+			Size = Vector3.new(cave.length, cave.hillHeight - caves.clearance, caves.width),
+			Position = Vector3.new(
+				cave.x,
+				GROUND + caves.clearance + (cave.hillHeight - caves.clearance) / 2,
+				cave.z
+			),
+			Color = rock,
+			Material = Enum.Material.Rock,
+			Parent = hills,
+		})
+	end
+	for _, hill in caves.hills do
+		for _, direction in { 1, -1 } do
+			local slope = Instance.new("WedgePart")
+			slope.Name = "Hill"
+			slope.Anchored = true
+			slope.Size = Vector3.new(hill.size, hill.height, hill.size / 2)
+			slope.CFrame = CFrame.new(
+				hill.x,
+				GROUND + hill.height / 2,
+				hill.z + direction * hill.size / 4
+			) * CFrame.Angles(0, if direction == 1 then math.pi else 0, 0)
+			slope.Color = Color3.fromRGB(150, 140, 100)
+			slope.Material = Enum.Material.Grass
+			slope.Parent = hills
+		end
+	end
+end
+
+local function buildForest()
+	local forest = Instance.new("Folder")
+	forest.Name = "Forest"
+	forest.Parent = folder
+	local logs = Map.Forest.logs
+	local placed = 0
+	local tries = 0
+	while placed < Map.Forest.trees and tries < Map.Forest.trees * 10 do
+		tries += 1
+		local x, z = MapRules.randomPointIn(Map, "Forest", Util.random)
+		local clear = true
+		for _, log in logs do
+			if math.abs(x - log.x) < log.length / 2 + 8 and math.abs(z - log.z) < 12 then
+				clear = false
+			end
+		end
+		if clear then
+			tree(forest, x, z, 14 + Util.random() * 10, 10 + Util.random() * 6)
+			placed += 1
+		end
+	end
+	local clearance = Map.Forest.logClearance
+	for _, log in logs do
+		for _, side in { -1, 1 } do
+			Util.part({
+				Name = "LogSide",
+				Size = Vector3.new(log.length, clearance, 1.5),
+				Position = Vector3.new(log.x, GROUND + clearance / 2, log.z + side * 3.75),
+				Color = BARK,
+				Material = Enum.Material.Wood,
+				Parent = forest,
+			})
+		end
+		Util.part({
+			Name = "LogTop",
+			Size = Vector3.new(log.length, 2, 9),
+			Position = Vector3.new(log.x, GROUND + clearance + 1, log.z),
+			Color = BARK,
+			Material = Enum.Material.Wood,
+			Parent = forest,
+		})
+	end
+end
+
+local function buildGrassland()
+	local grass = Instance.new("Folder")
+	grass.Name = "Grassland"
+	grass.Parent = folder
+	for _ = 1, Map.Grassland.grassPatches do
+		local x, z = MapRules.randomPointIn(Map, "Grassland", Util.random)
+		Util.part({
+			Name = "TallGrass",
+			Size = Vector3.new(16, 6, 16),
+			Position = Vector3.new(x, GROUND + 3, z),
+			Color = Color3.fromRGB(150, 200, 80),
+			Material = Enum.Material.Grass,
+			Transparency = 0.35,
+			CanCollide = false,
+			CanQuery = false,
+			Parent = grass,
+		})
+	end
+	for _, field in Map.Grassland.cowFields do
+		local half = field.size / 2
+		local step = 8
+		local offset = -half
+		while offset <= half do
+			for _, post in
+				{
+					Vector3.new(field.x + offset, 0, field.z - half),
+					Vector3.new(field.x + offset, 0, field.z + half),
+					Vector3.new(field.x - half, 0, field.z + offset),
+					Vector3.new(field.x + half, 0, field.z + offset),
+				}
+			do
+				Util.part({
+					Name = "FencePost",
+					Size = Vector3.new(0.6, 3, 0.6),
+					Position = Vector3.new(post.X, GROUND + 1.5, post.Z),
+					Color = Color3.fromRGB(200, 180, 140),
+					Material = Enum.Material.Wood,
+					Parent = grass,
+				})
+			end
+			offset += step
+		end
+	end
+end
+
+-- The ground height at (x, z), found with a ray down onto the map.
+function MapBuilder.groundY(x: number, z: number): number
+	if folder == nil then
+		return GROUND
+	end
+	local result =
+		workspace:Raycast(Vector3.new(x, GROUND + 200, z), Vector3.new(0, -400, 0), rayParams)
+	return if result then result.Position.Y else GROUND
+end
+
+-- A random spot inside the conservatory, where plants spawn.
+function MapBuilder.spawnPosition(): Vector3
+	local inner = Map.Conservatory.halfSize - 10
+	local x = (Util.random() * 2 - 1) * inner
+	local z = (Util.random() * 2 - 1) * inner
+	return Vector3.new(x, GROUND + 4, z)
+end
+
+function MapBuilder.raycastParams(): RaycastParams
+	return rayParams
+end
+
+function MapBuilder.start()
+	local existing = workspace:FindFirstChild("Map")
+	if existing then
+		existing:Destroy()
+	end
+	folder = Instance.new("Folder")
+	folder.Name = "Map"
+	folder.Parent = workspace
+	rayParams.FilterType = Enum.RaycastFilterType.Include
+
+	buildGround()
+	buildHills()
+	buildRiverAndSwamp()
+	-- The ground ray only looks at walkable ground, not trees or grass.
+	rayParams.FilterDescendantsInstances = {
+		folder:FindFirstChild("Ground") :: Instance,
+		folder:FindFirstChild("Hills") :: Instance,
+		folder:FindFirstChild("RiverAndSwamp") :: Instance,
+	}
+	buildField()
+	buildConservatory()
+	buildForest()
+	buildGrassland()
+end
+
+return MapBuilder

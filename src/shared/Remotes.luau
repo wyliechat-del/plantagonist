@@ -9,8 +9,14 @@
 
 local Remotes = {}
 
--- RemoteEvents (fire and forget). Example entry: "PlantSeed".
-Remotes.Events = table.freeze({} :: { string })
+-- RemoteEvents (fire and forget).
+Remotes.Events = table.freeze({
+	"Bite", -- client to server: (target: Model?) bite the aimed target
+	"UseSlot", -- client to server: (index: number, target: Model?) use an attack slot
+	"Root", -- client to server: () take root as a Deciduodocus
+	"Notify", -- server to client: (text: string, kind: string?) pop-up message
+	"Effect", -- server to client: (kind: string, data: table?) sounds, flashes, pushes
+} :: { string })
 
 -- RemoteFunctions (request and reply). Use sparingly.
 Remotes.Functions = table.freeze({} :: { string })
