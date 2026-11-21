@@ -28,6 +28,9 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
   with `require("../src/shared/Rules/Growth")`.
 - Tests are `tests/<Name>.spec.luau`, returning `function(t)`; see
   `tests/lib/Test.luau` for `t.test`, `t.expect`, `t.expectEqual`.
+- The ring economy simulator is `sim/` (`lune run sim`). It uses the real
+  Rules and Config; its player behaviour guesses live in `sim/Assumptions.luau`,
+  not in Config. Run it after changing economy numbers.
 - 3D models: `.blend` sources in `models/`, 1 Blender unit = 1 stud (Unit
   System None). Export and check with `scripts/blender/export_roblox.py`
   (fails over 20,000 triangles per mesh). Guide: `docs/blender.md`.
@@ -36,3 +39,5 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 - Selene's `roblox` std rejects string requires (`require("./x")`), so `src`
   uses Instance requires and `tests/` is linted with its own
   `tests/selene.toml` (plain Luau std).
+- In Lune, `./` inside a folder's `init.luau` means the folder's parent, not
+  the folder. Use `@self/x` for files next to an `init.luau`.

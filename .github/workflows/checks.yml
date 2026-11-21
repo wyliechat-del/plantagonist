@@ -25,7 +25,7 @@ jobs:
       - name: Lint
         run: |
           selene src
-          selene --config tests/selene.toml tests
+          selene --config tests/selene.toml tests sim
 
       - name: Format
-        run: stylua --check src tests
+        run: stylua --check src tests sim
