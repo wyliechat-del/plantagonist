@@ -2,11 +2,14 @@
 	Power up families and the creatures that carry them.
 
 	Each creature has:
+	- `name`: shown to players.
 	- `family`: which family it belongs to (key of `families`).
 	- `kind`: "melee" or "range" (attack slot, hits a target), "special"
 	  (attack slot, acts on yourself) or "defence" (defence slot, automatic).
 	- `territory`: "Grassland", "Hills", "River" or "Forest".
 	- `size`: "Small", "Medium" or "Large" (rings are in `Config/Rings.luau`).
+	- `showAt`: the attachment on the plant where the loaded power up shows
+	  (Head, Jaw, Back, Tail, Hands or Feet).
 	- `effect` (optional): replaces the family effect for this creature.
 
 	Durations that say "PerLevel" are multiplied by the user's level.
@@ -40,13 +43,24 @@ PowerUps.families = table.freeze({
 PowerUps.creatures = table.freeze({
 	-- Venom
 	spider = table.freeze({
+		name = "Spider",
+		showAt = "Jaw",
 		family = "Venom",
 		kind = "melee",
 		territory = "Grassland",
 		size = "Small",
 	}),
-	wasp = table.freeze({ family = "Venom", kind = "range", territory = "Forest", size = "Small" }),
+	wasp = table.freeze({
+		name = "Wasp",
+		showAt = "Tail",
+		family = "Venom",
+		kind = "range",
+		territory = "Forest",
+		size = "Small",
+	}),
 	toad = table.freeze({
+		name = "Toad",
+		showAt = "Back",
 		family = "Venom",
 		kind = "defence",
 		territory = "River",
@@ -54,6 +68,8 @@ PowerUps.creatures = table.freeze({
 	}),
 	-- Bee: a venom sack sticks to the target and the venom lasts twice as long.
 	bee = table.freeze({
+		name = "Bee",
+		showAt = "Head",
 		family = "Venom",
 		kind = "melee",
 		territory = "Hills",
@@ -63,18 +79,24 @@ PowerUps.creatures = table.freeze({
 
 	-- Bite and slash
 	bullAnt = table.freeze({
+		name = "Bull ant",
+		showAt = "Jaw",
 		family = "BiteAndSlash",
 		kind = "melee",
 		territory = "Hills",
 		size = "Small",
 	}),
 	snake = table.freeze({
+		name = "Snake",
+		showAt = "Head",
 		family = "BiteAndSlash",
 		kind = "range",
 		territory = "River",
 		size = "Medium",
 	}),
 	snail = table.freeze({
+		name = "Snail",
+		showAt = "Back",
 		family = "BiteAndSlash",
 		kind = "defence",
 		territory = "Forest",
@@ -83,6 +105,8 @@ PowerUps.creatures = table.freeze({
 	-- Praying mantis: your next Bite and slash power up isn't used up, and
 	-- can be used again after `reuseSeconds`.
 	mantis = table.freeze({
+		name = "Praying mantis",
+		showAt = "Hands",
 		family = "BiteAndSlash",
 		kind = "special",
 		territory = "Grassland",
@@ -91,14 +115,25 @@ PowerUps.creatures = table.freeze({
 	}),
 
 	-- Strangle
-	eel = table.freeze({ family = "Strangle", kind = "melee", territory = "River", size = "Large" }),
+	eel = table.freeze({
+		name = "Eel",
+		showAt = "Back",
+		family = "Strangle",
+		kind = "melee",
+		territory = "River",
+		size = "Large",
+	}),
 	chameleon = table.freeze({
+		name = "Chameleon",
+		showAt = "Jaw",
 		family = "Strangle",
 		kind = "range",
 		territory = "Hills",
 		size = "Medium",
 	}),
 	skunk = table.freeze({
+		name = "Skunk",
+		showAt = "Back",
 		family = "Strangle",
 		kind = "defence",
 		territory = "Grassland",
@@ -106,6 +141,8 @@ PowerUps.creatures = table.freeze({
 	}),
 	-- Bombardier beetle: acid spray removes the target's oldest power up.
 	bombardierBeetle = table.freeze({
+		name = "Bombardier beetle",
+		showAt = "Head",
 		family = "Strangle",
 		kind = "range",
 		territory = "Forest",
@@ -115,6 +152,8 @@ PowerUps.creatures = table.freeze({
 
 	-- Special moves
 	bat = table.freeze({
+		name = "Bat",
+		showAt = "Back",
 		family = "SpecialMove",
 		kind = "special",
 		territory = "Hills",
@@ -124,6 +163,8 @@ PowerUps.creatures = table.freeze({
 	-- Blowfish: ignore all attacks, puff into a ball and bounce away. The
 	-- design gives no duration yet; 2 seconds is a placeholder.
 	blowfish = table.freeze({
+		name = "Blowfish",
+		showAt = "Head",
 		family = "SpecialMove",
 		kind = "special",
 		territory = "River",
@@ -131,6 +172,8 @@ PowerUps.creatures = table.freeze({
 		effect = table.freeze({ ballSeconds = 2 }),
 	}),
 	centipede = table.freeze({
+		name = "Centipede",
+		showAt = "Feet",
 		family = "SpecialMove",
 		kind = "special",
 		territory = "Forest",
@@ -138,6 +181,8 @@ PowerUps.creatures = table.freeze({
 		effect = table.freeze({ speedBurst = 6, speedBurstSecondsPerLevel = 0.5 }),
 	}),
 	stickInsect = table.freeze({
+		name = "Stick insect",
+		showAt = "Back",
 		family = "SpecialMove",
 		kind = "special",
 		territory = "Grassland",
