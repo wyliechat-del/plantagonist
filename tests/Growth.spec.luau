@@ -29,8 +29,8 @@ return function(t)
 
 	t.test("speed in studs per second", function()
 		t.expectEqual(Growth.studsPerSecond(Levels.list, Levels.studsPerSpeedUnit, 1), 16.8)
-		t.expectEqual(Growth.studsPerSecond(Levels.list, Levels.studsPerSpeedUnit, 5), 7)
-		t.expectEqual(Growth.studsPerSecond(Levels.list, Levels.studsPerSpeedUnit, 6), 6)
+		t.expectEqual(Growth.studsPerSecond(Levels.list, Levels.studsPerSpeedUnit, 3), 16.8)
+		t.expectEqual(Growth.studsPerSecond(Levels.list, Levels.studsPerSpeedUnit, 4), 12)
 	end)
 
 	t.test("rings stay between 0 and the root cap", function()

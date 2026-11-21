@@ -18,7 +18,10 @@ Creatures.wanderSpeed = 2
 -- `dodgeDistance` studs it runs at `dodgeSpeed` for `dodgeSeconds`,
 -- then can't dodge again for `dodgeCooldown` seconds.
 Creatures.dodgeDistance = 6
-Creatures.dodgeSpeed = 4
+Creatures.dodgeSpeed = 6
+-- A fright starts with a little jump: this high (studs), over this long.
+Creatures.frightHopHeight = 2
+Creatures.frightHopSeconds = 0.4
 Creatures.dodgeSeconds = 1.5
 Creatures.dodgeCooldown = 2
 -- Creatures won't walk up anything steeper than this many studs per step,

@@ -27,15 +27,17 @@ Combat.escapeSeconds = 1.5
 Combat.spawnProtectionSeconds = 3
 
 -- Ranged power ups reach `rangeBaseStuds + rangeStudsPerLevel * level` and fly
--- at `projectileStudsPerSecond`, so they can be dodged.
-Combat.rangeBaseStuds = 15
-Combat.rangeStudsPerLevel = 5
+-- at `projectileStudsPerSecond`, so they can be dodged. Since playtest 3 every
+-- level has the same range.
+Combat.rangeBaseStuds = 45
+Combat.rangeStudsPerLevel = 0
 Combat.projectileStudsPerSecond = 20
 
--- Melee reach. Placeholder numbers, not in the design yet; big plants get a
--- longer reach so they stay a threat while slow. Tune in playtests.
-Combat.biteReachBaseStuds = 4
-Combat.biteReachStudsPerLevel = 1
+-- Bite and melee reach from the plant's edge, the same for creatures and
+-- plants and for every level since playtest 3 (big plants still reach a bit
+-- further from their centre because they are wider).
+Combat.biteReachBaseStuds = 7.5
+Combat.biteReachStudsPerLevel = 0
 
 -- When a defence blocks a power up attack, does the attack's normal bite
 -- damage still land? The design says defences don't block the basic bite.

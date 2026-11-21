@@ -85,4 +85,13 @@ function Steering.bob(t: number, phase: number, height: number): number
 	return math.abs(math.sin(t * 3 + phase)) * height
 end
 
+-- Height of a fright hop `elapsed` seconds after it started: up and back
+-- down over `seconds`, 0 before and after.
+function Steering.hop(elapsed: number, seconds: number, height: number): number
+	if elapsed <= 0 or elapsed >= seconds then
+		return 0
+	end
+	return height * math.sin(math.pi * elapsed / seconds)
+end
+
 return table.freeze(Steering)

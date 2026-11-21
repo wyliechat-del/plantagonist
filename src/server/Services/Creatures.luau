@@ -266,7 +266,13 @@ local function moveTick(dt: number)
 		creature.x, creature.z = nx, nz
 		local height = if isFly
 			then CreaturesConfig.flies.hoverHeight + Steering.bob(now, creature.phase, 1)
-			else creature.radius + Steering.bob(now, creature.phase, creature.radius * 0.6)
+			else creature.radius
+				+ Steering.bob(now, creature.phase, creature.radius * 0.6)
+				+ Steering.hop(
+					now - (creature.dodgeUntil - CreaturesConfig.dodgeSeconds),
+					CreaturesConfig.frightHopSeconds,
+					CreaturesConfig.frightHopHeight
+				)
 		local position = Vector3.new(creature.x, ground + height, creature.z)
 		local facing = Vector3.new(creature.x - oldX, 0, creature.z - oldZ)
 		local frame = if facing.Magnitude > 0.01
