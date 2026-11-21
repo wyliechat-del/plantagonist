@@ -1,12 +1,17 @@
 --[[
-	Touch-friendly controls: a big bite button, up to 3 attack slot buttons
-	(family colours, named by attack type: a triangle for ranged, a square
-	button for melee, a dot when a boost is loaded), defence slot badges and a Take Root button. Movement
-	uses Roblox's own thumbstick on phones and WASD on desktop. Keys: E bites,
-	1 to 3 use slots, R takes root.
+	Touch-friendly controls. Bites go where you click (desktop) or tap
+	(phone); clicking empty ground snaps at the air. Whatever is in bite reach
+	under the mouse is outlined (on phones, the nearest thing in reach).
 
-	Aim assist picks the target nearest the crosshair that is in reach and
-	outlines it. The server checks every bite again.
+	Up to 3 attack slot buttons (family colours, named by attack type: a
+	triangle for ranged, a square button for melee, a dot when a boost is
+	loaded). Tapping a melee or ranged slot (or pressing 1 to 3) primes it for
+	the next click; tapping it again cancels. Moves (Fly, Puff, Dash, Hide) go
+	off straight away. Defence slot badges and a Take Root button too.
+
+	Movement uses Roblox's own thumbstick on phones and WASD on desktop.
+	Keys: E bites where the mouse points, 1 to 3 prime slots, R takes root.
+	The server checks every bite again.
 ]]
 
 local Players = game:GetService("Players")
@@ -20,8 +25,8 @@ local Levels = require(ReplicatedStorage.Shared.Config.Levels)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local Aim = require(ReplicatedStorage.Shared.Rules.Aim)
-local PowerUps = require(ReplicatedStorage.Shared.Rules.PowerUps)
 local Bite = require(ReplicatedStorage.Shared.Rules.Bite)
+local PowerUps = require(ReplicatedStorage.Shared.Rules.PowerUps)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local Hud = require(script.Parent.Hud)
@@ -35,9 +40,11 @@ local attackButtons: { TextButton } = {}
 local boostDots: { Frame } = {}
 local defenceBadges: { TextLabel } = {}
 local rootButton: TextButton
-local currentTarget: Instance? = nil
+-- The attack slot that the next click uses, if any.
+local primedSlot: number? = nil
 
 local EMPTY_COLOUR = Color3.fromRGB(90, 90, 90)
+local HUGE_REACH = math.huge
 
 local function myRoot(): BasePart?
 	local character = player.Character
@@ -53,18 +60,20 @@ local function plantRadius(level: number): number
 	return PlantsConfig.radiusAtScale1 * PlantsConfig.scaleByLevel[level]
 end
 
--- Everything that could be aimed at. `plantsOnly` skips creatures.
+local function point(v: Vector3): Aim.Point
+	return { x = v.X, y = v.Y, z = v.Z }
+end
+
+-- Everything that could be bitten. `plantsOnly` skips creatures and cows.
 local function candidates(plantsOnly: boolean): { Aim.Candidate }
 	local list = {}
 	if not plantsOnly then
 		local folder = workspace:FindFirstChild("Creatures")
 		for _, part in if folder then folder:GetChildren() else {} do
-			if part:IsA("BasePart") and part:GetAttribute("CreatureId") then
+			if part:IsA("BasePart") and (part:GetAttribute("CreatureId") or part.Name == "Cow") then
 				local p = part.Position
-				table.insert(
-					list,
-					{ key = part, x = p.X, y = p.Y, z = p.Z, radius = part.Size.X / 2 }
-				)
+				local radius = math.max(part.Size.X, part.Size.Z) / 2
+				table.insert(list, { key = part, x = p.X, y = p.Y, z = p.Z, radius = radius })
 			end
 		end
 	end
@@ -94,61 +103,120 @@ local function candidates(plantsOnly: boolean): { Aim.Candidate }
 	return list
 end
 
-local function pickTarget(plantsOnly: boolean, reach: number): Instance?
-	local root = myRoot()
-	local camera = workspace.CurrentCamera
-	if root == nil or camera == nil then
-		return nil
-	end
-	local c, look, me = camera.CFrame.Position, camera.CFrame.LookVector, root.Position
-	local best = Aim.pick(
-		candidates(plantsOnly),
-		{ x = c.X, y = c.Y, z = c.Z },
-		{ x = look.X, y = look.Y, z = look.Z },
-		{ x = me.X, y = me.Y, z = me.Z },
-		reach + plantRadius(myLevel()),
-		ControlsConfig.aimAssistDegrees
-	)
-	return if best then best.key else nil
-end
-
-local function biteReach(): number
-	return Bite.reachStuds(CombatConfig, myLevel())
-end
-
-local function bite()
-	Remotes.event("Bite"):FireServer(currentTarget)
-end
-
-local function useSlot(index: number)
+-- The id and kind of the power up in an attack slot, if it has one.
+local function slotPowerUp(index: number): (string?, string?)
 	local id = player:GetAttribute(`Attack{index}`)
 	if type(id) ~= "string" or id == "" then
-		return
+		return nil, nil
 	end
 	local creature = PowerUpsConfig.creatures[id]
-	local target = nil
-	if creature and creature.kind == "melee" then
-		target = pickTarget(true, biteReach())
-	elseif creature and creature.kind == "range" then
-		target = pickTarget(true, Bite.rangeStuds(CombatConfig, myLevel()))
-	end
-	Remotes.event("UseSlot"):FireServer(index, target)
+	return id, if creature then creature.kind else nil
 end
 
-local function roundButton(
-	name: string,
-	size: number,
-	position: UDim2,
-	colour: Color3,
-	text: string
-): TextButton
+-- Reach from the plant's edge for a bite, or for the primed power up.
+local function biteReach(): number
+	return Bite.reachStuds(CombatConfig, myLevel()) + plantRadius(myLevel())
+end
+
+local function primedKind(): string?
+	if primedSlot == nil then
+		return nil
+	end
+	local _, kind = slotPowerUp(primedSlot)
+	return kind
+end
+
+local function primedReach(): number
+	if primedKind() == "range" then
+		return Bite.rangeStuds(CombatConfig, myLevel()) + plantRadius(myLevel())
+	end
+	return biteReach()
+end
+
+local function screenRay(position: Vector2, isTouch: boolean): Ray?
+	local camera = workspace.CurrentCamera
+	if camera == nil then
+		return nil
+	end
+	-- Mouse positions include the top bar inset; touch positions don't.
+	return if isTouch
+		then camera:ScreenPointToRay(position.X, position.Y)
+		else camera:ViewportPointToRay(position.X, position.Y)
+end
+
+-- What a click at `ray` picks: the target in `reach`, whether something out
+-- of reach was clicked, and the world point under the click.
+local function pickAt(
+	ray: Ray,
+	plantsOnly: boolean,
+	reach: number,
+	slack: number
+): (Instance?, boolean, Vector3)
+	local root = myRoot()
+	local list = candidates(plantsOnly)
+	local origin, direction = point(ray.Origin), point(ray.Direction.Unit)
+	local from = if root then point(root.Position) else origin
+	local inReach = Aim.pickOnRay(list, origin, direction, from, reach, slack)
+	local anything = inReach or Aim.pickOnRay(list, origin, direction, from, HUGE_REACH, slack)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character :: Instance }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction.Unit * 500, params)
+	local worldPoint = if hit then hit.Position else ray.Origin + ray.Direction.Unit * 50
+	return if inReach then inReach.key else nil, anything ~= nil and inReach == nil, worldPoint
+end
+
+local function clearPrimed()
+	primedSlot = nil
+end
+
+-- A click or tap in the world.
+local function clickAt(ray: Ray, isTouch: boolean)
+	local slack = if isTouch then ControlsConfig.tapSlackStuds else ControlsConfig.clickSlackStuds
+	local kind = primedKind()
+	if primedSlot and (kind == "range" or kind == "melee") then
+		local target, _, worldPoint = pickAt(ray, true, primedReach(), slack)
+		-- Ranged attacks fire toward the click even if nothing is there.
+		if kind == "range" or target then
+			Remotes.event("UseSlot"):FireServer(primedSlot, target, worldPoint)
+			clearPrimed()
+			return
+		end
+		-- A primed melee attack waits for a plant; this click is a normal bite.
+	end
+	local target, outOfReach, worldPoint = pickAt(ray, false, biteReach(), slack)
+	if target then
+		Remotes.event("Bite"):FireServer(target, worldPoint)
+	elseif not outOfReach then
+		-- Nothing there: snap at the air.
+		Remotes.event("Bite"):FireServer(nil, worldPoint)
+	end
+end
+
+local function pressSlot(index: number)
+	local id, kind = slotPowerUp(index)
+	if id == nil then
+		return
+	end
+	if kind == "special" then
+		Remotes.event("UseSlot"):FireServer(index, nil, nil)
+		clearPrimed()
+	elseif primedSlot == index then
+		clearPrimed()
+	else
+		primedSlot = index
+	end
+end
+
+local function slotButton(name: string, size: number, position: UDim2): TextButton
 	return Ui.make("TextButton", {
 		Name = name,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = position,
 		Size = UDim2.fromOffset(size, size),
-		BackgroundColor3 = colour,
-		Text = text,
+		BackgroundColor3 = EMPTY_COLOUR,
+		Text = "Empty",
 		TextScaled = true,
 		TextWrapped = true,
 		Font = Enum.Font.GothamBold,
@@ -156,7 +224,14 @@ local function roundButton(
 		TextStrokeTransparency = 0.5,
 		AutoButtonColor = true,
 		Parent = Hud.gui(),
-	}, { Ui.corner(), Ui.stroke(Color3.new(0, 0, 0), 2) })
+	}, {
+		Ui.corner(),
+		Ui.make("UIStroke", {
+			Color = Color3.new(0, 0, 0),
+			Thickness = 2,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}),
+	})
 end
 
 local function refreshSlots()
@@ -165,6 +240,9 @@ local function refreshSlots()
 	local defenceSlots = player:GetAttribute("DefenceSlots") or 0
 	local lockedUntil = player:GetAttribute("LockoutUntil")
 	local locked = type(lockedUntil) == "number" and now < lockedUntil
+	if primedSlot and (slotPowerUp(primedSlot) == nil or primedSlot > attackSlots) then
+		clearPrimed()
+	end
 	for index, button in attackButtons do
 		button.Visible = index <= attackSlots
 		local id = player:GetAttribute(`Attack{index}`)
@@ -187,6 +265,14 @@ local function refreshSlots()
 			button.BackgroundColor3 = EMPTY_COLOUR
 			button.Text = "Empty"
 			button.BackgroundTransparency = 0.4
+		end
+		local stroke = button:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			local primed = primedSlot == index
+			stroke.Color = if primed
+				then Ui.colour(ControlsConfig.primedColour)
+				else Color3.new(0, 0, 0)
+			stroke.Thickness = if primed then ControlsConfig.primedStroke else 2
 		end
 		local boost = player:GetAttribute(`Attack{index}Boost`)
 		local boosted = creature ~= nil and type(boost) == "string" and boost ~= ""
@@ -216,26 +302,17 @@ local function refreshSlots()
 end
 
 local function buildButtons()
-	local size = ControlsConfig.biteButtonSize
 	local slotSize = ControlsConfig.slotButtonSize
 	local gap = ControlsConfig.buttonGap
-	-- Left of Roblox's own jump button, which sits in the bottom right corner on phones.
-	local biteCentre = UDim2.new(1, -(size / 2 + 140), 1, -(size / 2 + 30))
-	local biteButton = roundButton("Bite", size, biteCentre, Color3.fromRGB(200, 60, 80), "BITE")
-	biteButton.Activated:Connect(bite)
 
-	-- Attack slots in an arc above and to the left of the bite button.
-	local radius = size / 2 + gap + slotSize / 2
+	-- Attack slots in a row, right to left, left of Roblox's jump button.
 	for index = 1, 3 do
-		local angle = math.rad(90 + (index - 1) * 45)
-		local offset = UDim2.fromOffset(
-			-math.sin(angle - math.rad(90)) * radius,
-			-math.cos(angle - math.rad(90)) * radius
-		)
-		local button =
-			roundButton(`Slot{index}`, slotSize, biteCentre + offset, EMPTY_COLOUR, "Empty")
+		local x = ControlsConfig.slotRowRightOffset + slotSize / 2 + (index - 1) * (slotSize + gap)
+		local position = UDim2.new(1, -x, 1, -(slotSize / 2 + ControlsConfig.slotRowBottomOffset))
+		local button = slotButton(`Slot{index}`, slotSize, position)
 		button.Activated:Connect(function()
-			useSlot(index)
+			pressSlot(index)
+			refreshSlots()
 		end)
 		attackButtons[index] = button
 		local dotSize = ControlsConfig.boostDotSize
@@ -251,11 +328,12 @@ local function buildButtons()
 		}, { Ui.corner(), Ui.stroke(Color3.new(1, 1, 1), 2) })
 	end
 
+	local above = slotSize + ControlsConfig.slotRowBottomOffset + gap
 	for index = 1, 2 do
 		defenceBadges[index] = Ui.make("TextLabel", {
 			Name = `Defence{index}`,
 			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, -12, 1, -(size + 80 + (index - 1) * 30 + radius)),
+			Position = UDim2.new(1, -12, 1, -(above + (index - 1) * 30)),
 			Size = UDim2.fromOffset(150, 26),
 			BackgroundColor3 = EMPTY_COLOUR,
 			Text = "",
@@ -285,13 +363,34 @@ local function buildButtons()
 	end)
 end
 
+-- Outlines what a click would bite: under the mouse on desktop, the nearest
+-- thing in reach on phones.
+local function updateHighlight()
+	local root = myRoot()
+	local plantsOnly = primedSlot ~= nil
+	local reach = primedReach()
+	local target: Instance? = nil
+	if root and UserInputService.MouseEnabled then
+		local ray = screenRay(UserInputService:GetMouseLocation(), false)
+		if ray then
+			target = pickAt(ray, plantsOnly, reach, ControlsConfig.clickSlackStuds)
+		end
+	elseif root then
+		local best = Aim.nearest(candidates(plantsOnly), point(root.Position), reach)
+		target = if best then best.key else nil
+	end
+	local colour =
+		Ui.colour(if plantsOnly then ControlsConfig.primedColour else ControlsConfig.reachColour)
+	highlight.OutlineColor = colour
+	highlight.FillColor = colour
+	highlight.Adornee = target
+end
+
 function Controls.start()
 	buildButtons()
 	highlight = Ui.make("Highlight", {
 		Name = "AimTarget",
 		FillTransparency = 0.7,
-		OutlineColor = Color3.fromRGB(255, 255, 120),
-		FillColor = Color3.fromRGB(255, 255, 120),
 		DepthMode = Enum.HighlightDepthMode.Occluded,
 		-- Only this client sees it.
 		Parent = workspace,
@@ -320,19 +419,35 @@ function Controls.start()
 		if processed then
 			return
 		end
-		if input.KeyCode == biteKey then
-			bite()
+		local isClick = input.UserInputType == Enum.UserInputType.MouseButton1
+		if isClick or input.KeyCode == biteKey then
+			local ray = screenRay(UserInputService:GetMouseLocation(), false)
+			if ray then
+				clickAt(ray, false)
+				refreshSlots()
+			end
 		elseif input.KeyCode == rootKey then
 			Remotes.event("Root"):FireServer()
 		elseif slotKeys[input.KeyCode] then
-			useSlot(slotKeys[input.KeyCode])
+			pressSlot(slotKeys[input.KeyCode])
+			refreshSlots()
+		end
+	end)
+	-- A tap (not a drag, and not on a button) bites where it lands.
+	UserInputService.TouchTapInWorld:Connect(function(position, processedByUi)
+		if processedByUi then
+			return
+		end
+		local ray = screenRay(position, true)
+		if ray then
+			clickAt(ray, true)
+			refreshSlots()
 		end
 	end)
 
 	local lastRefresh = 0
 	RunService.RenderStepped:Connect(function()
-		currentTarget = pickTarget(false, biteReach())
-		highlight.Adornee = currentTarget
+		updateHighlight()
 		-- Timers (venom, mantis) run out without an attribute change.
 		local now = os.clock()
 		if now - lastRefresh > 0.25 then

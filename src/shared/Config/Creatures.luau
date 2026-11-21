@@ -47,6 +47,18 @@ Creatures.cows = table.freeze({
 	speed = 3,
 	pooEverySeconds = 25,
 	pooCap = 12,
+	-- Plants of this level or bigger can pick up a cow with a bite, chew on
+	-- it for `holdSeconds` and toss it. No rings, just fun.
+	pickUpLevel = 5,
+	holdSeconds = 1,
+	-- How high above the plant's root the cow is held, per unit of plant scale.
+	holdHeight = 4,
+	-- Toss speed in studs per second (forward and up), and the fall speed gain.
+	tossSpeed = 35,
+	tossUpSpeed = 30,
+	tossGravity = 120,
+	-- Half the cow's height, so it stands on the ground.
+	standHeight = 1.75,
 })
 
 return table.freeze(Creatures)

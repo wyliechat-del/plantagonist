@@ -18,7 +18,13 @@ Levels.list = table.freeze({
 		defenceSlots = 0,
 		speed = 4.2,
 	}),
-	table.freeze({ name = "Budteryx", minRings = 4, attackSlots = 2, defenceSlots = 0, speed = 3.6 }),
+	table.freeze({
+		name = "Budteryx",
+		minRings = 4,
+		attackSlots = 2,
+		defenceSlots = 0,
+		speed = 3.6,
+	}),
 	table.freeze({
 		name = "Saplodocus",
 		minRings = 10,

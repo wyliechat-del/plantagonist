@@ -1,6 +1,6 @@
 --[[
 	The HUD: the tree ring stat bar (level name, rings, progress to the next
-	level), pop-up messages, the crosshair and a full-screen flash.
+	level), pop-up messages and a full-screen flash.
 	Values come from attributes the server sets on the local Player.
 ]]
 
@@ -132,7 +132,7 @@ function Hud.start()
 	gui = Ui.make("ScreenGui", {
 		Name = "PlantagonistHud",
 		ResetOnSpawn = false,
-		-- Full screen, so the crosshair sits exactly where the camera looks.
+		-- Full screen, so the flash covers everything.
 		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = player:WaitForChild("PlayerGui"),
@@ -213,16 +213,6 @@ function Hud.start()
 			{ SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }
 		),
 	})
-
-	-- Crosshair in the middle of the screen.
-	Ui.make("Frame", {
-		Name = "Crosshair",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(14, 14),
-		BackgroundTransparency = 1,
-		Parent = gui,
-	}, { Ui.corner(), Ui.stroke(Color3.new(1, 1, 1), 2) })
 
 	flashFrame = Ui.make("Frame", {
 		Size = UDim2.fromScale(1, 1),

@@ -1,13 +1,15 @@
 --[[
 	Effects the server asks for: sounds, the root flash, pushes (being tossed
-	or bouncing as a blowfish) and bat flight. Pushes and flight run here
+	or bouncing as a blowfish), bat flight and the miss puff. Pushes and flight run here
 	because each player's own client moves their character.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 
+local ControlsConfig = require(ReplicatedStorage.Shared.Config.Controls)
 local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -91,6 +93,33 @@ local function fly(seconds: number, lift: number)
 	end)
 end
 
+-- A snap at the air: a white puff that grows and fades where the bite missed.
+local function missPuff(position: Vector3, scale: number)
+	local size = ControlsConfig.missSize * scale
+	local puff = Instance.new("Part")
+	puff.Name = "MissPuff"
+	puff.Shape = Enum.PartType.Ball
+	puff.Anchored = true
+	puff.CanCollide = false
+	puff.CanQuery = false
+	puff.CanTouch = false
+	puff.Material = Enum.Material.Neon
+	puff.Color = Color3.new(1, 1, 1)
+	puff.Transparency = 0.3
+	puff.Size = Vector3.one * size * 0.4
+	puff.Position = position
+	puff.Parent = workspace
+	local tween = TweenService:Create(
+		puff,
+		TweenInfo.new(ControlsConfig.missSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.one * size, Transparency = 1 }
+	)
+	tween.Completed:Connect(function()
+		puff:Destroy()
+	end)
+	tween:Play()
+end
+
 function Effects.start()
 	Remotes.event("Effect").OnClientEvent:Connect(function(kind, data)
 		local info = if type(data) == "table" then data else {}
@@ -100,6 +129,8 @@ function Effects.start()
 			Hud.flash()
 		elseif kind == "push" and typeof(info.velocity) == "Vector3" then
 			push(info.velocity)
+		elseif kind == "miss" and typeof(info.position) == "Vector3" then
+			missPuff(info.position, if type(info.scale) == "number" then info.scale else 1)
 		elseif kind == "fly" and type(info.seconds) == "number" then
 			fly(info.seconds, if type(info.lift) == "number" then info.lift else 20)
 		end

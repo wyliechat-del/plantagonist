@@ -17,6 +17,8 @@ Sounds.ids = table.freeze({
 	powerUp = "rbxasset://sounds/electronicpingshort.wav",
 	choir = "rbxasset://sounds/electronicpingshort.wav",
 	button = "rbxasset://sounds/button.wav",
+	miss = "rbxasset://sounds/swordlunge.wav",
+	toss = "rbxasset://sounds/uuhhh.mp3",
 })
 
 Sounds.volume = 0.6

@@ -8,12 +8,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.Combat)
+local CreaturesConfig = require(ReplicatedStorage.Shared.Config.Creatures)
 local Levels = require(ReplicatedStorage.Shared.Config.Levels)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local Rings = require(ReplicatedStorage.Shared.Config.Rings)
 local AwardsConfig = require(ReplicatedStorage.Shared.Config.Awards)
 local AwardRules = require(ReplicatedStorage.Shared.Rules.Awards)
+local Aim = require(ReplicatedStorage.Shared.Rules.Aim)
 local Bite = require(ReplicatedStorage.Shared.Rules.Bite)
 local Growth = require(ReplicatedStorage.Shared.Rules.Growth)
 local HitCheck = require(ReplicatedStorage.Shared.Rules.HitCheck)
@@ -135,8 +137,26 @@ local function eatCreature(plant: Plant, creature: Creatures.Creature)
 	end)
 end
 
--- A bite at a target (a creature part or a plant model).
-function Combat.bite(attacker: Plant, target: Instance?): boolean
+-- A snap at the air: the usual wait before the next bite, and a miss effect
+-- in front of the plant, toward where the player clicked.
+local function miss(attacker: Plant, point: Vector3?, now: number)
+	attacker.lastBiteAt = now
+	local from = attacker.root.Position
+	local towards = point or (from + attacker.root.CFrame.LookVector)
+	local reach = Bite.reachStuds(CombatConfig, attacker.level) + Plants.radius(attacker)
+	local spot = Aim.missPoint(
+		{ x = from.X, y = from.Y, z = from.Z },
+		{ x = towards.X, y = from.Y + Plants.scale(attacker), z = towards.Z },
+		reach
+	)
+	local position = Vector3.new(spot.x, spot.y, spot.z)
+	Effects.sendAll("miss", { position = position, scale = Plants.scale(attacker) })
+	Effects.sound("miss", position)
+end
+
+-- A bite at a target (a creature part, a cow or a plant model). With no
+-- target it is a miss at `point`.
+function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boolean
 	local now = Plants.now()
 	if
 		not canAct(attacker, now) or not Bite.canBite(CombatConfig, now, attacker.lastBiteAt, nil)
@@ -144,6 +164,34 @@ function Combat.bite(attacker: Plant, target: Instance?): boolean
 		return false
 	end
 	local reach = Bite.reachStuds(CombatConfig, attacker.level) + PlantsConfig.hitTolerance
+
+	if target == nil then
+		miss(attacker, point, now)
+		return false
+	end
+
+	if Creatures.isCow(target) then
+		local part = target :: BasePart
+		local size = math.max(part.Size.X, part.Size.Z) / 2
+		if gapTo(attacker, part.Position, size) > reach then
+			return false
+		end
+		attacker.lastBiteAt = now
+		if attacker.level < CreaturesConfig.cows.pickUpLevel then
+			Effects.notify(
+				attacker.player,
+				`Cows are too big to pick up until level {CreaturesConfig.cows.pickUpLevel}.`,
+				"info"
+			)
+			miss(attacker, part.Position, now)
+			return false
+		end
+		if Creatures.pickUpCow(part, attacker.root, Plants.scale(attacker)) then
+			Effects.sound("chomp", part.Position)
+			return true
+		end
+		return false
+	end
 
 	local creature = Creatures.fromInstance(target)
 	if creature then
@@ -259,10 +307,19 @@ type Shot = {
 local projectiles: { Shot } = {}
 local projectileFolder: Folder
 
-local function fireProjectile(attacker: Plant, id: string, target: Plant?, boost: string?)
+-- Fires at `target`, or flat toward `point` (where the player clicked), or
+-- straight ahead.
+local function fireProjectile(
+	attacker: Plant,
+	id: string,
+	target: Plant?,
+	boost: string?,
+	point: Vector3?
+)
 	local start = attacker.root.Position + Vector3.new(0, 2 * Plants.scale(attacker), 0)
 	local aim = if target
 		then target.root.Position
+		elseif point then Vector3.new(point.X, start.Y, point.Z)
 		else start + attacker.root.CFrame.LookVector * 10
 	local direction = aim - start
 	direction = if direction.Magnitude > 0.01
@@ -364,9 +421,10 @@ local function useSpecial(plant: Plant, id: string, now: number)
 	end)
 end
 
--- Uses the power up in attack slot `index`. `target` is the aimed creature or
--- plant (needed for melee, optional for ranged).
-function Combat.useSlot(plant: Plant, index: number, target: Instance?): boolean
+-- Uses the power up in attack slot `index`. `target` is the clicked plant
+-- (needed for melee, optional for ranged); `point` is where the player
+-- clicked, which a ranged attack fires toward when there is no target.
+function Combat.useSlot(plant: Plant, index: number, target: Instance?, point: Vector3?): boolean
 	local now = Plants.now()
 	if not canAct(plant, now) or type(index) ~= "number" then
 		return false
@@ -406,7 +464,7 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?): boolean
 		if victim and gapTo(plant, victim.root.Position, Plants.radius(victim)) > range then
 			victim = nil
 		end
-		fireProjectile(plant, id, victim, boost)
+		fireProjectile(plant, id, victim, boost, point)
 	elseif kind == "special" then
 		useSpecial(plant, id, now)
 	else
@@ -434,20 +492,23 @@ end
 
 function Combat.start()
 	projectileFolder = Util.folder("Projectiles")
-	Remotes.event("Bite").OnServerEvent:Connect(function(player, target)
+	local function asPoint(value: any): Vector3?
+		return if typeof(value) == "Vector3" then value else nil
+	end
+	Remotes.event("Bite").OnServerEvent:Connect(function(player, target, point)
 		local plant = Plants.forPlayer(player)
 		if plant and (target == nil or typeof(target) == "Instance") then
-			Combat.bite(plant, target)
+			Combat.bite(plant, target, asPoint(point))
 		end
 	end)
-	Remotes.event("UseSlot").OnServerEvent:Connect(function(player, index, target)
+	Remotes.event("UseSlot").OnServerEvent:Connect(function(player, index, target, point)
 		local plant = Plants.forPlayer(player)
 		if
 			plant
 			and type(index) == "number"
 			and (target == nil or typeof(target) == "Instance")
 		then
-			Combat.useSlot(plant, math.floor(index), target)
+			Combat.useSlot(plant, math.floor(index), target, asPoint(point))
 		end
 	end)
 	RunService.Heartbeat:Connect(stepProjectiles)

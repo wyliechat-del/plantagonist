@@ -13,6 +13,7 @@ local Combat = require(ReplicatedStorage.Shared.Config.Combat)
 local Creatures = require(ReplicatedStorage.Shared.Config.Creatures)
 local PickupsConfig = require(ReplicatedStorage.Shared.Config.Pickups)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
+local Rings = require(ReplicatedStorage.Shared.Config.Rings)
 
 local Data = require(script.Parent.Data)
 local Effects = require(script.Parent.Effects)
@@ -128,7 +129,11 @@ local function eat(plant: Plants.Plant, pickup: Pickup)
 	elseif pickup.kind == "poo" then
 		plant.fertilised = true
 		Plants.sync(plant)
-		Effects.notify(player, "Fertilised! Your next creature gives 2 to 6 rings.", "good")
+		Effects.notify(
+			player,
+			`Fertilised! Your next creature gives {Rings.fertilisedMin} to {Rings.fertilisedMax} rings.`,
+			"good"
+		)
 		Effects.sound("fart", plant.root.Position)
 		Data.count(player, "pooEaten")
 	end

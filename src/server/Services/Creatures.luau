@@ -15,6 +15,7 @@ local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
 local Steering = require(ReplicatedStorage.Shared.Rules.Steering)
 
+local Effects = require(script.Parent.Effects)
 local MapBuilder = require(script.Parent.MapBuilder)
 local Pickups = require(script.Parent.Pickups)
 local Plants = require(script.Parent.Plants)
@@ -42,6 +43,14 @@ export type Creature = {
 type Cow = {
 	part: BasePart,
 	field: any,
+	-- Held by a plant until `heldUntil`, then tossed.
+	holder: BasePart?,
+	holderScale: number,
+	heldUntil: number,
+	-- While flying after a toss.
+	flying: boolean,
+	y: number,
+	velocity: Vector3,
 	x: number,
 	z: number,
 	targetX: number,
@@ -62,6 +71,38 @@ function Creatures.fromInstance(instance: Instance?): Creature?
 	end
 	local creature = byPart[instance]
 	return if creature and creature.alive then creature else nil
+end
+
+-- The cow for a part, if it is one and nobody is holding or tossing it.
+local function freeCow(instance: Instance?): Cow?
+	for _, cow in cows do
+		if cow.part == instance then
+			return if cow.holder == nil and not cow.flying then cow else nil
+		end
+	end
+	return nil
+end
+
+function Creatures.isCow(instance: Instance?): boolean
+	for _, cow in cows do
+		if cow.part == instance then
+			return true
+		end
+	end
+	return false
+end
+
+-- A plant picks up a cow: it is held over `holder` for a moment, then tossed
+-- the way the holder faces. Returns false if the cow is busy.
+function Creatures.pickUpCow(instance: Instance?, holder: BasePart, scale: number): boolean
+	local cow = freeCow(instance)
+	if cow == nil then
+		return false
+	end
+	cow.holder = holder
+	cow.holderScale = scale
+	cow.heldUntil = os.clock() + CreaturesConfig.cows.holdSeconds
+	return true
 end
 
 function Creatures.all(): { Creature }
@@ -234,7 +275,53 @@ local function moveTick(dt: number)
 		table.insert(parts, creature.part)
 		table.insert(frames, frame)
 	end
+	local cowConfig = CreaturesConfig.cows
 	for _, cow in cows do
+		local holder = cow.holder
+		if holder and holder.Parent == nil then
+			cow.holder = nil
+			holder = nil
+			cow.flying, cow.velocity = true, Vector3.zero
+			cow.y = cow.part.Position.Y
+		end
+		if holder then
+			-- Held up in the plant's jaws, then tossed the way it faces.
+			local held = holder.Position + Vector3.new(0, cowConfig.holdHeight * cow.holderScale, 0)
+			cow.x, cow.y, cow.z = held.X, held.Y, held.Z
+			if now >= cow.heldUntil then
+				local look = holder.CFrame.LookVector
+				local flat = Vector3.new(look.X, 0, look.Z)
+				flat = if flat.Magnitude > 0.01 then flat.Unit else Vector3.xAxis
+				cow.holder = nil
+				cow.flying = true
+				cow.velocity = flat * cowConfig.tossSpeed + Vector3.yAxis * cowConfig.tossUpSpeed
+				Effects.sound("toss", held)
+			end
+			table.insert(parts, cow.part)
+			table.insert(
+				frames,
+				CFrame.new(held) * cow.part.CFrame.Rotation * CFrame.Angles(0, dt * 6, 0)
+			)
+			continue
+		end
+		if cow.flying then
+			cow.velocity -= Vector3.yAxis * cowConfig.tossGravity * dt
+			cow.x += cow.velocity.X * dt
+			cow.z += cow.velocity.Z * dt
+			cow.y += cow.velocity.Y * dt
+			local ground = MapBuilder.groundY(cow.x, cow.z) + cowConfig.standHeight
+			if cow.y <= ground and cow.velocity.Y < 0 then
+				cow.flying = false
+				cow.y = ground
+				-- Walk back into its field from wherever it landed.
+				local half = cow.field.size / 2 - 4
+				cow.targetX = cow.field.x + (Util.random() * 2 - 1) * half
+				cow.targetZ = cow.field.z + (Util.random() * 2 - 1) * half
+			end
+			table.insert(parts, cow.part)
+			table.insert(frames, CFrame.new(cow.x, cow.y, cow.z) * CFrame.Angles(0, 0, now * 8))
+			continue
+		end
 		local arrived
 		cow.x, cow.z, arrived = Steering.moveTowards(
 			cow.x,
@@ -252,7 +339,8 @@ local function moveTick(dt: number)
 			cow.nextPoo = now + CreaturesConfig.cows.pooEverySeconds * (0.5 + Util.random())
 			Pickups.dropPoo(Vector3.new(cow.x, 0, cow.z))
 		end
-		local position = Vector3.new(cow.x, MapBuilder.groundY(cow.x, cow.z) + 1.75, cow.z)
+		local position =
+			Vector3.new(cow.x, MapBuilder.groundY(cow.x, cow.z) + cowConfig.standHeight, cow.z)
 		local facing = Vector3.new(cow.targetX - cow.x, 0, cow.targetZ - cow.z)
 		table.insert(parts, cow.part)
 		table.insert(
@@ -286,6 +374,12 @@ local function spawnCows()
 			targetX = field.x,
 			targetZ = field.z,
 			nextPoo = os.clock() + CreaturesConfig.cows.pooEverySeconds * Util.random(),
+			holder = nil,
+			holderScale = 1,
+			heldUntil = 0,
+			flying = false,
+			y = 0,
+			velocity = Vector3.zero,
 		})
 	end
 end
