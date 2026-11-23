@@ -10,6 +10,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Build = require(ReplicatedStorage.Shared.Config.Build)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
 
@@ -182,6 +183,46 @@ local function buildConservatory()
 	spawn.Position = Vector3.new(0, GROUND + 0.5, 0)
 	spawn.Color = Color3.fromRGB(240, 220, 120)
 	spawn.Parent = house
+
+	-- Flag showing the build number, next to the spawn pad.
+	local z = Build.offsetFromSpawn
+	Util.part({
+		Name = "FlagPole",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(Build.poleHeight, 0.4, 0.4),
+		CFrame = CFrame.new(0, GROUND + Build.poleHeight / 2, z)
+			* CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(230, 230, 230),
+		Material = Enum.Material.Metal,
+		Parent = house,
+	})
+	local flag = Util.part({
+		Name = "BuildFlag",
+		Size = Vector3.new(Build.flagWidth, Build.flagHeight, 0.2),
+		Position = Vector3.new(
+			Build.flagWidth / 2,
+			GROUND + Build.poleHeight - Build.flagHeight / 2,
+			z
+		),
+		Color = Color3.fromRGB(60, 140, 60),
+		CanCollide = false,
+		Parent = house,
+	})
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		gui.Parent = flag
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Text = `Build {Build.number}\n{Build.date}`
+		label.TextScaled = true
+		label.Font = Enum.Font.GothamBlack
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.Parent = gui
+	end
 end
 
 local function buildRiverAndSwamp()

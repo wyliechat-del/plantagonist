@@ -70,11 +70,19 @@ local function step()
 		end
 		plant.inField = inField
 
-		local speed = walkSpeed(plant, now)
+		-- A jump is a burst of speed; after landing there is a short wait
+		-- before the next jump.
+		local inAir = plant.humanoid.FloorMaterial == Enum.Material.Air
+		if plant.wasInAir and not inAir then
+			plant.jumpReadyAt = now + PlantsConfig.jumpRefreshSeconds
+		end
+		plant.wasInAir = inAir
+		local speed = walkSpeed(plant, now) * (if inAir then PlantsConfig.airSpeedMultiplier else 1)
 		if math.abs(plant.humanoid.WalkSpeed - speed) > 0.05 then
 			plant.humanoid.WalkSpeed = speed
 		end
-		local jump = if now < plant.holdUntil then 0 else PlantsConfig.jumpHeight
+		local canJump = now >= plant.holdUntil and now >= plant.jumpReadyAt
+		local jump = if canJump then PlantsConfig.jumpHeight else 0
 		if plant.humanoid.JumpHeight ~= jump then
 			plant.humanoid.JumpHeight = jump
 		end

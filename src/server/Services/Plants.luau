@@ -48,6 +48,10 @@ export type Plant = {
 	holdUntil: number,
 	-- Set while another plant holds this one in its mouth.
 	heldToken: {}?,
+	-- When the plant can jump again after landing, and whether it was in the
+	-- air last time Zones looked.
+	jumpReadyAt: number,
+	wasInAir: boolean,
 	-- True while the player watches their new tree grow after rooting.
 	watchingTree: boolean,
 	flyUntil: number,
@@ -280,6 +284,15 @@ function Plants.push(plant: Plant, velocity: Vector3)
 	end
 end
 
+-- A small shove that doesn't knock the plant over (a step back).
+function Plants.nudge(plant: Plant, velocity: Vector3)
+	if plant.player then
+		Effects.send(plant.player, "nudge", { velocity = velocity })
+	else
+		plant.root.AssemblyLinearVelocity += velocity
+	end
+end
+
 -- Holds a plant in another plant's mouth for `seconds`, then calls
 -- `release`. The victim's root is anchored and moved by the server meanwhile.
 -- Stops early if either plant dies or leaves.
@@ -393,6 +406,8 @@ function Plants.register(model: Model, player: Player?, name: string): Plant?
 		lockoutUntil = 0,
 		holdUntil = 0,
 		watchingTree = false,
+		jumpReadyAt = 0,
+		wasInAir = false,
 		flyUntil = 0,
 		ballUntil = 0,
 		burstUntil = 0,

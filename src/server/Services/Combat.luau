@@ -56,7 +56,7 @@ local function canAct(plant: Plant, now: number): boolean
 		and now - plant.spawnedAt >= PlantsConfig.spawnBiteDelay
 end
 
--- Bites one plant by another. `multiplier` doubles damage for Bite and slash.
+-- Bites one plant by another. `multiplier` doubles damage for Slash.
 -- Returns true if the bite landed.
 function Combat.bitePlant(
 	attacker: Plant,
@@ -105,6 +105,15 @@ function Combat.bitePlant(
 		else
 			toss(victimPosition - attacker.root.Position)
 		end
+	end
+
+	-- Big plants stagger: a short pause and a step back from the biter.
+	if not result.eaten and Bite.staggers(CombatConfig, attacker.level, victimLevel) then
+		victim.holdUntil = math.max(victim.holdUntil, now + CombatConfig.staggerSeconds)
+		local away = victimPosition - attacker.root.Position
+		local flat = Vector3.new(away.X, 0, away.Z)
+		flat = if flat.Magnitude > 0.01 then flat.Unit else -victim.root.CFrame.LookVector
+		Plants.nudge(victim, flat * CombatConfig.staggerStepSpeed)
 	end
 
 	if result.droppedLevel and not result.eaten then

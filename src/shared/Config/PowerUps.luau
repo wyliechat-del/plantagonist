@@ -29,8 +29,10 @@ PowerUps.families = table.freeze({
 		-- Target can't use power ups for this long per attacker level.
 		effect = table.freeze({ lockoutSecondsPerLevel = 0.5 }),
 	}),
+	-- The key stays "BiteAndSlash" so saved codex progress keeps working;
+	-- players see "Slash" (Bite is the normal attack).
 	BiteAndSlash = table.freeze({
-		name = "Bite and slash",
+		name = "Slash",
 		colour = table.freeze({ 210, 50, 50 }),
 		-- Multiplies the bite damage. Damage still stops at a level drop.
 		effect = table.freeze({ damageMultiplier = 2 }),
@@ -86,7 +88,7 @@ PowerUps.creatures = table.freeze({
 		effect = table.freeze({ lockoutMultiplier = 2, sticky = true }),
 	}),
 
-	-- Bite and slash
+	-- Slash
 	bullAnt = table.freeze({
 		name = "Bull ant",
 		showAt = "Jaw",
@@ -111,7 +113,7 @@ PowerUps.creatures = table.freeze({
 		territory = "Forest",
 		size = "Medium",
 	}),
-	-- Praying mantis (boost): the next Bite and slash attack isn't used up,
+	-- Praying mantis (boost): the next Slash attack isn't used up,
 	-- and can be used again after `reuseSeconds`.
 	mantis = table.freeze({
 		name = "Praying mantis",

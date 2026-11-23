@@ -23,6 +23,10 @@ Plants.tossUpSpeed = 25
 
 -- Jump height in studs (Roblox default 7.2). Strangled plants can't jump.
 Plants.jumpHeight = 7.2
+-- Plants move this much faster while in the air (a jump is a burst of
+-- speed), and must wait `jumpRefreshSeconds` after landing to jump again.
+Plants.airSpeedMultiplier = 1.2
+Plants.jumpRefreshSeconds = 1
 
 -- Blowfish ball: bounce speed away from danger.
 Plants.ballBounceSpeed = 60

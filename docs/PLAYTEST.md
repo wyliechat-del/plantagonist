@@ -47,7 +47,7 @@ Check these first:
    - Bee: the venom attack's lockout lasts twice as long.
    - Mantis: the boosted attack is kept once instead of used up.
    - Bombardier beetle: the hit also knocks out the victim's oldest power up.
-4. **Slot buttons** say the attack type (Venom, Bite and slash, Strangle) or the move (Fly, Puff, Dash, Hide). Ranged has a triangle, melee is a square button, specials are round.
+4. **Slot buttons** say the attack type (Venom, Slash, Strangle) or the move (Fly, Puff, Dash, Hide). Ranged has a triangle, melee is a square button, specials are round.
 5. **Rain warning**: a dark shadow, the cloud overhead, glowing rings that close in on the spot, then lightning and thunder in the last 3 seconds.
 
 ## 2c. New in build 3 (after playtest 2)
@@ -70,6 +70,15 @@ Check these first:
 7. **Creatures** hop when frightened and run at 6 for 1.5 s.
 
 Studio risks for build 4: the lifted plant is anchored and moved by the server, so check it lets go cleanly; flight uses a LinearVelocity on your own client, so check it steers on a phone too.
+
+## 2e. New in build 5 (after playtest 4)
+
+1. **Build flag**: a green flag next to the spawn pad says "Build 5". If it shows an older number, Studio hasn't synced.
+2. **Stagger**: a level 4 to 6 plant that gets hit pauses for 0.25 s and steps back (unless a bigger plant lifts it).
+3. **Reach**: bites and melee power ups reach 9 studs; ranged attacks reach 50.
+4. **Creatures** stay startled 25% longer (about 1.9 s).
+5. **Slash**: the red family is called Slash now.
+6. **Jump**: 20% faster while in the air, and 1 s after landing before you can jump again.
 
 ## 3. Things Claude couldn't check without Studio
 

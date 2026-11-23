@@ -22,7 +22,7 @@ Creatures.dodgeSpeed = 6
 -- A fright starts with a little jump: this high (studs), over this long.
 Creatures.frightHopHeight = 2
 Creatures.frightHopSeconds = 0.4
-Creatures.dodgeSeconds = 1.5
+Creatures.dodgeSeconds = 1.875
 Creatures.dodgeCooldown = 2
 -- Creatures won't walk up anything steeper than this many studs per step,
 -- so they go round hills instead of through them.

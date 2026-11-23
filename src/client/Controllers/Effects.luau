@@ -201,6 +201,11 @@ function Effects.start()
 			Hud.flash()
 		elseif kind == "push" and typeof(info.velocity) == "Vector3" then
 			push(info.velocity)
+		elseif kind == "nudge" and typeof(info.velocity) == "Vector3" then
+			local part = root()
+			if part then
+				part.AssemblyLinearVelocity += info.velocity
+			end
 		elseif kind == "roar" and typeof(info.model) == "Instance" then
 			roar(info.model, if type(info.seconds) == "number" then info.seconds else 0.25)
 		elseif kind == "miss" and typeof(info.position) == "Vector3" then

@@ -29,14 +29,14 @@ Combat.spawnProtectionSeconds = 3
 -- Ranged power ups reach `rangeBaseStuds + rangeStudsPerLevel * level` and fly
 -- at `projectileStudsPerSecond`, so they can be dodged. Since playtest 3 every
 -- level has the same range.
-Combat.rangeBaseStuds = 45
+Combat.rangeBaseStuds = 50
 Combat.rangeStudsPerLevel = 0
 Combat.projectileStudsPerSecond = 20
 
 -- Bite and melee reach from the plant's edge, the same for creatures and
 -- plants and for every level since playtest 3 (big plants still reach a bit
 -- further from their centre because they are wider).
-Combat.biteReachBaseStuds = 7.5
+Combat.biteReachBaseStuds = 9
 Combat.biteReachStudsPerLevel = 0
 
 -- Big plants (from `roarFromLevel`) roar for `roarSeconds` before a bite or
@@ -52,6 +52,13 @@ Combat.roarSeconds = 0.25
 Combat.liftFromLevel = 4
 Combat.liftSeconds = 0.5
 Combat.liftHeight = 3.5
+
+-- Big plants (from `staggerFromLevel`) that get hit stagger: they can't move
+-- for `staggerSeconds` and are nudged back at `staggerStepSpeed` studs per
+-- second (about one step).
+Combat.staggerFromLevel = 4
+Combat.staggerSeconds = 0.25
+Combat.staggerStepSpeed = 12
 
 -- When a defence blocks a power up attack, does the attack's normal bite
 -- damage still land? The design says defences don't block the basic bite.

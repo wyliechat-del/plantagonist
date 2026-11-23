@@ -67,6 +67,13 @@ function Bite.lifts(combat: any, attackerLevel: number, victimLevel: number): bo
 	return attackerLevel >= combat.liftFromLevel and attackerLevel > victimLevel
 end
 
+-- Does the victim stagger (a short pause and a step back)? Big plants do,
+-- unless the biter lifts them instead.
+function Bite.staggers(combat: any, attackerLevel: number, victimLevel: number): boolean
+	return victimLevel >= combat.staggerFromLevel
+		and not Bite.lifts(combat, attackerLevel, victimLevel)
+end
+
 -- Can `now` be a bite? Checks the biter's cooldown and the victim's
 -- protection (escape moment or spawn protection) timers.
 function Bite.canBite(
