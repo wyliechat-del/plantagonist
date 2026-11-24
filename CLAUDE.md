@@ -45,3 +45,6 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
   should be SharedString"). Imported models (like the conservatory) live in
   the place file under ServerStorage; their sources (`.glb`, art) stay in
   `models/`.
+- Imported MeshPart textures don't show a PNG's see-through pixels (a sign
+  showed as a box). Images that need transparency (signs, stained glass roof)
+  are swapped for Decals at runtime; see `asDecal` in MapBuilder.

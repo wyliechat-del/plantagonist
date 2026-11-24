@@ -149,6 +149,68 @@ local function conservatoryCollision(house: Folder, visible: boolean)
 	Util.part(roof)
 end
 
+-- The image on an imported part: its TextureID, or the colour map of a
+-- SurfaceAppearance inside it.
+local function imageOf(part: BasePart): string
+	if part:IsA("MeshPart") and part.TextureID ~= "" then
+		return part.TextureID
+	end
+	local look = part:FindFirstChildOfClass("SurfaceAppearance")
+	return if look then look.ColorMap else ""
+end
+
+-- Swaps an imported flat image part (roof or sign) for a thin invisible part
+-- with the same image as decals. Decals show the see-through parts of an
+-- image; mesh textures don't.
+local function asDecal(house: Folder, mesh: BasePart, name: string)
+	local c = Map.Conservatory
+	local image = imageOf(mesh)
+	if image == "" then
+		return
+	end
+	local size = mesh.Size
+	local position = mesh.Position
+	local faces: { Enum.NormalId }
+	local partSize: Vector3
+	if name == "Roof" then
+		faces = { Enum.NormalId.Top, Enum.NormalId.Bottom }
+		partSize = Vector3.new(size.X, c.decalThickness, size.Z)
+		position += Vector3.new(0, c.decalOffset, 0)
+	else
+		-- Signs face away from the middle (outside) or towards it (inside).
+		local away = if name == "SignOutside" then 1 else -1
+		if size.X < size.Z then
+			local direction = away * math.sign(position.X)
+			faces = { if direction > 0 then Enum.NormalId.Right else Enum.NormalId.Left }
+			partSize = Vector3.new(c.decalThickness, size.Y, size.Z)
+			position += Vector3.new(direction * c.decalOffset, 0, 0)
+		else
+			local direction = away * math.sign(position.Z)
+			faces = { if direction > 0 then Enum.NormalId.Back else Enum.NormalId.Front }
+			partSize = Vector3.new(size.X, size.Y, c.decalThickness)
+			position += Vector3.new(0, 0, direction * c.decalOffset)
+		end
+	end
+	local holder = Util.part({
+		Name = name,
+		Size = partSize,
+		Position = position,
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+		Parent = house,
+	})
+	for _, face in faces do
+		local decal = Instance.new("Decal")
+		decal.Texture = image
+		decal.Face = face
+		decal.Parent = holder
+	end
+	mesh:Destroy()
+end
+
 -- Places a copy of the imported conservatory model and styles its parts by
 -- name. The model lives in the place file (ServerStorage), not in Rojo:
 -- Rojo 7.5 can't read models saved by current Studio. Returns false when
@@ -170,7 +232,7 @@ local function placeConservatoryModel(house: Folder): boolean
 	end
 	local box, scaled = model:GetBoundingBox()
 	model:TranslateBy(Vector3.new(0, GROUND + scaled.Y / 2, 0) - box.Position)
-	local wallColour = Util.colour(c.colours.WallFace)
+	local decals = {}
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") then
 			part.Anchored = true
@@ -188,16 +250,13 @@ local function placeConservatoryModel(house: Folder): boolean
 				part.Transparency = c.glassTransparency
 				part.Material = Enum.Material.Glass
 				part.CastShadow = false
-			elseif name == "Roof" then
-				part.Transparency = c.roofTransparency
-				part.CastShadow = false
-			elseif name == "SignOutside" or name == "SignInside" then
-				-- Clear parts of the sign image show the part colour, so
-				-- match the wall behind it.
-				part.Color = wallColour
-				part.CastShadow = false
+			elseif name == "Roof" or name == "SignOutside" or name == "SignInside" then
+				table.insert(decals, { part = part, name = name })
 			end
 		end
+	end
+	for _, item in decals do
+		asDecal(house, item.part, item.name)
 	end
 	model.Parent = house
 	return true

@@ -101,9 +101,9 @@ Then press **Play** and check:
 
 1. **Build flag** says "Build 6".
 2. **Walls**: peach walls, brown depth, 6 arched windows and a door on each side, sitting on the ground (not floating or sunk).
-3. **Glass**: windows and the stained glass roof are see-through (60%).
+3. **Glass**: windows are 60% see-through; on the roof the dark grey leading is solid and the coloured glass is 60% see-through.
 4. **Signs**: "Dangerous Plants" over each outside door, the Warning sign over each inside door. If the space around the letters shows as a coloured box instead of wall, tell Claude.
-5. **Coloured light**: pink, blue, yellow and orange pools of light on the floor inside. Rojo now sets **Lighting > Technology** to **Future** so these lights show properly; phones lower it on their own if needed.
+5. **Coloured light**: pink, yellow, green and orange pools of light on the floor inside. Rojo now sets **Lighting > Technology** to **Future** so these lights show properly; phones lower it on their own if needed.
 6. **Doors**: plants walk in and out of all 4 doors, and can't pass through the walls or windows.
 
 ## 3. Things Claude couldn't check without Studio

@@ -6,6 +6,8 @@ Usage (from the repo root):
     models/conservatory-art/roof.png models/conservatory-art/sign-outside.png \
     models/conservatory-art/sign-inside.png
 The wall measurements below come from models/conservatory-art/walls-panel.png.
+roof.png is made from roof-source.png: dark grey leading and the peach border
+stay opaque, every other colour gets alpha 102 (60% see-through).
 Local wall coords: x along the wall (-30..30), y up (0..22), z through the
 wall (-1..1, +z outside)."""
 import math, json, sys
@@ -96,7 +98,7 @@ def wall():
     return {k: trimesh.util.concatenate(v) for k, v in parts.items() if v}
 
 ROOF_Y = WALL_H + 0.05
-ROOF_OPACITY = 0.4            # 60% transparent
+ROOF_OPACITY = 1.0            # see-through glass comes from the texture alpha
 # Signs: (centre height, width) measured from Wylie's placement examples.
 SIGN_OUT = (18.6, 11.5)
 SIGN_IN = (18.6, 10.4)

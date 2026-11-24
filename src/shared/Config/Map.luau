@@ -42,20 +42,25 @@ Map.Conservatory = table.freeze({
 		Grille = table.freeze({ 142, 142, 142 }),
 	}),
 	glassTransparency = 0.6,
-	roofTransparency = 0.6,
+	-- The roof and signs are shown as decals, which keep the see-through
+	-- parts of their images (the roof image has opaque leading and 60%
+	-- see-through glass). This is how far each decal part sits off its
+	-- surface, and how thick it is.
+	decalOffset = 0.05,
+	decalThickness = 0.1,
 	-- Coloured light under the stained glass roof: a grid of downward spot
-	-- lights, cycling through the roof colours.
+	-- lights, cycling through the roof glass colours.
 	roofLights = table.freeze({
-		perSide = 3,
+		perSide = 4,
 		belowRoof = 1,
-		range = 26,
-		angle = 80,
-		brightness = 2,
+		range = 30,
+		angle = 90,
+		brightness = 4,
 		colours = table.freeze({
-			table.freeze({ 214, 40, 160 }),
-			table.freeze({ 20, 180, 200 }),
-			table.freeze({ 222, 210, 30 }),
-			table.freeze({ 222, 120, 60 }),
+			table.freeze({ 203, 33, 162 }),
+			table.freeze({ 222, 211, 20 }),
+			table.freeze({ 57, 181, 74 }),
+			table.freeze({ 220, 117, 66 }),
 		}),
 	}),
 })
