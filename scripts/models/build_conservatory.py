@@ -7,7 +7,8 @@ Usage (from the repo root):
     models/conservatory-art/sign-inside.png
 The wall measurements below come from models/conservatory-art/walls-panel.png.
 roof.png is made from roof-source.png: dark grey leading and the peach border
-stay opaque, every other colour gets alpha 102 (60% see-through).
+stay opaque, the mint background gets alpha 102 (60% see-through) and the
+leaf colours alpha 166 (35% see-through).
 Local wall coords: x along the wall (-30..30), y up (0..22), z through the
 wall (-1..1, +z outside)."""
 import math, json, sys
