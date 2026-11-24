@@ -12,9 +12,9 @@ lune run tests
 
 echo "3/4 Lint (Selene)"
 selene src
-selene --config tests/selene.toml tests
+selene --config tests/selene.toml tests sim
 
 echo "4/4 Format (StyLua)"
-stylua --check src tests
+stylua --check src tests sim
 
 echo "All four checks passed."

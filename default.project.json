@@ -17,6 +17,14 @@
         "Client": {
           "$path": "src/client"
         }
+      },
+      "$properties": {
+        "LoadCharacterAppearance": false
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future"
       }
     }
   }
