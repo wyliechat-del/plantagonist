@@ -87,7 +87,7 @@ is imported, the game shows the old plain glass walls, so do this once:
 
 1. Pull the branch as in section 1. The model is `models/Conservatory.glb`.
 2. Studio needs the place published (it is). In edit mode, open
-   **File > Import 3D** (also on the Home tab as **Import 3D**) and pick
+   **File > Import** (Command + M; some versions call it **Import 3D**) and pick
    `~/plantagonist/models/Conservatory.glb`. Leave the import settings as
    they are and press **Import**. This uploads the meshes, the roof image and
    the sign images to your account.
