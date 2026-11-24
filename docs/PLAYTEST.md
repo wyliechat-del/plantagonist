@@ -91,13 +91,11 @@ is imported, the game shows the old plain glass walls, so do this once:
    `~/plantagonist/models/Conservatory.glb`. Leave the import settings as
    they are and press **Import**. This uploads the meshes, the roof image and
    the sign images to your account.
-3. A model named **Conservatory** appears in Workspace. Right-click it,
-   choose **Save to File...**, and save it as
-   `~/plantagonist/assets/Conservatory.rbxm`. Then delete it from Workspace.
-4. Stop `rojo serve` and start it again, then reconnect. Rojo puts the model
-   in ServerStorage > Assets, and the game places it when it starts.
-5. Send the `Conservatory.rbxm` file to Claude (or commit it) so it's saved
-   in the repo.
+3. A model named **Conservatory** appears in Workspace. In the Explorer,
+   drag it from **Workspace** onto **ServerStorage**. The game copies it
+   from there when it starts. (It stays in the place file, not in Git:
+   Rojo 7.5 can't read models saved by current Studio.)
+4. Save the place: **File > Save to Roblox**.
 
 Then press **Play** and check:
 

@@ -41,3 +41,7 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
   `tests/selene.toml` (plain Luau std).
 - In Lune, `./` inside a folder's `init.luau` means the folder's parent, not
   the folder. Use `@self/x` for files next to an `init.luau`.
+- Rojo 7.5.1 can't read `.rbxm` files saved by current Studio ("MeshPart.Tags
+  should be SharedString"). Imported models (like the conservatory) live in
+  the place file under ServerStorage; their sources (`.glb`, art) stay in
+  `models/`.

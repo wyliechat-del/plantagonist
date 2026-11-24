@@ -20,9 +20,9 @@ Map.territories = table.freeze({
 	Hills = table.freeze({ signX = 1, signZ = -1, colour = table.freeze({ 150, 140, 100 }) }),
 })
 
--- The conservatory building in the centre. The look comes from the model in
--- ServerStorage.Assets (built by scripts/models/build_conservatory.py and
--- imported in Studio); invisible walls give it collision. Without the model,
+-- The conservatory building in the centre. The look comes from the model
+-- named `modelName` in ServerStorage (built by
+-- scripts/models/build_conservatory.py and imported in Studio); invisible walls give it collision. Without the model,
 -- plain glass walls stand in.
 Map.Conservatory = table.freeze({
 	halfSize = 30,

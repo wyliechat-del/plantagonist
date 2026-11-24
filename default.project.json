@@ -22,11 +22,6 @@
         "LoadCharacterAppearance": false
       }
     },
-    "ServerStorage": {
-      "Assets": {
-        "$path": "assets"
-      }
-    },
     "Lighting": {
       "$properties": {
         "Technology": "Future"

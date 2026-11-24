@@ -150,11 +150,12 @@ local function conservatoryCollision(house: Folder, visible: boolean)
 end
 
 -- Places a copy of the imported conservatory model and styles its parts by
--- name. Returns false when the model isn't in ServerStorage.Assets yet.
+-- name. The model lives in the place file (ServerStorage), not in Rojo:
+-- Rojo 7.5 can't read models saved by current Studio. Returns false when
+-- the model hasn't been imported yet.
 local function placeConservatoryModel(house: Folder): boolean
 	local c = Map.Conservatory
-	local assets = ServerStorage:FindFirstChild("Assets")
-	local source = assets and assets:FindFirstChild(c.modelName)
+	local source = ServerStorage:FindFirstChild(c.modelName)
 	if source == nil or not source:IsA("Model") then
 		return false
 	end
