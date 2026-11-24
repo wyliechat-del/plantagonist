@@ -1,14 +1,7 @@
-"""Builds the conservatory walls from Wylie's side panel art (2026-11-23).
-
-Usage: pip install trimesh shapely mapbox_earcut scipy
-       python3 scripts/models/build_conservatory.py models/export/Conservatory.glb
-
-Writes one glTF with five meshes, named for what the game sets on them:
-WallFace (peach faces), WallDepth (brown wall tops, ends and reveals), Frame,
-Glass (200, 255, 220 at 60% transparency) and Grille. The sign is not in the
-mesh; the game adds it as text.
-
+"""Builds the conservatory from Wylie's art: side panel (all 4 sides the same),
+stained glass roof, and the outside and inside door signs.
 Measured from the 2048 px panel: 1201 px wide = 60 studs, so 1 px = 0.05 stud.
+Usage: python3 build_conservatory.py OUT.glb ROOF.png SIGN_OUTSIDE.png SIGN_INSIDE.png
 Local wall coords: x along the wall (-30..30), y up (0..22), z through the
 wall (-1..1, +z outside)."""
 import math, json, sys
@@ -18,14 +11,14 @@ from shapely.ops import unary_union
 
 SEG = 20
 WALL_LEN, WALL_H, WALL_T = 60.0, 22.0, 2.0
-WIN_X = [-25.45, -18.0, -10.55, 10.55, 18.0, 25.45]
-WIN_OUT_W, WIN_IN_W = 5.8, 4.8
+WIN_X = [-24.4, -17.3, -10.2, 10.2, 17.3, 24.4]
+WIN_OUT_W, WIN_IN_W = 5.9, 4.85
 WIN_BOTTOM_OUT, WIN_BOTTOM_IN = 1.3, 1.8
-WIN_SPRING = 17.85            # where the arch starts
+WIN_SPRING = 17.8             # where the arch starts
 DOOR_OUT_W, DOOR_IN_W = 12.0, 10.4
 DOOR_SPRING = 10.0
 GRILLE_X = 0.95               # vertical bars either side of the window centre
-GRILLE_Y = [5.8, 9.8, 13.85, 17.85]
+GRILLE_Y = [5.8, 9.8, 13.85, 17.8]
 BAR = 0.12
 
 COL = {
@@ -98,6 +91,45 @@ def wall():
     parts["Frame"].append(f); parts["WallDepth"].append(d)
     return {k: trimesh.util.concatenate(v) for k, v in parts.items() if v}
 
+ROOF_Y = WALL_H + 0.05
+ROOF_OPACITY = 0.4            # 60% transparent
+# Signs: (centre height, width) measured from Wylie's placement examples.
+SIGN_OUT = (18.6, 11.5)
+SIGN_IN = (18.6, 10.4)
+
+def quad(w, h):
+    v = np.array([[-w / 2, -h / 2, 0], [w / 2, -h / 2, 0], [w / 2, h / 2, 0], [-w / 2, h / 2, 0]], float)
+    uv = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], float)
+    return trimesh.Trimesh(v, [[0, 1, 2], [0, 2, 3]], process=False), uv
+
+def textured(name, mesh, uv, image, opacity=1.0, double=False):
+    from PIL import Image
+    mat = trimesh.visual.material.PBRMaterial(
+        name=name, baseColorTexture=Image.open(image).convert("RGBA"),
+        baseColorFactor=[1, 1, 1, opacity], alphaMode="BLEND",
+        metallicFactor=0, roughnessFactor=0.8, doubleSided=double)
+    mesh.visual = trimesh.visual.TextureVisuals(uv=uv, material=mat)
+    return mesh
+
+def extras(roof_png, out_png, in_png):
+    from PIL import Image
+    items = []
+    roof, uv = quad(WALL_LEN, WALL_LEN)
+    roof.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2, (1, 0, 0)))
+    roof.apply_translation((0, ROOF_Y, 0))
+    items.append(("Roof", textured("Roof", roof, uv, roof_png, ROOF_OPACITY, True)))
+    for label, png, (cy, w), z, flip in (("SignOutside", out_png, SIGN_OUT, 29 + WALL_T / 2 + 0.03, False),
+                                          ("SignInside", in_png, SIGN_IN, 29 - WALL_T / 2 - 0.03, True)):
+        iw, ih = Image.open(png).size
+        for i in range(4):
+            m, uv = quad(w, w * ih / iw)
+            if flip:   # face into the building
+                m.apply_transform(trimesh.transformations.rotation_matrix(math.pi, (0, 1, 0)))
+            m.apply_translation((0, cy, z))
+            m.apply_transform(trimesh.transformations.rotation_matrix(math.radians(90 * i), (0, 1, 0)))
+            items.append((f"{label}{i + 1}", textured(label, m, uv, png)))
+    return items
+
 def building():
     one = wall()
     out = {k: [] for k in COL}
@@ -131,6 +163,9 @@ if __name__ == "__main__":
         m.visual = trimesh.visual.TextureVisuals(material=mat)
         scene.add_geometry(m, node_name=name, geom_name=name)
         info[name] = {"triangles": int(len(m.faces)), "size": [round(float(v), 2) for v in m.extents]}
+    for name, m in extras(sys.argv[2], sys.argv[3], sys.argv[4]):
+        scene.add_geometry(m, node_name=name, geom_name=name)
+        info[name] = {"triangles": int(len(m.faces))}
     out = sys.argv[1]
     scene.export(out)
     print(json.dumps(info, indent=1))
