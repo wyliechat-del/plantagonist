@@ -335,7 +335,8 @@ local function roofLights(house: Folder)
 			light.Angle = lights.angle
 			light.Brightness = lights.brightness
 			light.Shadows = false
-			light.Color = Util.colour(lights.colours[(index - 1) % #lights.colours + 1])
+			local colourIndex = lights.pattern[(index - 1) % #lights.pattern + 1]
+			light.Color = Util.colour(lights.colours[colourIndex])
 			light.Parent = holder
 		end
 	end

@@ -60,9 +60,12 @@ Map.Conservatory = table.freeze({
 	roofLights = table.freeze({
 		perSide = 4,
 		belowRoof = 1,
-		range = 32,
-		angle = 90,
-		brightness = 8,
+		range = 24,
+		angle = 70,
+		brightness = 3.5,
+		-- Which colour each light uses, row by row (indexes into `colours`),
+		-- so every colour appears 4 times, scattered over the room.
+		pattern = table.freeze({ 1, 2, 3, 4, 3, 4, 1, 2, 4, 3, 2, 1, 2, 1, 4, 3 }),
 		colours = table.freeze({
 			table.freeze({ 203, 33, 162 }),
 			table.freeze({ 222, 211, 20 }),
