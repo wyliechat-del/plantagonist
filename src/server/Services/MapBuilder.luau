@@ -176,7 +176,9 @@ local function placeConservatoryModel(house: Folder): boolean
 			part.CanCollide = false
 			part.CanQuery = false
 			part.CanTouch = false
-			local name = part.Name
+			-- The importer names parts like "Glass_Node" or "SignOutside3";
+			-- the leading letters say what the part is.
+			local name = string.match(part.Name, "^%a+") or part.Name
 			local colour = c.colours[name]
 			if colour then
 				part.Color = Util.colour(colour)
@@ -188,7 +190,7 @@ local function placeConservatoryModel(house: Folder): boolean
 			elseif name == "Roof" then
 				part.Transparency = c.roofTransparency
 				part.CastShadow = false
-			elseif string.sub(name, 1, 4) == "Sign" then
+			elseif name == "SignOutside" or name == "SignInside" then
 				-- Clear parts of the sign image show the part colour, so
 				-- match the wall behind it.
 				part.Color = wallColour
