@@ -149,14 +149,49 @@ local function conservatoryCollision(house: Folder, visible: boolean)
 	Util.part(roof)
 end
 
--- The image on an imported part: its TextureID, or the colour map of a
--- SurfaceAppearance inside it.
-local function imageOf(part: BasePart): string
-	if part:IsA("MeshPart") and part.TextureID ~= "" then
-		return part.TextureID
+-- Reads a property that may not exist on this Studio version.
+local function tryRead(instance: Instance, property: string): any
+	local ok, value = pcall(function()
+		return (instance :: any)[property]
+	end)
+	return if ok then value else nil
+end
+
+-- An image address from a string property or a Content property.
+local function addressOf(value: any): string?
+	if type(value) == "string" and value ~= "" then
+		return value
 	end
-	local look = part:FindFirstChildOfClass("SurfaceAppearance")
-	return if look then look.ColorMap else ""
+	if typeof(value) == "Content" then
+		local uri = (value :: any).Uri
+		if type(uri) == "string" and uri ~= "" then
+			return uri
+		end
+	end
+	return nil
+end
+
+-- The image on an imported part. An asset id set in Config wins; otherwise
+-- look on the part, the parts and SurfaceAppearances inside it, under the
+-- property names different Studio versions use.
+local function imageOf(mesh: Instance, name: string): string?
+	local id = Map.Conservatory.imageIds[name]
+	if id and id > 0 then
+		return `rbxassetid://{id}`
+	end
+	local candidates = { mesh }
+	for _, child in mesh:GetDescendants() do
+		table.insert(candidates, child)
+	end
+	for _, instance in candidates do
+		for _, property in { "TextureID", "TextureContent", "ColorMap", "ColorMapContent" } do
+			local address = addressOf(tryRead(instance, property))
+			if address then
+				return address
+			end
+		end
+	end
+	return nil
 end
 
 -- Swaps an imported flat image part (roof or sign) for a thin invisible part
@@ -164,8 +199,18 @@ end
 -- image; mesh textures don't.
 local function asDecal(house: Folder, mesh: BasePart, name: string)
 	local c = Map.Conservatory
-	local image = imageOf(mesh)
-	if image == "" then
+	local image = imageOf(mesh, name)
+	if image == nil then
+		local found = {}
+		for _, child in mesh:GetDescendants() do
+			table.insert(found, child.ClassName)
+		end
+		warn(
+			`[MapBuilder] no image found on {mesh:GetFullName()} ({mesh.ClassName}; inside: {table.concat(
+				found,
+				", "
+			)})`
+		)
 		return
 	end
 	local size = mesh.Size

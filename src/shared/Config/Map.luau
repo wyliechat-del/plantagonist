@@ -47,15 +47,22 @@ Map.Conservatory = table.freeze({
 	-- see-through glass). This is how far each decal part sits off its
 	-- surface, and how thick it is.
 	decalOffset = 0.05,
+	-- Image asset ids for the decals (from Studio's Asset Manager). 0 means
+	-- read the image from the imported part instead.
+	imageIds = table.freeze({
+		Roof = 0,
+		SignOutside = 0,
+		SignInside = 0,
+	}),
 	decalThickness = 0.1,
 	-- Coloured light under the stained glass roof: a grid of downward spot
 	-- lights, cycling through the roof glass colours.
 	roofLights = table.freeze({
 		perSide = 4,
 		belowRoof = 1,
-		range = 30,
+		range = 32,
 		angle = 90,
-		brightness = 4,
+		brightness = 8,
 		colours = table.freeze({
 			table.freeze({ 203, 33, 162 }),
 			table.freeze({ 222, 211, 20 }),
