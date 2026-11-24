@@ -4,6 +4,8 @@
 *.rbxlx
 *.rbxm
 *.rbxmx
+# ...except models saved from Studio for Rojo to load
+!/assets/*.rbxm
 
 # Secrets: API keys live here or in your shell, never in Git
 .env

@@ -20,12 +20,44 @@ Map.territories = table.freeze({
 	Hills = table.freeze({ signX = 1, signZ = -1, colour = table.freeze({ 150, 140, 100 }) }),
 })
 
--- The conservatory building (glass house) in the centre.
+-- The conservatory building in the centre. The look comes from the model in
+-- ServerStorage.Assets (built by scripts/models/build_conservatory.py and
+-- imported in Studio); invisible walls give it collision. Without the model,
+-- plain glass walls stand in.
 Map.Conservatory = table.freeze({
 	halfSize = 30,
 	height = 22,
-	doorWidth = 12,
+	wallThickness = 2,
+	-- The doorway plants walk through: inner width of the door arch, and the
+	-- height where the arch starts curving.
+	doorWidth = 10.4,
 	doorHeight = 10,
+	modelName = "Conservatory",
+	-- Colours of the model's parts, by part name (from Wylie's panel art).
+	colours = table.freeze({
+		WallFace = table.freeze({ 243, 212, 158 }),
+		WallDepth = table.freeze({ 142, 90, 68 }),
+		Frame = table.freeze({ 226, 156, 122 }),
+		Glass = table.freeze({ 200, 255, 220 }),
+		Grille = table.freeze({ 142, 142, 142 }),
+	}),
+	glassTransparency = 0.6,
+	roofTransparency = 0.6,
+	-- Coloured light under the stained glass roof: a grid of downward spot
+	-- lights, cycling through the roof colours.
+	roofLights = table.freeze({
+		perSide = 3,
+		belowRoof = 1,
+		range = 26,
+		angle = 80,
+		brightness = 2,
+		colours = table.freeze({
+			table.freeze({ 214, 40, 160 }),
+			table.freeze({ 20, 180, 200 }),
+			table.freeze({ 222, 210, 30 }),
+			table.freeze({ 222, 120, 60 }),
+		}),
+	}),
 })
 
 -- The safe field around the conservatory, ringed by trees with gaps.

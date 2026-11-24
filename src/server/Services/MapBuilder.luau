@@ -9,6 +9,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Build = require(ReplicatedStorage.Shared.Config.Build)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
@@ -107,51 +108,142 @@ local function buildField()
 	end
 end
 
+-- Invisible walls with a doorway in each side, and a lid on top.
+local function conservatoryCollision(house: Folder, visible: boolean)
+	local c = Map.Conservatory
+	local props = if visible
+		then {
+			Color = Util.colour(c.colours.Glass),
+			Transparency = c.glassTransparency,
+			Material = Enum.Material.Glass,
+		}
+		else { Transparency = 1 }
+	local sideLength = c.halfSize * 2
+	local segment = (sideLength - c.doorWidth) / 2
+	local offset = c.halfSize - c.wallThickness / 2
+	for _, facing in { 0, 90, 180, 270 } do
+		local rotation = CFrame.Angles(0, math.rad(facing), 0)
+		local function wall(name: string, size: Vector3, position: Vector3)
+			local part = table.clone(props)
+			part.Name = name
+			part.Size = size
+			part.CFrame = rotation * CFrame.new(position)
+			part.Parent = house
+			Util.part(part)
+		end
+		local along = c.doorWidth / 2 + segment / 2
+		local wallSize = Vector3.new(segment, c.height, c.wallThickness)
+		wall("Wall", wallSize, Vector3.new(-along, GROUND + c.height / 2, offset))
+		wall("Wall", wallSize, Vector3.new(along, GROUND + c.height / 2, offset))
+		wall(
+			"Lintel",
+			Vector3.new(c.doorWidth, c.height - c.doorHeight, c.wallThickness),
+			Vector3.new(0, GROUND + c.doorHeight + (c.height - c.doorHeight) / 2, offset)
+		)
+	end
+	local roof = table.clone(props)
+	roof.Name = "Roof"
+	roof.Size = Vector3.new(sideLength, 1, sideLength)
+	roof.Position = Vector3.new(0, GROUND + c.height + 0.5, 0)
+	roof.Parent = house
+	Util.part(roof)
+end
+
+-- Places a copy of the imported conservatory model and styles its parts by
+-- name. Returns false when the model isn't in ServerStorage.Assets yet.
+local function placeConservatoryModel(house: Folder): boolean
+	local c = Map.Conservatory
+	local assets = ServerStorage:FindFirstChild("Assets")
+	local source = assets and assets:FindFirstChild(c.modelName)
+	if source == nil or not source:IsA("Model") then
+		return false
+	end
+	local model = source:Clone()
+	model.Name = "ConservatoryModel"
+	-- The importer may change units, so scale to the right width, then sit
+	-- the model centred on the ground.
+	local _, size = model:GetBoundingBox()
+	local width = math.max(size.X, size.Z)
+	if width > 0 then
+		model:ScaleTo(model:GetScale() * c.halfSize * 2 / width)
+	end
+	local box, scaled = model:GetBoundingBox()
+	model:TranslateBy(Vector3.new(0, GROUND + scaled.Y / 2, 0) - box.Position)
+	local wallColour = Util.colour(c.colours.WallFace)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			local name = part.Name
+			local colour = c.colours[name]
+			if colour then
+				part.Color = Util.colour(colour)
+			end
+			if name == "Glass" then
+				part.Transparency = c.glassTransparency
+				part.Material = Enum.Material.Glass
+				part.CastShadow = false
+			elseif name == "Roof" then
+				part.Transparency = c.roofTransparency
+				part.CastShadow = false
+			elseif string.sub(name, 1, 4) == "Sign" then
+				-- Clear parts of the sign image show the part colour, so
+				-- match the wall behind it.
+				part.Color = wallColour
+				part.CastShadow = false
+			end
+		end
+	end
+	model.Parent = house
+	return true
+end
+
+-- Spot lights under the roof in the stained glass colours.
+local function roofLights(house: Folder)
+	local c = Map.Conservatory
+	local lights = c.roofLights
+	local count = lights.perSide
+	local step = c.halfSize * 2 / count
+	local index = 0
+	for row = 1, count do
+		for column = 1, count do
+			index += 1
+			local x = -c.halfSize + step * (column - 0.5)
+			local z = -c.halfSize + step * (row - 0.5)
+			local holder = Util.part({
+				Name = "RoofLight",
+				Size = Vector3.new(1, 1, 1),
+				Position = Vector3.new(x, GROUND + c.height - lights.belowRoof, z),
+				Transparency = 1,
+				CanCollide = false,
+				CanQuery = false,
+				CanTouch = false,
+				Parent = house,
+			})
+			local light = Instance.new("SpotLight")
+			light.Face = Enum.NormalId.Bottom
+			light.Range = lights.range
+			light.Angle = lights.angle
+			light.Brightness = lights.brightness
+			light.Shadows = false
+			light.Color = Util.colour(lights.colours[(index - 1) % #lights.colours + 1])
+			light.Parent = holder
+		end
+	end
+end
+
 local function buildConservatory()
 	local house = Instance.new("Folder")
 	house.Name = "Conservatory"
 	house.Parent = folder
 	local c = Map.Conservatory
-	local glass = {
-		Color = Color3.fromRGB(200, 235, 255),
-		Transparency = 0.6,
-		Material = Enum.Material.Glass,
-	}
-	local sideLength = c.halfSize * 2
-	local segment = (sideLength - c.doorWidth) / 2
-	for _, facing in { 0, 90, 180, 270 } do
-		local rotation = CFrame.Angles(0, math.rad(facing), 0)
-		local function wall(name: string, size: Vector3, offset: Vector3)
-			local props = table.clone(glass)
-			props.Name = name
-			props.Size = size
-			props.CFrame = rotation * CFrame.new(offset)
-			props.Parent = house
-			Util.part(props)
-		end
-		local along = c.doorWidth / 2 + segment / 2
-		wall(
-			"Wall",
-			Vector3.new(segment, c.height, 1),
-			Vector3.new(-along, GROUND + c.height / 2, c.halfSize)
-		)
-		wall(
-			"Wall",
-			Vector3.new(segment, c.height, 1),
-			Vector3.new(along, GROUND + c.height / 2, c.halfSize)
-		)
-		wall(
-			"Lintel",
-			Vector3.new(c.doorWidth, c.height - c.doorHeight, 1),
-			Vector3.new(0, GROUND + c.doorHeight + (c.height - c.doorHeight) / 2, c.halfSize)
-		)
+	local hasModel = placeConservatoryModel(house)
+	conservatoryCollision(house, not hasModel)
+	if hasModel then
+		roofLights(house)
 	end
-	local roof = table.clone(glass)
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(sideLength, 1, sideLength)
-	roof.Position = Vector3.new(0, GROUND + c.height, 0)
-	roof.Parent = house
-	Util.part(roof)
 	-- Potted plants and a sculpture for decoration.
 	for index = 1, 8 do
 		local radians = math.rad(index * 45)

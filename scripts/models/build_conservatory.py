@@ -1,7 +1,11 @@
 """Builds the conservatory from Wylie's art: side panel (all 4 sides the same),
 stained glass roof, and the outside and inside door signs.
 Measured from the 2048 px panel: 1201 px wide = 60 studs, so 1 px = 0.05 stud.
-Usage: python3 build_conservatory.py OUT.glb ROOF.png SIGN_OUTSIDE.png SIGN_INSIDE.png
+Usage (from the repo root):
+  python3 scripts/models/build_conservatory.py models/Conservatory.glb \
+    models/conservatory-art/roof.png models/conservatory-art/sign-outside.png \
+    models/conservatory-art/sign-inside.png
+The wall measurements below come from models/conservatory-art/walls-panel.png.
 Local wall coords: x along the wall (-30..30), y up (0..22), z through the
 wall (-1..1, +z outside)."""
 import math, json, sys

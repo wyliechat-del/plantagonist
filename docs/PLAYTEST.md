@@ -80,6 +80,34 @@ Studio risks for build 4: the lifted plant is anchored and moved by the server, 
 5. **Slash**: the red family is called Slash now.
 6. **Jump**: 20% faster while in the air, and 1 s after landing before you can jump again.
 
+## 2f. New in build 6: the conservatory model
+
+The conservatory now uses the 3D model made from Wylie's art. Until the model
+is imported, the game shows the old plain glass walls, so do this once:
+
+1. Pull the branch as in section 1. The model is `models/Conservatory.glb`.
+2. Studio needs the place published (it is). In edit mode, open
+   **File > Import 3D** (also on the Home tab as **Import 3D**) and pick
+   `~/plantagonist/models/Conservatory.glb`. Leave the import settings as
+   they are and press **Import**. This uploads the meshes, the roof image and
+   the sign images to your account.
+3. A model named **Conservatory** appears in Workspace. Right-click it,
+   choose **Save to File...**, and save it as
+   `~/plantagonist/assets/Conservatory.rbxm`. Then delete it from Workspace.
+4. Stop `rojo serve` and start it again, then reconnect. Rojo puts the model
+   in ServerStorage > Assets, and the game places it when it starts.
+5. Send the `Conservatory.rbxm` file to Claude (or commit it) so it's saved
+   in the repo.
+
+Then press **Play** and check:
+
+1. **Build flag** says "Build 6".
+2. **Walls**: peach walls, brown depth, 6 arched windows and a door on each side, sitting on the ground (not floating or sunk).
+3. **Glass**: windows and the stained glass roof are see-through (60%).
+4. **Signs**: "Dangerous Plants" over each outside door, the Warning sign over each inside door. If the space around the letters shows as a coloured box instead of wall, tell Claude.
+5. **Coloured light**: pink, blue, yellow and orange pools of light on the floor inside. Rojo now sets **Lighting > Technology** to **Future** so these lights show properly; phones lower it on their own if needed.
+6. **Doors**: plants walk in and out of all 4 doors, and can't pass through the walls or windows.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
