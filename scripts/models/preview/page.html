@@ -74,6 +74,7 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
       const f = c < air ? 0 : Math.sin(Math.PI * (c - air) / s.squashShare);
       sxz = 1 + (s.wide - 1) * f;
       sy = 1 - (1 - s.short) * f;
+      angle = (s.turn || 0) * f;   // and/or turn `turn` degrees about the axis
     } else if (time !== null && mv.bounce) {
       // Bounce: a hop (a smooth arc up and down), then on landing a squish
       // to `squash` of full height and back, for the last `squashShare` of each cycle.

@@ -39,7 +39,7 @@
    ]
   },
   "Crown": {
-   "triangles": 168,
+   "triangles": 84,
    "colour": [
     93,
     124,
@@ -48,17 +48,17 @@
    "transparency": 0.0,
    "centre": [
     0.0,
-    2.655,
-    0.07
+    2.657,
+    0.0
    ],
    "size": [
     0.905,
-    1.406,
-    1.334
+    1.402,
+    0.4
    ]
   },
   "CrownLight": {
-   "triangles": 168,
+   "triangles": 112,
    "colour": [
     140,
     198,
@@ -67,12 +67,12 @@
    "transparency": 0.0,
    "centre": [
     0.0,
-    2.655,
+    2.657,
     0.0
    ],
    "size": [
-    1.403,
-    1.406,
+    0.4,
+    1.402,
     0.905
    ]
   },
@@ -115,7 +115,7 @@
    ]
   },
   "CrownRim": {
-   "triangles": 768,
+   "triangles": 448,
    "colour": [
     0,
     0,
@@ -124,13 +124,203 @@
    "transparency": 0.0,
    "centre": [
     0.0,
-    2.653,
-    0.071
+    2.656,
+    0.0
    ],
    "size": [
-    1.409,
-    1.411,
-    1.34
+    0.915,
+    1.405,
+    0.915
+   ]
+  },
+  "OuterSpike1": {
+   "triangles": 28,
+   "colour": [
+    93,
+    124,
+    44
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.157,
+    2.332,
+    -0.23
+   ],
+   "size": [
+    0.351,
+    0.754,
+    0.323
+   ]
+  },
+  "OuterSpikeRim1": {
+   "triangles": 64,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.157,
+    2.332,
+    -0.23
+   ],
+   "size": [
+    0.356,
+    0.759,
+    0.33
+   ]
+  },
+  "OuterSpike2": {
+   "triangles": 28,
+   "colour": [
+    140,
+    198,
+    63
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.256,
+    2.332,
+    0.078
+   ],
+   "size": [
+    0.351,
+    0.754,
+    0.386
+   ]
+  },
+  "OuterSpikeRim2": {
+   "triangles": 64,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.256,
+    2.332,
+    0.078
+   ],
+   "size": [
+    0.36,
+    0.759,
+    0.389
+   ]
+  },
+  "OuterSpike3": {
+   "triangles": 28,
+   "colour": [
+    93,
+    124,
+    44
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    2.332,
+    0.27
+   ],
+   "size": [
+    0.4,
+    0.754,
+    0.369
+   ]
+  },
+  "OuterSpikeRim3": {
+   "triangles": 64,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    2.332,
+    0.27
+   ],
+   "size": [
+    0.4,
+    0.759,
+    0.379
+   ]
+  },
+  "OuterSpike4": {
+   "triangles": 28,
+   "colour": [
+    140,
+    198,
+    63
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.256,
+    2.332,
+    0.078
+   ],
+   "size": [
+    0.351,
+    0.754,
+    0.386
+   ]
+  },
+  "OuterSpikeRim4": {
+   "triangles": 64,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.256,
+    2.332,
+    0.078
+   ],
+   "size": [
+    0.36,
+    0.759,
+    0.389
+   ]
+  },
+  "OuterSpike5": {
+   "triangles": 28,
+   "colour": [
+    93,
+    124,
+    44
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.157,
+    2.332,
+    -0.23
+   ],
+   "size": [
+    0.351,
+    0.754,
+    0.323
+   ]
+  },
+  "OuterSpikeRim5": {
+   "triangles": 64,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.157,
+    2.332,
+    -0.23
+   ],
+   "size": [
+    0.356,
+    0.759,
+    0.33
    ]
   }
  },
@@ -172,6 +362,121 @@
    "spread": {
     "wide": 1.25,
     "short": 0.9,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "OuterSpike1",
+    "OuterSpikeRim1"
+   ],
+   "hinge": [
+    0.149,
+    1.96,
+    -0.205
+   ],
+   "axis": [
+    -0.809,
+    -0.0,
+    -0.588
+   ],
+   "cycles": 1,
+   "spread": {
+    "wide": 1,
+    "short": 1,
+    "turn": 28,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "OuterSpike2",
+    "OuterSpikeRim2"
+   ],
+   "hinge": [
+    0.241,
+    1.96,
+    0.078
+   ],
+   "axis": [
+    0.309,
+    -0.0,
+    -0.951
+   ],
+   "cycles": 1,
+   "spread": {
+    "wide": 1,
+    "short": 1,
+    "turn": 28,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "OuterSpike3",
+    "OuterSpikeRim3"
+   ],
+   "hinge": [
+    0.0,
+    1.96,
+    0.253
+   ],
+   "axis": [
+    1.0,
+    -0.0,
+    -0.0
+   ],
+   "cycles": 1,
+   "spread": {
+    "wide": 1,
+    "short": 1,
+    "turn": 28,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "OuterSpike4",
+    "OuterSpikeRim4"
+   ],
+   "hinge": [
+    -0.241,
+    1.96,
+    0.078
+   ],
+   "axis": [
+    0.309,
+    -0.0,
+    0.951
+   ],
+   "cycles": 1,
+   "spread": {
+    "wide": 1,
+    "short": 1,
+    "turn": 28,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "OuterSpike5",
+    "OuterSpikeRim5"
+   ],
+   "hinge": [
+    -0.149,
+    1.96,
+    -0.205
+   ],
+   "axis": [
+    -0.809,
+    -0.0,
+    0.588
+   ],
+   "cycles": 1,
+   "spread": {
+    "wide": 1,
+    "short": 1,
+    "turn": 28,
     "squashShare": 0.3
    }
   }

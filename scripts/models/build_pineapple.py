@@ -22,6 +22,8 @@ Parts:
   Eyes      white of the eyes
   Outline   black keyline round the body and eyes, plus pupils, eye rims and smile
   CrownRim  black keyline round each spike (moves with them)
+  OuterSpike1-5, OuterSpikeRim1-5  the outer ring, one part per spike so each
+           tips out about its own base on landing
 """
 import math
 import sys
@@ -65,7 +67,10 @@ FACE_LIFT = 12               # px off the skin, above the lattice lines
 # Crown: rings of flat spikes round the top, from the drawing: short ones
 # leaning out at the sides, tall ones near upright in the middle.
 # (count, spike length px, base width px, lean out degrees, ring radius px, turn degrees)
-CROWN = [(5, 280, 150, 52, 95, 36), (4, 400, 150, 24, 65, 0), (3, 520, 140, 8, 30, 60)]
+# The first ring is the outer one: Wylie wants it nearer upright at rest,
+# tipping out by OUTER_TURN degrees as the fruit lands.
+CROWN = [(5, 280, 150, 28, 95, 36), (4, 400, 150, 24, 65, 0), (3, 520, 140, 8, 30, 60)]
+OUTER_TURN = 28
 CROWN_BASE = 735             # px up from the bottom, a little inside the top
 
 
@@ -87,9 +92,12 @@ SPIKE_FOLD = 0.9             # spikes fold outward along the middle, so they nev
 
 
 def crown():
-    leaves, light, rims = [], [], []
+    """Returns the inner spikes (dark, light, rims) and the outer spikes as a
+    list of (dark or light, spike, rim, hinge, axis): each outer spike is its
+    own part so it can tip out about its base."""
+    leaves, light, rims, outer = [], [], [], []
     n = 0                    # counts spikes across all rings, so exactly half are light
-    for count, length, width, lean, ring, turn in CROWN:
+    for ring_no, (count, length, width, lean, ring, turn) in enumerate(CROWN):
         for i in range(count):
             phi = math.radians(turn + 360 * i / count)
             out = np.array([math.sin(phi), 0, -math.cos(phi)])     # phi 0 is the front
@@ -98,16 +106,22 @@ def crown():
             normal = np.cross(side, up)
             base = out * ring * PX + np.array([0, CROWN_BASE * PX, 0])
             outline = spike(length, width)
-            for m, target in ((kit.flat_shape(outline, 8), light if n % 2 else leaves),
-                              (kit.ring_shape(outline, KEYLINE_W / PX, 12), rims)):
+            made = []
+            for m in (kit.flat_shape(outline, 8), kit.ring_shape(outline, KEYLINE_W / PX, 12)):
                 w = width / 2
                 m.vertices = np.array([base + (u * side + v * up + (z + SPIKE_FOLD * (w - abs(u))) * normal) * PX
                                        for u, v, z in m.vertices])
                 m.fix_normals()
-                target.append(m)
+                made.append(m)
+            if ring_no == 0:
+                # Turning about -side tips the spike's top outward.
+                outer.append((n % 2, made[0], made[1], base, -side))
+            else:
+                (light if n % 2 else leaves).append(made[0])
+                rims.append(made[1])
             n += 1
     cat = kit.trimesh.util.concatenate
-    return cat(leaves), cat(light), cat(rims)
+    return cat(leaves), cat(light), cat(rims), outer
 
 
 def lattice():
@@ -148,7 +162,7 @@ def ribbon(pts, outs, half):
 
 def build():
     body = kit.lathe([(r * PX, h * PX) for r, h in PROFILE], sections=32)
-    spikes, light_spikes, spike_rims = crown()
+    spikes, light_spikes, spike_rims, outer = crown()
 
     whites, blacks = [], []
     rim_px = KEYLINE_W / PX
@@ -170,6 +184,15 @@ def build():
         "Outline": kit.trimesh.util.concatenate([kit.outline_shell(body, KEYLINE_W)] + blacks),
         "CrownRim": spike_rims,
     }
+    colours = {"Body": YELLOW, "Lattice": ORANGE, "Crown": GREEN, "CrownLight": LIGHT_GREEN, "Eyes": WHITE,
+               "Outline": BLACK, "CrownRim": BLACK}
+    outer_movers = []
+    for k, (is_light, m, rim, hinge, axis) in enumerate(outer, 1):
+        parts[f"OuterSpike{k}"], parts[f"OuterSpikeRim{k}"] = m, rim
+        colours[f"OuterSpike{k}"], colours[f"OuterSpikeRim{k}"] = LIGHT_GREEN if is_light else GREEN, BLACK
+        outer_movers.append({"parts": [f"OuterSpike{k}", f"OuterSpikeRim{k}"],
+                             "hinge": [round(float(v), 3) for v in hinge], "axis": [round(float(v), 3) for v in axis],
+                             "cycles": 1, "spread": {"wide": 1, "short": 1, "turn": OUTER_TURN, "squashShare": 0.3}})
     extras = {
         "height": HEIGHT,
         "family": "Special",
@@ -181,18 +204,17 @@ def build():
             # so the spikes fan out.
             {"parts": ["Crown", "CrownLight", "CrownRim"], "hinge": [0, round(CROWN_BASE * PX, 3), 0], "cycles": 1,
              "spread": {"wide": SPREAD_WIDE, "short": SPREAD_SHORT, "squashShare": 0.3}},
-        ],
+            # Each outer spike tips out OUTER_TURN degrees about its base at the same time.
+        ] + outer_movers,
         "motionFrames": 30,
         "motionView": {"azimuth": 0, "elevation": 10},
     }
-    colours = {"Body": YELLOW, "Lattice": ORANGE, "Crown": GREEN, "CrownLight": LIGHT_GREEN, "Eyes": WHITE,
-               "Outline": BLACK, "CrownRim": BLACK}
     return parts, colours, extras
 
 
 if __name__ == "__main__":
     parts, colours, extras = build()
-    info = kit.export(sys.argv[1], parts, colours, extras, flat=("Crown", "CrownLight"))
+    info = kit.export(sys.argv[1], parts, colours, extras, flat=tuple(n for n in parts if ("Spike" in n or n.startswith("Crown")) and "Rim" not in n))
     print("size", info["size"], "triangles", info["triangles"])
     for name, p in info["parts"].items():
         print(f"  {name}: {p['triangles']} triangles")
