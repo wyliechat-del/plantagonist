@@ -20,7 +20,7 @@
    ]
   },
   "ScaleMid": {
-   "triangles": 228,
+   "triangles": 204,
    "colour": [
     165,
     105,
@@ -28,18 +28,18 @@
    ],
    "transparency": 0.0,
    "centre": [
-    0.0,
+    -0.0,
     1.154,
     0.026
    ],
    "size": [
     1.514,
     1.359,
-    1.439
+    1.336
    ]
   },
   "ScaleTip": {
-   "triangles": 380,
+   "triangles": 340,
    "colour": [
     110,
     175,
@@ -47,18 +47,37 @@
    ],
    "transparency": 0.0,
    "centre": [
-    -0.0,
+    0.0,
     1.364,
-    -0.025
+    0.095
    ],
    "size": [
     1.892,
     1.684,
-    1.938
+    1.799
+   ]
+  },
+  "Eyes": {
+   "triangles": 2280,
+   "colour": [
+    255,
+    255,
+    255
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.033,
+    -0.602
+   ],
+   "size": [
+    0.964,
+    0.295,
+    0.202
    ]
   },
   "Outline": {
-   "triangles": 15880,
+   "triangles": 16516,
    "colour": [
     0,
     0,
@@ -66,22 +85,22 @@
    ],
    "transparency": 0.0,
    "centre": [
-    -0.0,
+    0.0,
     1.099,
-    -0.027
+    0.097
    ],
    "size": [
     1.964,
     2.271,
-    2.016
+    1.875
    ]
   }
  },
- "triangles": 17776,
+ "triangles": 20628,
  "size": [
   1.964,
   2.271,
-  2.016
+  1.875
  ],
  "height": 2.0,
  "family": "Venom",
@@ -93,18 +112,17 @@
     0,
     0
    ],
-   "axis": [
-    0,
-    1,
-    0
-   ],
-   "spin": 360,
-   "cycles": 1
+   "cycles": 1,
+   "bounce": {
+    "height": 0.3,
+    "squash": 0.8,
+    "squashShare": 0.3
+   }
   }
  ],
- "motionFrames": 107,
+ "motionFrames": 30,
  "motionView": {
   "azimuth": 0,
-  "elevation": 15
+  "elevation": 10
  }
 }

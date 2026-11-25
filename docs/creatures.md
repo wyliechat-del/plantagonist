@@ -42,7 +42,8 @@ pictures, and only then imported into Studio. The fly was the first.
   The JSON keeps the picker values; the game should set each part's Color
   from them, in case Studio's importer reads the GLB colour differently.
 - A `moving` entry can also rock: `swing` degrees either side of upright and
-  `shrink` (0.15 = 15% smaller at the ends of the swing), or spin: `spin` degrees per cycle, as the Nut does on
+  `shrink` (0.15 = 15% smaller at the ends of the swing), or spin: `spin` degrees per cycle, or bounce: `bounce` {height, squash,
+  squashShare} (a hop, then a squish from the base on landing), as the Nut does on
   its tip. `parts: "all"` moves the whole model. `motionFrames` sets the clip length (40 ms a frame) and `motionView` sets
   the camera for `motion.gif`.
 - The fly's legs are one part that swings 15 degrees about the middle hips.
@@ -50,3 +51,7 @@ pictures, and only then imported into Studio. The fly was the first.
 - Axes: +Y up, the creature faces -Z (Roblox's forward), 1 unit = 1 stud.
 - The black cartoon outline is a separate `Outline` part (a slightly bigger
   inside-out copy). Delete it for a plain look; wing rims go with it.
+
+- Faces drawn flat (the fruit face) are bent onto the body with `face_plate`
+  in `build_dragonfruit.py`: cut the shape into small triangles first, or the
+  flat pieces dip under a curved body.

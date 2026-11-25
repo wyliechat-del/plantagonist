@@ -20,7 +20,8 @@ Parts:
   Skin      magenta egg (the lower part of each scale is just skin)
   ScaleMid  thin brown band where each scale lifts off
   ScaleTip  green tips
-  Outline   black keyline round the egg and along each scale's two sides
+  Eyes      white of the eyes (face on the front, -Z)
+  Outline   black keyline round the egg and scales, plus the pupils, eye rims and frown
 """
 import math
 import sys
@@ -38,7 +39,10 @@ GREEN = (110, 175, 40, 255)
 BLACK = (0, 0, 0, 255)
 
 # Scale rows: (height up the egg 0..1, how many round it, turn offset in degrees)
-ROWS = [(0.17, 5, 0), (0.36, 5, 36), (0.6, 5, 8), (0.82, 4, 50)]
+ROWS = [(0.17, 5, 36), (0.36, 5, 0), (0.6, 5, 0), (0.82, 4, 50)]
+# The face is on the front (-Z). Scales that would sit on it are left out:
+# (row height, angle).
+FACE_GAPS = {(0.36, 0), (0.6, 0)}
 SCALE_LEN = 0.28             # times HEIGHT
 SCALE_WIDTH = 0.25           # times HEIGHT
 SCALE_LIFT = 0.08            # how far the tip stands off the skin, times HEIGHT
@@ -47,6 +51,8 @@ LIFT_FROM = 0.3             # how far up the scale it starts to rise off the ski
 BAND = 0.14                  # brown band, as a share of the raised part; the rest is green
 KEYLINE = 0.018              # keyline width, times HEIGHT (same on the egg and the scales)
 KEYLINE_W = KEYLINE * HEIGHT
+BOUNCE_HEIGHT = 0.3          # studs, how high each hop goes
+BOUNCE_SQUASH = 0.8          # height on landing, as a share of full height
 
 
 def egg_radius(t):
@@ -146,32 +152,118 @@ def scale(t, angle):
     return mid, top, lines
 
 
+# Face, from Wylie's face drawing (same pixel grid as the fruit drawing:
+# egg x 612..1342, y 445..1495). Grumpy lidded eyes and a frown.
+EGG_LEFT, EGG_RIGHT, EGG_TOP, EGG_BOTTOM = 612, 1342, 445, 1495
+EYE_C, EYE_R = (838, 920), 110            # left eye in the drawing; the right is mirrored
+LID = ((738, 875), (948, 912))            # straight top edge of the left eye (outer, inner)
+PUPIL_C, PUPIL_R = (838, 925), 52
+MOUTH = [(915, 1095), (950, 1082), (985, 1078), (1020, 1085), (1045, 1102), (1067, 1130)]
+MOUTH_TICK = [(885, 1067), (903, 1080), (914, 1098), (913, 1118), (908, 1137)]
+WHITE = (255, 255, 255, 255)
+
+
+def mirror_px(pts):
+    centre = (EGG_LEFT + EGG_RIGHT) / 2
+    return [(2 * centre - x, y) for x, y in pts]
+
+
+def circle(c, r, n=48):
+    return [(c[0] + r * math.cos(2 * math.pi * i / n), c[1] + r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+
+
+def below_line(poly, a, b):
+    """Keep the part of a convex outline below the line a-b (larger y in the drawing)."""
+    def side(p):
+        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+    sign = 1 if side((a[0], a[1] + 1000)) > 0 else -1
+    out = []
+    for i, p in enumerate(poly):
+        q = poly[(i + 1) % len(poly)]
+        sp, sq = side(p) * sign, side(q) * sign
+        if sp >= 0:
+            out.append(p)
+        if (sp >= 0) != (sq >= 0):
+            k = sp / (sp - sq)
+            out.append((p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k))
+    return out
+
+
+PX = HEIGHT / (EGG_BOTTOM - EGG_TOP)       # studs per drawing pixel
+
+
+def on_face(x, y, lift_px):
+    """Drawing pixel (x, y) on the front of the egg, lifted off the skin."""
+    t = (EGG_BOTTOM - y) / (EGG_BOTTOM - EGG_TOP)
+    mx = -(x - (EGG_LEFT + EGG_RIGHT) / 2) * PX   # +x shows on the left of the front view
+    r = egg_radius(t)
+    mx = max(-r * 0.98, min(r * 0.98, mx))
+    z = -math.sqrt(r * r - mx * mx)
+    n = np.array([mx, 0.0, z]) / r
+    return np.array([mx, HEIGHT * t, z]) + n * lift_px * PX
+
+
+def face_plate(outline_px, lift_px, thick_px, ring_px=None):
+    """A flat shape (or a band round its edge) bent onto the egg's skin."""
+    m = kit.ring_shape(outline_px, ring_px, thick_px) if ring_px else kit.flat_shape(outline_px, thick_px)
+    # Cut into small triangles first, so the shape follows the curve of the
+    # egg instead of cutting straight across it (and dipping under the skin).
+    v, f = kit.trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=35)
+    m = kit.trimesh.Trimesh(v, f)
+    m.vertices = np.array([on_face(x, y, lift_px + z) for x, y, z in m.vertices])
+    m.fix_normals()
+    return m
+
+
+def face():
+    whites, blacks = [], []
+    rim_px = KEYLINE_W / PX
+    for flip in (False, True):
+        f = mirror_px if flip else (lambda p: p)
+        eye = below_line(f(circle(EYE_C, EYE_R)), *f(list(LID)))
+        lid = f(list(LID))
+        pupil = below_line(f(circle(PUPIL_C, PUPIL_R, 32)), lid[0], lid[1])
+        whites.append(face_plate(eye, 4, 4))
+        blacks.append(face_plate(eye, 7, 4, ring_px=rim_px))
+        blacks.append(face_plate(pupil, 6, 4))
+    mouth_r = KEYLINE_W * 0.35
+    for line in (MOUTH, MOUTH_TICK):
+        blacks.append(kit.tube([on_face(x, y, 4) for x, y in line], mouth_r, sections=6))
+    return kit.trimesh.util.concatenate(whites), blacks
+
+
 def build():
     body = egg()
     mids, tips, lines = [], [], []
     for t, count, offset in ROWS:
         for i in range(count):
-            m, tp, ln = scale(t, offset + 360 * i / count)
+            angle = (offset + 360 * i / count) % 360
+            if (t, angle) in FACE_GAPS:
+                continue
+            m, tp, ln = scale(t, angle)
             mids.append(m)
             tips.append(tp)
             lines.append(ln)
-    outline = kit.trimesh.util.concatenate([kit.outline_shell(body, KEYLINE_W)] + lines)
+    whites, face_black = face()
+    outline = kit.trimesh.util.concatenate([kit.outline_shell(body, KEYLINE_W)] + lines + face_black)
     parts = {
         "Skin": body,
         "ScaleMid": kit.trimesh.util.concatenate(mids),
         "ScaleTip": kit.trimesh.util.concatenate(tips),
+        "Eyes": whites,
         "Outline": outline,
     }
     extras = {
         "height": HEIGHT,
         "family": "Venom",
-        # Preview only: a slow turn so every side shows. Whether the fruit
-        # moves in the game is still to be decided.
-        "moving": [{"parts": "all", "hinge": [0, 0, 0], "axis": [0, 1, 0], "spin": 360, "cycles": 1}],
-        "motionFrames": 107,   # one turn in about 4.3 seconds (Wylie: 30% of the first speed),
-        "motionView": {"azimuth": 0, "elevation": 15},
+        # Bounce (Wylie): a small hop; on landing it squishes to 80% of its
+        # height, then springs back to full height. Squish is from the base.
+        "moving": [{"parts": "all", "hinge": [0, 0, 0], "cycles": 1,
+                    "bounce": {"height": BOUNCE_HEIGHT, "squash": BOUNCE_SQUASH, "squashShare": 0.3}}],
+        "motionFrames": 30,   # one bounce in 1.2 seconds
+        "motionView": {"azimuth": 0, "elevation": 10},
     }
-    colours = {"Skin": SKIN, "ScaleMid": MID, "ScaleTip": GREEN, "Outline": BLACK}
+    colours = {"Skin": SKIN, "ScaleMid": MID, "ScaleTip": GREEN, "Eyes": WHITE, "Outline": BLACK}
     return parts, colours, extras
 
 

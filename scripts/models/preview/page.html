@@ -53,7 +53,7 @@ window.setup = async (url, info, size) => {
       mesh.parent.add(pivot);
       pivot.add(mesh);
       mesh.position.sub(hinge);
-      movers.push({ pivot, mv, axis: new THREE.Vector3(...mv.axis) });
+      movers.push({ pivot, mv, hinge, axis: new THREE.Vector3(...(mv.axis || [0, 1, 0])) });
     }
   }
   const box = new THREE.Box3().setFromObject(gltf.scene);
@@ -64,9 +64,15 @@ window.setup = async (url, info, size) => {
 window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
   // time 0..1 is one animation loop; null shows the rest pose.
-  for (const { pivot, mv, axis } of movers) {
-    let angle = 0, size = 1;
-    if (time !== null && mv.spin !== undefined) {
+  for (const { pivot, mv, hinge, axis } of movers) {
+    let angle = 0, size = 1, sy = 1, hop = 0;
+    if (time !== null && mv.bounce) {
+      // Bounce: a hop (a smooth arc up and down), then on landing a squish
+      // to `squash` of full height and back, for the last `squashShare` of each cycle.
+      const b = mv.bounce, c = (mv.cycles * time) % 1, air = 1 - b.squashShare;
+      if (c < air) hop = b.height * Math.sin(Math.PI * c / air);
+      else sy = 1 - (1 - b.squash) * Math.sin(Math.PI * (c - air) / b.squashShare);
+    } else if (time !== null && mv.spin !== undefined) {
       // Spin: turn steadily, `spin` degrees per cycle.
       angle = mv.spin * mv.cycles * time;
     } else if (time !== null && mv.swing !== undefined) {
@@ -80,7 +86,8 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
       angle = mv.from + (mv.to - mv.from) * (1 - Math.cos(2 * Math.PI * mv.cycles * time)) / 2;
     }
     pivot.quaternion.setFromAxisAngle(axis, THREE.MathUtils.degToRad(angle));
-    pivot.scale.setScalar(size);
+    pivot.scale.set(size, size * sy, size);
+    pivot.position.set(hinge.x, hinge.y + hop, hinge.z);
   }
   // azimuth 0 looks at the front (-Z side), 90 from the +X side.
   const a = THREE.MathUtils.degToRad(azimuth), e = THREE.MathUtils.degToRad(elevation);
