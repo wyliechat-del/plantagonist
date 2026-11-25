@@ -66,12 +66,22 @@ window.setup = async (url, info, size) => {
   radius = box.getSize(new THREE.Vector3()).length() / 2;
 };
 
+// Changing `transparent` needs the material rebuilt (needsUpdate), or three.js
+// keeps drawing it solid.
+function setOpacity(m, opacity) {
+  const see = opacity < 1;
+  if (m.material.transparent !== see) {
+    m.material.transparent = see;
+    m.material.needsUpdate = true;
+  }
+  m.material.opacity = opacity;
+}
+
 window.draw = ({ azimuth = 0, elevation = 0, time: clock = null, hide = [], zoom = 1, event = null }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
   for (const m of Object.values(nodes)) {
     m.userData.opacity ??= m.material.opacity;
-    m.material.opacity = m.userData.opacity;
-    m.material.transparent = m.userData.opacity < 1;
+    setOpacity(m, m.userData.opacity);
   }
   // time 0..1 is one animation loop; null shows the rest pose. Movers for
   // another event (onEvent) stay at rest.
@@ -99,8 +109,7 @@ window.draw = ({ azimuth = 0, elevation = 0, time: clock = null, hide = [], zoom
         const fade = k[i][4] + (k[i + 1][4] - k[i][4]) * f;
         pivot.traverse((m) => {
           if (!m.isMesh) return;
-          m.material.opacity = m.userData.opacity * fade;
-          m.material.transparent = m.material.opacity < 1;
+          setOpacity(m, m.userData.opacity * fade);
         });
       }
       continue;

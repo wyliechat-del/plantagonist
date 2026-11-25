@@ -17,7 +17,7 @@ cloud. In the JSON "moving" list with "onEvent": "rainWarning" as keyframes
 ([time 0..1, offset from the blob's place in the full cloud, scale,
 turn in degrees about up]); the
 game plays them over Environment.Rain.shadowSeconds. When the rain ends
-("onEvent": "rainEnd") each blob shrinks to nothing and fades out over 1
+("onEvent": "rainEnd") each blob fades out and shrinks to half size over 1
 second; the 5th value in those keys is opacity (1 solid, 0 gone), which
 is 1 minus Roblox Transparency. The blobs' spread
 follows the shadow's radius (shadowStartRadius down to cloudRadius).
@@ -110,12 +110,15 @@ def build():
         colours[f"Blob{k}"], colours[f"BlobRim{k}"] = LIGHT if light else DARK, BLACK
         moving.append({"parts": [f"Blob{k}", f"BlobRim{k}"], "hinge": list(place),
                        "onEvent": "rainWarning", "keys": keys(place, k - 1, around, apart_turn)})
-        # Wylie: when the rain ends each blob shrinks and fades out over 1
-        # second (a little after one another).
+        # Wylie: when the rain ends each blob fades out and shrinks to half
+        # size over 1 second (a little after one another); the fade is
+        # quicker so it shows.
         start = round(0.04 * (k - 1), 2)
         moving.append({"parts": [f"Blob{k}", f"BlobRim{k}"], "hinge": list(place), "onEvent": "rainEnd",
                        "keys": [[0, [0, 0, 0], [1, 1, 1], 0, 1], [start, [0, 0, 0], [1, 1, 1], 0, 1],
-                                [1, [0, 0, 0], [0, 0, 0], 0, 0]]})
+                                [start + 0.45, [0, 0, 0], [0.75, 0.75, 0.75], 0, 0.25],
+                                [0.85, [0, 0, 0], [0.55, 0.55, 0.55], 0, 0],
+                                [1, [0, 0, 0], [0.5, 0.5, 0.5], 0, 0]]})
     # Preview only: the game's shadow disc, shrinking from SHADOW_START to
     # CLOUD_RADIUS, drawn just under the cloud so the timing is clear.
     shadow = kit.trimesh.creation.cylinder(radius=1, height=0.2, sections=48)
