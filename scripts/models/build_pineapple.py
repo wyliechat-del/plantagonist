@@ -17,7 +17,8 @@ spread out a little as it lands.
 Parts:
   Body      yellow body
   Lattice   orange criss-cross lines on the body
-  Crown     green spikes (move)
+  Crown     dark green spikes (move)
+  CrownLight light green spikes, every other one in each ring (move)
   Eyes      white of the eyes
   Outline   black keyline round the body and eyes, plus pupils, eye rims and smile
   CrownRim  black keyline round each spike (moves with them)
@@ -38,6 +39,7 @@ SPREAD_SHORT = 0.9           # crown height at the deepest squish, as a share
 YELLOW = (244, 187, 71, 255)   # colours picked from the drawing
 ORANGE = (250, 149, 30, 255)
 GREEN = (93, 124, 44, 255)
+LIGHT_GREEN = (140, 198, 63, 255)   # Wylie: 8cc63f on every other spike
 WHITE = (255, 255, 255, 255)
 BLACK = (0, 0, 0, 255)
 
@@ -51,10 +53,13 @@ KEYLINE_W = 0.018 * 2.0      # same keyline as the other fruits
 LATTICE_LINES = 10           # lines each way round the body
 LATTICE_R = 10               # px, half the width of a lattice line
 
-EYES = [((864, 1173), 108), ((1139, 1173), 108)]
-PUPILS = [((863, 1178), 52), ((1139, 1178), 52)]
-SMILE = [(912, 1357), (950, 1378), (980, 1382), (1020, 1370), (1050, 1350), (1077, 1325)]
-SMILE_TICK = [(1066, 1280), (1068, 1305), (1080, 1325), (1100, 1337), (1122, 1340)]
+FACE_UP = 70                 # Wylie: face a little higher than in the drawing
+EYES = [((864, 1173 - FACE_UP), 108), ((1139, 1173 - FACE_UP), 108)]
+PUPILS = [((863, 1178 - FACE_UP), 52), ((1139, 1178 - FACE_UP), 52)]
+SMILE = [(x, y - FACE_UP) for x, y in
+         [(912, 1357), (950, 1378), (980, 1382), (1020, 1370), (1050, 1350), (1077, 1325)]]
+SMILE_TICK = [(x, y - FACE_UP) for x, y in
+              [(1066, 1280), (1068, 1305), (1080, 1325), (1100, 1337), (1122, 1340)]]
 FACE_LIFT = 12               # px off the skin, above the lattice lines
 
 # Crown: rings of flat spikes round the top, from the drawing: short ones
@@ -82,7 +87,8 @@ SPIKE_FOLD = 0.9             # spikes fold outward along the middle, so they nev
 
 
 def crown():
-    leaves, rims = [], []
+    leaves, light, rims = [], [], []
+    n = 0                    # counts spikes across all rings, so exactly half are light
     for count, length, width, lean, ring, turn in CROWN:
         for i in range(count):
             phi = math.radians(turn + 360 * i / count)
@@ -92,14 +98,16 @@ def crown():
             normal = np.cross(side, up)
             base = out * ring * PX + np.array([0, CROWN_BASE * PX, 0])
             outline = spike(length, width)
-            for m, target in ((kit.flat_shape(outline, 8), leaves),
+            for m, target in ((kit.flat_shape(outline, 8), light if n % 2 else leaves),
                               (kit.ring_shape(outline, KEYLINE_W / PX, 12), rims)):
                 w = width / 2
                 m.vertices = np.array([base + (u * side + v * up + (z + SPIKE_FOLD * (w - abs(u))) * normal) * PX
                                        for u, v, z in m.vertices])
                 m.fix_normals()
                 target.append(m)
-    return kit.trimesh.util.concatenate(leaves), kit.trimesh.util.concatenate(rims)
+            n += 1
+    cat = kit.trimesh.util.concatenate
+    return cat(leaves), cat(light), cat(rims)
 
 
 def lattice():
@@ -140,7 +148,7 @@ def ribbon(pts, outs, half):
 
 def build():
     body = kit.lathe([(r * PX, h * PX) for r, h in PROFILE], sections=32)
-    spikes, spike_rims = crown()
+    spikes, light_spikes, spike_rims = crown()
 
     whites, blacks = [], []
     rim_px = KEYLINE_W / PX
@@ -157,6 +165,7 @@ def build():
         "Body": body,
         "Lattice": lattice(),
         "Crown": spikes,
+        "CrownLight": light_spikes,
         "Eyes": kit.trimesh.util.concatenate(whites),
         "Outline": kit.trimesh.util.concatenate([kit.outline_shell(body, KEYLINE_W)] + blacks),
         "CrownRim": spike_rims,
@@ -170,20 +179,20 @@ def build():
              "bounce": {"height": BOUNCE_HEIGHT, "squash": BOUNCE_SQUASH, "squashShare": 0.3}},
             # Crown widens and shortens about its base while the body squishes,
             # so the spikes fan out.
-            {"parts": ["Crown", "CrownRim"], "hinge": [0, round(CROWN_BASE * PX, 3), 0], "cycles": 1,
+            {"parts": ["Crown", "CrownLight", "CrownRim"], "hinge": [0, round(CROWN_BASE * PX, 3), 0], "cycles": 1,
              "spread": {"wide": SPREAD_WIDE, "short": SPREAD_SHORT, "squashShare": 0.3}},
         ],
         "motionFrames": 30,
         "motionView": {"azimuth": 0, "elevation": 10},
     }
-    colours = {"Body": YELLOW, "Lattice": ORANGE, "Crown": GREEN, "Eyes": WHITE,
+    colours = {"Body": YELLOW, "Lattice": ORANGE, "Crown": GREEN, "CrownLight": LIGHT_GREEN, "Eyes": WHITE,
                "Outline": BLACK, "CrownRim": BLACK}
     return parts, colours, extras
 
 
 if __name__ == "__main__":
     parts, colours, extras = build()
-    info = kit.export(sys.argv[1], parts, colours, extras, flat=("Crown",))
+    info = kit.export(sys.argv[1], parts, colours, extras, flat=("Crown", "CrownLight"))
     print("size", info["size"], "triangles", info["triangles"])
     for name, p in info["parts"].items():
         print(f"  {name}: {p['triangles']} triangles")
