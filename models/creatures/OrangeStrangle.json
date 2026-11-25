@@ -1,0 +1,172 @@
+{
+ "parts": {
+  "Stem": {
+   "triangles": 440,
+   "colour": [
+    61,
+    135,
+    68
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.019,
+    2.158,
+    0.0
+   ],
+   "size": [
+    0.168,
+    0.415,
+    0.126
+   ]
+  },
+  "Leaf": {
+   "triangles": 68,
+   "colour": [
+    61,
+    135,
+    68
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.666,
+    2.331,
+    -0.086
+   ],
+   "size": [
+    1.343,
+    0.594,
+    0.023
+   ]
+  },
+  "Eyes": {
+   "triangles": 3392,
+   "colour": [
+    255,
+    255,
+    255
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.007,
+    1.243,
+    -0.882
+   ],
+   "size": [
+    1.426,
+    0.617,
+    0.318
+   ]
+  },
+  "Outline": {
+   "triangles": 5568,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.175,
+    0.0
+   ],
+   "size": [
+    2.129,
+    2.423,
+    2.129
+   ]
+  },
+  "LeafRim": {
+   "triangles": 144,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.666,
+    2.331,
+    -0.086
+   ],
+   "size": [
+    1.343,
+    0.594,
+    0.034
+   ]
+  },
+  "Orange": {
+   "triangles": 1152,
+   "colour": [
+    241,
+    90,
+    36
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.011,
+    0.0
+   ],
+   "size": [
+    2.057,
+    2.023,
+    2.057
+   ]
+  }
+ },
+ "triangles": 10764,
+ "size": [
+  2.402,
+  2.665,
+  2.129
+ ],
+ "height": 2.0,
+ "family": "Strangle",
+ "moving": [
+  {
+   "parts": "all",
+   "hinge": [
+    0,
+    0,
+    0
+   ],
+   "cycles": 1,
+   "bounce": {
+    "height": 0.3,
+    "squash": 0.8,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "Leaf",
+    "LeafRim"
+   ],
+   "hinge": [
+    0.006,
+    2.106,
+    -0.086
+   ],
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "from": 15,
+   "to": -15,
+   "cycles": 1
+  }
+ ],
+ "motionFrames": 30,
+ "motionView": {
+  "azimuth": 0,
+  "elevation": 10
+ },
+ "previewViews": {
+  "three-quarter": {
+   "azimuth": -40,
+   "elevation": 40
+  }
+ }
+}
