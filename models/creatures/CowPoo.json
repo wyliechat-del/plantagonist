@@ -1,0 +1,88 @@
+{
+ "parts": {
+  "Coil": {
+   "triangles": 4564,
+   "colour": [
+    161,
+    99,
+    59
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.117,
+    0.926,
+    -0.03
+   ],
+   "size": [
+    2.216,
+    1.558,
+    2.276
+   ]
+  },
+  "Core": {
+   "triangles": 224,
+   "colour": [
+    101,
+    58,
+    42
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    0.67,
+    0.0
+   ],
+   "size": [
+    1.824,
+    1.06,
+    1.824
+   ]
+  },
+  "Splat": {
+   "triangles": 236,
+   "colour": [
+    101,
+    58,
+    42
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.022,
+    0.07,
+    0.042
+   ],
+   "size": [
+    2.759,
+    0.14,
+    2.755
+   ]
+  },
+  "Outline": {
+   "triangles": 4800,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.022,
+    0.856,
+    0.042
+   ],
+   "size": [
+    2.803,
+    1.757,
+    2.8
+   ]
+  }
+ },
+ "triangles": 9824,
+ "size": [
+  2.803,
+  1.757,
+  2.8
+ ],
+ "width": 2.86,
+ "replaces": "CowPoo placeholder (cylinder 2.2 across)"
+}

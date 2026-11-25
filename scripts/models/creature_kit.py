@@ -128,6 +128,38 @@ def blade(spine, across, inner, widths, fold, thickness):
     return m
 
 
+def sweep(points, widths, heights, sections=12, up=(0, 1, 0)):
+    """A smooth tube along a list of points with an oval cross-section
+    (`widths` across, `heights` up, per point), closed at both ends. Unlike
+    tube(), it is one smooth piece, so it bends without lumps."""
+    pts = np.asarray(points, float)
+    n = len(pts)
+    up = np.asarray(up, float)
+    rings = []
+    for k in range(n):
+        t = pts[min(k + 1, n - 1)] - pts[max(k - 1, 0)]
+        t /= np.linalg.norm(t)
+        side = np.cross(t, up)
+        side /= np.linalg.norm(side)
+        lift = np.cross(side, t)
+        for j in range(sections):
+            a = 2 * math.pi * j / sections
+            rings.append(pts[k] + side * widths[k] * math.cos(a) + lift * heights[k] * math.sin(a))
+    verts = np.vstack([np.array(rings), pts[0], pts[-1]])
+    faces = []
+    for k in range(n - 1):
+        for j in range(sections):
+            a, b = k * sections + j, k * sections + (j + 1) % sections
+            faces += [[a, b, b + sections], [a, b + sections, a + sections]]
+    first, last = n * sections, n * sections + 1
+    for j in range(sections):
+        faces.append([first, (j + 1) % sections, j])
+        faces.append([last, (n - 1) * sections + j, (n - 1) * sections + (j + 1) % sections])
+    m = trimesh.Trimesh(verts, np.array(faces), process=False)
+    m.fix_normals()
+    return m
+
+
 def frame(direction, side_hint):
     """Rotation whose local X points along `direction` and local Z (the flat
     face's normal) points as close to `side_hint` as it can."""
