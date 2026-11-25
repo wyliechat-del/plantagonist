@@ -96,7 +96,7 @@
    ]
   },
   "WingR": {
-   "triangles": 128,
+   "triangles": 124,
    "colour": [
     147,
     39,
@@ -115,7 +115,7 @@
    ]
   },
   "WingL": {
-   "triangles": 128,
+   "triangles": 124,
    "colour": [
     147,
     39,
@@ -172,7 +172,7 @@
    ]
   }
  },
- "triangles": 5048,
+ "triangles": 5040,
  "size": [
   1.985,
   2.418,

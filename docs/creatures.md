@@ -32,6 +32,9 @@ pictures, and only then imported into Studio. The fly was the first.
    into `src/shared/Config/`).
 
 ## Rules learned so far
+- Python needs `pip install trimesh numpy pillow mapbox_earcut networkx`.
+- Flat shapes with detailed edges (the Nut's oak leaf) are best traced from
+  the drawing as a list of pixel points, then smoothed; see `LEAF_TRACE`.
 - Roblox ignores see-through pixels in imported textures. See-through parts
   are plain coloured parts whose Transparency the game sets (fly wings: 0.6).
 - Colours: GLB files store colour as linear light, so `creature_kit.export`

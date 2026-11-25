@@ -50,33 +50,34 @@ def tube(points, radius, sections=6, joints=True):
 
 
 def flat_shape(outline_2d, thickness):
-    """Extrude a 2D outline (list of (u, v)) into a thin slab centred on z = 0.
-    Built by hand (fan from the centre) so no extra geometry library is needed."""
+    """Extrude a 2D outline (list of (u, v), any simple shape, dents allowed)
+    into a thin slab centred on z = 0. Needs `pip install mapbox_earcut networkx`."""
+    import mapbox_earcut as earcut
     pts = np.asarray(outline_2d, float)
     n = len(pts)
-    c = pts.mean(axis=0)
     h = thickness / 2
-    verts = [[c[0], c[1], h], [c[0], c[1], -h]]
-    verts += [[u, v, h] for u, v in pts] + [[u, v, -h] for u, v in pts]
-    faces = []
+    tris = np.asarray(earcut.triangulate_float64(pts, np.array([n], dtype=np.uint32))).reshape(-1, 3)
+    verts = np.vstack([np.c_[pts, np.full(n, h)], np.c_[pts, np.full(n, -h)]])
+    faces = [tris, tris[:, ::-1] + n]
+    side = []
     for i in range(n):
         j = (i + 1) % n
-        top_i, top_j, bot_i, bot_j = 2 + i, 2 + j, 2 + n + i, 2 + n + j
-        faces.append([0, top_i, top_j])
-        faces.append([1, bot_j, bot_i])
-        faces.append([top_i, bot_i, bot_j])
-        faces.append([top_i, bot_j, top_j])
-    m = trimesh.Trimesh(np.array(verts), np.array(faces), process=False)
-    if m.volume < 0:
-        m.invert()
+        side += [[i, i + n, j + n], [i, j + n, j]]
+    m = trimesh.Trimesh(verts, np.vstack(faces + [np.array(side)]), process=False)
+    m.fix_normals()
     return m
 
 
 def ring_shape(outline_2d, width, thickness):
     """A flat band just inside an outline (a black rim round a wing)."""
     pts = np.asarray(outline_2d, float)
-    c = pts.mean(axis=0)
-    inner = c + (pts - c) * (1 - width / np.linalg.norm(pts - c, axis=1, keepdims=True))
+    # Move each point inward along the outline's own normal, so the band
+    # keeps an even width round dents and lobes too.
+    area = np.sum(pts[:, 0] * np.roll(pts[:, 1], -1) - np.roll(pts[:, 0], -1) * pts[:, 1])
+    d = np.roll(pts, -1, axis=0) - np.roll(pts, 1, axis=0)
+    inward = np.c_[-d[:, 1], d[:, 0]] * (1 if area > 0 else -1)
+    inward /= np.linalg.norm(inward, axis=1, keepdims=True)
+    inner = pts + inward * width
     n = len(pts)
     h = thickness / 2
     verts = np.vstack([np.c_[pts, np.full(n, h)], np.c_[inner, np.full(n, h)],
@@ -136,7 +137,7 @@ def srgb_to_linear(c):
     return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
 
 
-def export(path, parts, colours, extras=None):
+def export(path, parts, colours, extras=None, flat=()):
     """parts: {name: mesh}. colours: {name: (r, g, b, a)}. Writes a GLB with
     one node per part and a JSON sidecar with sizes, triangle counts and
     `extras` (pivots and anything the game script needs)."""
@@ -145,6 +146,8 @@ def export(path, parts, colours, extras=None):
     for name, m in parts.items():
         m = m.copy()
         m.merge_vertices()
+        if name in flat:   # thin flat parts (leaves) look best with hard edges
+            m.unmerge_vertices()
         r, g, b, a = colours[name]
         mat = trimesh.visual.material.PBRMaterial(
             name=name, baseColorFactor=[srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), a / 255],

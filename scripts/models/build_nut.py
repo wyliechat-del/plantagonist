@@ -74,18 +74,27 @@ def on_front(x, h, lift=4):
     return (x, h, z)
 
 
-def leaf_outline(n=60):
-    """Oak leaf: an oval with five round lobes down each side, narrow stalk end
-    at u = 0. u along the leaf, v across it (px)."""
-    pts = []
-    length, width = 300, 175
-    for i in range(n):
-        t = 2 * math.pi * i / n
-        lobes = 1 + 0.13 * math.cos(10 * t)
-        u = length / 2 * (1 + math.cos(t) * lobes)
-        v = width / 2 * math.sin(t) * lobes * min(1, 0.35 + u / 120)
-        pts.append((u, v))
-    return pts
+# Oak leaf traced from the front view of the drawing (drawing pixels), from
+# the stalk round the lobes and back.
+LEAF_TRACE = [(1465, 640), (1445, 625), (1475, 595), (1490, 560), (1490, 520), (1480, 480),
+              (1475, 440), (1490, 420), (1515, 412), (1530, 425), (1540, 460), (1550, 465),
+              (1558, 440), (1565, 410), (1585, 395), (1605, 400), (1615, 420), (1625, 430),
+              (1640, 425), (1660, 408), (1680, 405), (1695, 420), (1690, 440), (1670, 460),
+              (1665, 475), (1680, 490), (1700, 500), (1700, 520), (1685, 535), (1640, 545),
+              (1625, 550), (1635, 565), (1670, 575), (1680, 590), (1670, 610), (1640, 620),
+              (1600, 618), (1560, 610), (1525, 603), (1500, 610), (1480, 625)]
+DRAWING_CENTRE_X, DRAWING_TIP_Y = 1385, 1205
+
+
+def leaf_outline():
+    """The traced leaf as (x, height) in model pixels, smoothed so the lobes
+    stay round. +x shows on the left of the front view, so x is flipped."""
+    pts = np.array([(-(x - DRAWING_CENTRE_X), DRAWING_TIP_Y - y) for x, y in LEAF_TRACE], float)
+    # Two rounds of corner cutting turn the traced corners into curves.
+    for _ in range(2):
+        a, b = pts, np.roll(pts, -1, axis=0)
+        pts = np.stack([0.75 * a + 0.25 * b, 0.25 * a + 0.75 * b], axis=1).reshape(-1, 2)
+    return [tuple(p) for p in pts]
 
 
 def build():
@@ -100,33 +109,35 @@ def build():
     cap.vertices = v
 
     stem_pts = [(x, h, 0) for x, h in STEM]
-    stem = kit.tube(stem_pts, [30, 28, 26, 24, 22, 21, 20, 19, 18], sections=10)
-    stem_end = kit.ellipsoid(stem_pts[-1], (18, 18, 18), rings=6, segments=10)
+    # Thick curl (Wylie: thicker than the drawing), tapering a little to a round end.
+    stem = kit.tube(stem_pts, [44, 42, 40, 38, 36, 34, 33, 32, 31], sections=12)
+    stem_end = kit.ellipsoid(stem_pts[-1], (31, 31, 31), rings=6, segments=12)
     stem = kit.trimesh.util.concatenate([stem, stem_end])
 
-    # Leaf grows from the stem base, up and to the right, turned 35 degrees
-    # so it shows from the front and from the side.
+    # Leaf: drawn flat facing the front, then turned 20 degrees about its
+    # stalk so it still shows from the side.
     outline_2d = leaf_outline()
-    place = kit.frame((-0.8, 0.6, 0.0), (0.0, 0.0, -1.0))
-    place = kit.trimesh.transformations.rotation_matrix(math.radians(-35), (0, 1, 0)) @ place
-    place[:3, 3] = (-70, 635, 10)
+    stalk = np.array([-(LEAF_TRACE[0][0] - DRAWING_CENTRE_X), DRAWING_TIP_Y - LEAF_TRACE[0][1], 0.0])
+    place = kit.trimesh.transformations.rotation_matrix(math.radians(-20), (0, 1, 0), stalk)
+    place = place @ kit.trimesh.transformations.translation_matrix((0, 0, -48))   # in front of the stem, as drawn
+    flip = np.diag([1.0, 1.0, -1.0, 1.0])   # face the front (-Z)
     leaf = kit.flat_shape(outline_2d, 8)
-    leaf.apply_transform(place)
-    leaf_rim = kit.ring_shape(outline_2d, 9, 12)
-    leaf_rim.apply_transform(place)
+    leaf.apply_transform(place @ flip)
+    leaf_rim = kit.ring_shape(outline_2d, 10, 12)   # black keyline round the leaf
+    leaf_rim.apply_transform(place @ flip)
 
     eyes, pupils = [], []
     for side in (-1, 1):
         x = side * EYE_X
-        c = on_front(x, EYE_H, lift=-6)
+        c = on_front(x, EYE_H, lift=10)   # stands out so the whole round edge shows
         normal = np.array([x, 0, c[2]]) / math.hypot(x, c[2])
-        eye = kit.ellipsoid((0, 0, 0), (EYE_R, EYE_R, 18), rings=8, segments=16)
+        eye = kit.ellipsoid((0, 0, 0), (EYE_R, EYE_R, 22), rings=8, segments=16)
         eye.apply_transform(kit.frame((0, 1, 0), -normal))
         eye.apply_translation(c)
         eyes.append(eye)
         pupil = kit.ellipsoid((0, 0, 0), (PUPIL_R, PUPIL_R, 6), rings=5, segments=12)
         pupil.apply_transform(kit.frame((0, 1, 0), -normal))
-        pupil.apply_translation(np.array(c) + normal * 14)
+        pupil.apply_translation(np.array(c) + normal * 20)
         pupils.append(pupil)
     mouth = kit.tube([on_front(x, h) for x, h in MOUTH], 6, sections=6)
     tick = kit.tube([on_front(x, h) for x, h in MOUTH_TICK], 6, sections=6)
@@ -160,7 +171,7 @@ def build():
 
 if __name__ == "__main__":
     parts, colours, extras = build()
-    info = kit.export(sys.argv[1], parts, colours, extras)
+    info = kit.export(sys.argv[1], parts, colours, extras, flat=("Leaf",))
     print("size", info["size"], "triangles", info["triangles"])
     for name, p in info["parts"].items():
         print(f"  {name}: {p['triangles']} triangles")
