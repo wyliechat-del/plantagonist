@@ -43,7 +43,7 @@ pictures, and only then imported into Studio. The fly was the first.
   from them, in case Studio's importer reads the GLB colour differently.
 - A `moving` entry can also rock: `swing` degrees either side of upright and
   `shrink` (0.15 = 15% smaller at the ends of the swing), or spin: `spin` degrees per cycle, as the Nut does on
-  its tip. `parts: "all"` moves the whole model. `motionView` in the JSON sets
+  its tip. `parts: "all"` moves the whole model. `motionFrames` sets the clip length (40 ms a frame) and `motionView` sets
   the camera for `motion.gif`.
 - The fly's legs are one part that swings 15 degrees about the middle hips.
 - Anything that moves is its own part, so a script can turn it.

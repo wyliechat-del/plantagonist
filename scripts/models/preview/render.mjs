@@ -66,7 +66,7 @@ for (const [look, hide] of [["views", []], ["views-plain", plain]]) {
 
 // Motion clip: one loop of every moving part listed in the JSON.
 const frames = [];
-const N = (info.moving || []).length ? 32 : 0;
+const N = (info.moving || []).length ? info.motionFrames || 32 : 0;   // 40 ms a frame
 for (let i = 0; i < N; i++) {
   const f = join(tmp, `move-${String(i).padStart(2, "0")}.png`);
   await shot({ ...(info.motionView || { azimuth: -35, elevation: 12 }), time: i / N }, f);

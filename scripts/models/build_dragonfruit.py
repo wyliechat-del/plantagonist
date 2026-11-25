@@ -10,13 +10,15 @@ bottom. Scales are triangles about a quarter of the egg's height, pointing
 up, with their tips lifted off the skin; the top ones stick up past the top.
 The model is HEIGHT studs tall (egg only) and sits on the origin.
 
-Roblox parts are one colour each, so the scale's fade is done in three
-bands: the base band is the skin colour (part of Skin), then a brownish
-middle band (ScaleMid), then a green tip (ScaleTip).
+Roblox parts are one colour each, so the scale's fade is done in bands: the
+lower part of each scale is the skin itself inside its keyline, then a thin
+brown band (ScaleMid) where it lifts off, then a big green tip (ScaleTip).
+Round 2 (Wylie): same keyline on egg and scales, no dark band at the base of
+the scales, bigger green tips, thinner brown band, slower spin.
 
 Parts:
-  Skin      magenta egg and the base of every scale
-  ScaleMid  middle band of the scales
+  Skin      magenta egg (the lower part of each scale is just skin)
+  ScaleMid  thin brown band where each scale lifts off
   ScaleTip  green tips
   Outline   black keyline round the egg and along each scale's two sides
 """
@@ -39,10 +41,12 @@ BLACK = (0, 0, 0, 255)
 ROWS = [(0.17, 5, 0), (0.36, 5, 36), (0.6, 5, 8), (0.82, 4, 50)]
 SCALE_LEN = 0.28             # times HEIGHT
 SCALE_WIDTH = 0.25           # times HEIGHT
-SCALE_LIFT = 0.06            # how far the tip stands off the skin, times HEIGHT
+SCALE_LIFT = 0.08            # how far the tip stands off the skin, times HEIGHT
 SCALE_THICK = 0.012          # times HEIGHT
-BANDS = (0.35, 0.62)         # where skin colour ends and green begins, along the scale
-KEYLINE = 0.009              # times HEIGHT
+LIFT_FROM = 0.3             # how far up the scale it starts to rise off the skin
+BAND = 0.14                  # brown band, as a share of the raised part; the rest is green
+KEYLINE = 0.018              # keyline width, times HEIGHT (same on the egg and the scales)
+KEYLINE_W = KEYLINE * HEIGHT
 
 
 def egg_radius(t):
@@ -92,41 +96,68 @@ def slab(points, thickness):
     return m
 
 
+def off_skin(q, extra, out):
+    """Push a point out (from the middle) so it sits `extra` above the skin.
+    Points past the top of the egg just move `extra` along the scale's `out`."""
+    t = q[1] / HEIGHT
+    if t >= 0.98 or t <= 0:
+        return np.array(q, float) + out * extra
+    a = math.atan2(q[0], -q[2])
+    r = max(math.hypot(q[0], q[2]), egg_radius(t)) + extra
+    return np.array([r * math.sin(a), q[1], -r * math.cos(a)])
+
+
 def scale(t, angle):
-    """One scale: three colour bands and its two black side lines."""
+    """One scale. The lower part is just the skin with a keyline round it,
+    so it blends in. From LIFT_FROM up, the scale lifts off the skin, bending
+    with it: a thin brown band, then a big green tip."""
     p, out, up = surface(t, angle)
     side = np.cross(out, up)
     w, length = SCALE_WIDTH * HEIGHT, SCALE_LEN * HEIGHT
-    left = p - side * w / 2 - out * 0.01
-    right = p + side * w / 2 - out * 0.01
-    tip = p + up * length + out * SCALE_LIFT * HEIGHT
-
-    def at(f):   # left and right edge points a fraction f of the way to the tip
-        return left + (tip - left) * f, right + (tip - right) * f
-
+    corners = (p - side * w / 2, p + side * w / 2)
+    flat_tip = p + up * length
     th = SCALE_THICK * HEIGHT
-    l1, r1 = at(BANDS[0])
-    l2, r2 = at(BANDS[1])
-    base = slab([left, right, r1, l1], th)
-    mid = slab([l1, r1, r2, l2], th)
-    top = slab([l2, r2, tip], th)
-    lines = kit.tube([left + out * th, tip + out * th, right + out * th], KEYLINE * HEIGHT, sections=6)
-    return base, mid, top, lines
+
+    def lift(f):   # height above the skin a fraction f up the scale
+        if f <= LIFT_FROM:
+            return 0.0
+        return SCALE_LIFT * HEIGHT * (f - LIFT_FROM) / (1 - LIFT_FROM)
+
+    def point(corner, f, extra=0.0):
+        return off_skin(corner + (flat_tip - corner) * f, lift(f) + extra, out)
+
+    f1 = LIFT_FROM + BAND * (1 - LIFT_FROM)    # where green starts
+    f2 = (f1 + 1) / 2
+    sink = -th / 2   # the flap's lower edge starts just under the skin, so no gap shows
+
+    def row(f, extra=0.0):
+        return [point(c, f, extra) for c in corners]
+
+    (l0, r0), (l1, r1), (l2, r2) = row(LIFT_FROM, sink), row(f1), row(f2)
+    tip = point(corners[0], 1.0)
+    mid = slab([l0, r0, r1, l1], th)
+    top = kit.trimesh.util.concatenate([slab([l1, r1, r2, l2], th), slab([l2, r2, tip], th)])
+    # Keyline up each side to the tip, sitting on top of the skin and flap.
+    fs = [LIFT_FROM * i / 3 for i in range(4)] + [f1, f2]
+    k = KEYLINE_W / 2 + th / 2
+    left = [point(corners[0], f, k) for f in fs]
+    right = [point(corners[1], f, k) for f in fs]
+    lines = kit.tube(left + [point(corners[0], 1.0, k)] + right[::-1], KEYLINE_W / 2, sections=5)
+    return mid, top, lines
 
 
 def build():
     body = egg()
-    skin, mids, tips, lines = [body], [], [], []
+    mids, tips, lines = [], [], []
     for t, count, offset in ROWS:
         for i in range(count):
-            b, m, tp, ln = scale(t, offset + 360 * i / count)
-            skin.append(b)
+            m, tp, ln = scale(t, offset + 360 * i / count)
             mids.append(m)
             tips.append(tp)
             lines.append(ln)
-    outline = kit.trimesh.util.concatenate([kit.outline_shell(body, KEYLINE * HEIGHT)] + lines)
+    outline = kit.trimesh.util.concatenate([kit.outline_shell(body, KEYLINE_W)] + lines)
     parts = {
-        "Skin": kit.trimesh.util.concatenate(skin),
+        "Skin": body,
         "ScaleMid": kit.trimesh.util.concatenate(mids),
         "ScaleTip": kit.trimesh.util.concatenate(tips),
         "Outline": outline,
@@ -137,6 +168,7 @@ def build():
         # Preview only: a slow turn so every side shows. Whether the fruit
         # moves in the game is still to be decided.
         "moving": [{"parts": "all", "hinge": [0, 0, 0], "axis": [0, 1, 0], "spin": 360, "cycles": 1}],
+        "motionFrames": 107,   # one turn in about 4.3 seconds (Wylie: 30% of the first speed),
         "motionView": {"azimuth": 0, "elevation": 15},
     }
     colours = {"Skin": SKIN, "ScaleMid": MID, "ScaleTip": GREEN, "Outline": BLACK}
