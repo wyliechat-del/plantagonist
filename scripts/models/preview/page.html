@@ -49,12 +49,16 @@ window.setup = async (url, info, size) => {
     for (const part of mv.parts === "all" ? [null] : mv.parts) {
       const mesh = part === null ? gltf.scene : nodes[part];
       if (!mesh) continue;
+      // A part with more than one mover gets nested pivots, so the hinge
+      // is turned into the parent's own coordinates.
+      gltf.scene.updateMatrixWorld(true);
+      const local = mesh.parent.worldToLocal(hinge.clone());
       const pivot = new THREE.Group();
-      pivot.position.copy(hinge);
+      pivot.position.copy(local);
       mesh.parent.add(pivot);
       pivot.add(mesh);
-      mesh.position.sub(hinge);
-      movers.push({ pivot, mv, hinge, axis: new THREE.Vector3(...(mv.axis || [0, 1, 0])) });
+      mesh.position.sub(local);
+      movers.push({ pivot, mv, hinge: local, axis: new THREE.Vector3(...(mv.axis || [0, 1, 0])) });
     }
   }
   const box = new THREE.Box3().setFromObject(gltf.scene);
@@ -62,14 +66,21 @@ window.setup = async (url, info, size) => {
   radius = box.getSize(new THREE.Vector3()).length() / 2;
 };
 
-window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [], zoom = 1 }) => {
+window.draw = ({ azimuth = 0, elevation = 0, time: clock = null, hide = [], zoom = 1, event = null }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
-  // time 0..1 is one animation loop; null shows the rest pose.
+  for (const m of Object.values(nodes)) {
+    m.userData.opacity ??= m.material.opacity;
+    m.material.opacity = m.userData.opacity;
+    m.material.transparent = m.userData.opacity < 1;
+  }
+  // time 0..1 is one animation loop; null shows the rest pose. Movers for
+  // another event (onEvent) stay at rest.
   for (const { pivot, mv, hinge, axis } of movers) {
+    const time = mv.onEvent && event && mv.onEvent !== event ? null : clock;
     let angle = 0, size = 1, sy = 1, hop = 0, sxz = 1;
-    pivot.visible = !(time === null && mv.hiddenAtRest);
+    pivot.visible = !(time === null && (mv.hiddenAtRest || mv.previewOnly));
     if (time !== null && mv.keys) {
-      // Keyframes: [time, offset [x, y, z], scale [x, y, z], turn?], eased between keys.
+      // Keyframes: [time, offset [x, y, z], scale [x, y, z], turn?, opacity?], eased between keys.
       const k = mv.keys;
       let i = 0;
       while (i < k.length - 2 && time > k[i + 1][0]) i++;
@@ -83,6 +94,15 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [], zoom = 1 })
       pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(turn));
       pivot.scale.set(Math.max(sc[0], 1e-4), Math.max(sc[1], 1e-4), Math.max(sc[2], 1e-4));
       pivot.position.set(hinge.x + o[0], hinge.y + o[1], hinge.z + o[2]);
+      // Optional 5th value: opacity (1 solid, 0 gone).
+      if (k[i].length > 4) {
+        const fade = k[i][4] + (k[i + 1][4] - k[i][4]) * f;
+        pivot.traverse((m) => {
+          if (!m.isMesh) return;
+          m.material.opacity = m.userData.opacity * fade;
+          m.material.transparent = m.material.opacity < 1;
+        });
+      }
       continue;
     }
     if (time !== null && mv.spread) {

@@ -71,15 +71,23 @@ for (const [look, hide] of [["views", only], ["views-plain", [...plain, ...only]
   execFileSync("python3", [join(here, "sheet.py"), join(outDir, `${look}.png`), ...files]);
 }
 
-// Motion clip: one loop of every moving part listed in the JSON.
-const frames = [];
-const N = (info.moving || []).length ? info.motionFrames || 32 : 0;   // 40 ms a frame
-for (let i = 0; i < N; i++) {
-  const f = join(tmp, `move-${String(i).padStart(2, "0")}.png`);
-  await shot({ ...(info.motionView || { azimuth: -35, elevation: 12 }), time: i / N }, f);
-  frames.push(f);
+// Motion clips: one loop of every moving part listed in the JSON. Parts
+// that move on a game event ("onEvent") get one clip per event: the first
+// is motion.gif, the rest <event>.gif.
+const events = [...new Set((info.moving || []).map((m) => m.onEvent).filter(Boolean))];
+const clips = (info.moving || []).length ? (events.length ? events : [null]) : [];
+for (const [n, event] of clips.entries()) {
+  const frames = [];
+  const N = (event && info.eventFrames?.[event]) || info.motionFrames || 32;   // 40 ms a frame
+  for (let i = 0; i < N; i++) {
+    const f = join(tmp, `move-${n}-${String(i).padStart(2, "0")}.png`);
+    const view = (event && info.eventViews?.[event]) || info.motionView || { azimuth: -35, elevation: 12 };
+    await shot({ ...view, time: i / N, event }, f);
+    frames.push(f);
+  }
+  const name = n === 0 ? "motion.gif" : `${event}.gif`;
+  execFileSync("python3", [join(here, "sheet.py"), "--gif", join(outDir, name), ...frames]);
 }
-if (N) execFileSync("python3", [join(here, "sheet.py"), "--gif", join(outDir, "motion.gif"), ...frames]);
 await browser.close();
 server.close();
 console.log("written to", outDir);

@@ -16,7 +16,10 @@ the shadow, then come together as the shadow shrinks, ending as the full
 cloud. In the JSON "moving" list with "onEvent": "rainWarning" as keyframes
 ([time 0..1, offset from the blob's place in the full cloud, scale,
 turn in degrees about up]); the
-game plays them over Environment.Rain.shadowSeconds. The blobs' spread
+game plays them over Environment.Rain.shadowSeconds. When the rain ends
+("onEvent": "rainEnd") each blob shrinks to nothing and fades out over 1
+second; the 5th value in those keys is opacity (1 solid, 0 gone), which
+is 1 minus Roblox Transparency. The blobs' spread
 follows the shadow's radius (shadowStartRadius down to cloudRadius).
 
 Parts:
@@ -34,6 +37,7 @@ import creature_kit as kit
 CLOUD_RADIUS = 14            # studs, Environment.Rain.cloudRadius
 SHADOW_START = 60            # studs, Environment.Rain.shadowStartRadius
 SHADOW_SECONDS = 10          # Environment.Rain.shadowSeconds
+END_SECONDS = 1              # Wylie: blobs shrink and fade out over 1 second when the rain ends
 KEYLINE_W = 0.35             # studs (the cloud is seen from far away)
 SHADOW_Y = -10              # preview only: where the shadow disc is drawn
 SQUASH = 0.85                # puffs are a little flatter than round
@@ -106,6 +110,12 @@ def build():
         colours[f"Blob{k}"], colours[f"BlobRim{k}"] = LIGHT if light else DARK, BLACK
         moving.append({"parts": [f"Blob{k}", f"BlobRim{k}"], "hinge": list(place),
                        "onEvent": "rainWarning", "keys": keys(place, k - 1, around, apart_turn)})
+        # Wylie: when the rain ends each blob shrinks and fades out over 1
+        # second (a little after one another).
+        start = round(0.04 * (k - 1), 2)
+        moving.append({"parts": [f"Blob{k}", f"BlobRim{k}"], "hinge": list(place), "onEvent": "rainEnd",
+                       "keys": [[0, [0, 0, 0], [1, 1, 1], 0, 1], [start, [0, 0, 0], [1, 1, 1], 0, 1],
+                                [1, [0, 0, 0], [0, 0, 0], 0, 0]]})
     # Preview only: the game's shadow disc, shrinking from SHADOW_START to
     # CLOUD_RADIUS, drawn just under the cloud so the timing is clear.
     shadow = kit.trimesh.creation.cylinder(radius=1, height=0.2, sections=48)
@@ -114,9 +124,12 @@ def build():
     parts["PreviewShadow"] = shadow
     colours["PreviewShadow"] = (10, 10, 30, 90)
     moving.append({"parts": ["PreviewShadow"], "hinge": [0, SHADOW_Y, 0], "previewOnly": True,
+                   "onEvent": "rainWarning",
                    "keys": [[t, [0, 0, 0], [r, 1, r]] for t, r in
                             ((0, SHADOW_START), (0.5, (SHADOW_START + CLOUD_RADIUS) / 2), (1, CLOUD_RADIUS))]})
-    extras = {"moving": moving, "eventSeconds": SHADOW_SECONDS, "motionFrames": 60,
+    extras = {"moving": moving, "eventSeconds": {"rainWarning": SHADOW_SECONDS, "rainEnd": END_SECONDS},
+              "motionFrames": 60, "eventFrames": {"rainEnd": 25},
+              "eventViews": {"rainEnd": {"azimuth": -25, "elevation": 20}},
               "previewOnly": ["PreviewShadow"],
               "motionView": {"azimuth": -25, "elevation": 32, "zoom": 2.5}}
     return parts, colours, extras
