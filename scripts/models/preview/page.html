@@ -45,8 +45,9 @@ window.setup = async (url, info, size) => {
   // Moving parts turn about a hinge: wrap each in a group placed at its hinge.
   for (const mv of info.moving || []) {
     const hinge = new THREE.Vector3(...mv.hinge);
-    for (const part of mv.parts === "all" ? Object.keys(nodes) : mv.parts) {
-      const mesh = nodes[part];
+    // "all" moves the whole model (so parts with their own movers ride along).
+    for (const part of mv.parts === "all" ? [null] : mv.parts) {
+      const mesh = part === null ? gltf.scene : nodes[part];
       if (!mesh) continue;
       const pivot = new THREE.Group();
       pivot.position.copy(hinge);

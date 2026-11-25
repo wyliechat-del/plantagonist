@@ -130,6 +130,59 @@ def rotate_about(mesh, angle_deg, axis, point):
     return m
 
 
+# ---- Faces and markings drawn flat, then bent onto a round body ----
+
+def circle(c, r, n=48):
+    """Outline of a circle in drawing pixels."""
+    return [(c[0] + r * math.cos(2 * math.pi * i / n), c[1] + r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+
+
+def below_line(poly, a, b):
+    """Keep the part of a convex outline below the line a-b (larger y in the drawing)."""
+    def side(p):
+        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+    sign = 1 if side((a[0], a[1] + 1000)) > 0 else -1
+    out = []
+    for i, p in enumerate(poly):
+        q = poly[(i + 1) % len(poly)]
+        sp, sq = side(p) * sign, side(q) * sign
+        if sp >= 0:
+            out.append(p)
+        if (sp >= 0) != (sq >= 0):
+            k = sp / (sp - sq)
+            out.append((p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k))
+    return out
+
+
+def front_mapper(radius_at, centre_x, bottom_y, studs_per_px):
+    """For a round body (spun about +Y, standing on y = 0, facing -Z) drawn
+    from the front: returns on_face(x, y, lift_px), the point on the body's
+    front for drawing pixel (x, y), lifted lift_px off the skin.
+    radius_at(height_in_studs) gives the body's radius."""
+    def on_face(x, y, lift_px):
+        h = (bottom_y - y) * studs_per_px
+        mx = -(x - centre_x) * studs_per_px   # +x shows on the left of the front view
+        r = max(radius_at(h), 1e-6)
+        mx = max(-r * 0.98, min(r * 0.98, mx))
+        z = -math.sqrt(r * r - mx * mx)
+        n = np.array([mx, 0.0, z]) / r
+        return np.array([mx, h, z]) + n * lift_px * studs_per_px
+    return on_face
+
+
+def bend_onto(on_face, outline_px, lift_px, thick_px, ring_px=None, max_edge=35):
+    """A flat shape (or a band `ring_px` wide round its edge), drawn in
+    pixels, bent onto a body with an on_face function from front_mapper.
+    The shape is cut into small triangles first, so it follows the curve
+    instead of cutting straight across it and dipping under the skin."""
+    m = ring_shape(outline_px, ring_px, thick_px) if ring_px else flat_shape(outline_px, thick_px)
+    v, f = trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=max_edge)
+    m = trimesh.Trimesh(v, f)
+    m.vertices = np.array([on_face(x, y, lift_px + z) for x, y, z in m.vertices])
+    m.fix_normals()
+    return m
+
+
 def srgb_to_linear(c):
     """GLB colours are stored as linear light, not as the 0-255 values in a
     colour picker. Without this the colours come out pale."""

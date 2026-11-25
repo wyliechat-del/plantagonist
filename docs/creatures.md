@@ -52,6 +52,6 @@ pictures, and only then imported into Studio. The fly was the first.
 - The black cartoon outline is a separate `Outline` part (a slightly bigger
   inside-out copy). Delete it for a plain look; wing rims go with it.
 
-- Faces drawn flat (the fruit face) are bent onto the body with `face_plate`
-  in `build_dragonfruit.py`: cut the shape into small triangles first, or the
+- Faces drawn flat (the fruit face) are bent onto the body
+  (`kit.front_mapper` + `kit.bend_onto`, used by the dragonfruit and apple): cut the shape into small triangles first, or the
   flat pieces dip under a curved body.

@@ -1,0 +1,166 @@
+{
+ "parts": {
+  "Apple": {
+   "triangles": 1024,
+   "colour": [
+    193,
+    39,
+    45
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "size": [
+    2.057,
+    2.0,
+    2.057
+   ]
+  },
+  "Stem": {
+   "triangles": 440,
+   "colour": [
+    115,
+    52,
+    22
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.012,
+    2.062,
+    0.0
+   ],
+   "size": [
+    0.181,
+    0.379,
+    0.126
+   ]
+  },
+  "Leaf": {
+   "triangles": 68,
+   "colour": [
+    140,
+    198,
+    63
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.677,
+    2.246,
+    -0.086
+   ],
+   "size": [
+    1.343,
+    0.594,
+    0.023
+   ]
+  },
+  "Eyes": {
+   "triangles": 3392,
+   "colour": [
+    255,
+    255,
+    255
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.007,
+    1.043,
+    -0.891
+   ],
+   "size": [
+    1.426,
+    0.617,
+    0.298
+   ]
+  },
+  "Outline": {
+   "triangles": 4192,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.118,
+    0.0
+   ],
+   "size": [
+    2.129,
+    2.308,
+    2.129
+   ]
+  },
+  "LeafRim": {
+   "triangles": 144,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.677,
+    2.246,
+    -0.086
+   ],
+   "size": [
+    1.343,
+    0.594,
+    0.034
+   ]
+  }
+ },
+ "triangles": 9260,
+ "size": [
+  2.413,
+  2.579,
+  2.129
+ ],
+ "height": 2.0,
+ "family": "Slash",
+ "moving": [
+  {
+   "parts": "all",
+   "hinge": [
+    0,
+    0,
+    0
+   ],
+   "cycles": 1,
+   "bounce": {
+    "height": 0.3,
+    "squash": 0.8,
+    "squashShare": 0.3
+   }
+  },
+  {
+   "parts": [
+    "Leaf",
+    "LeafRim"
+   ],
+   "hinge": [
+    0.006,
+    2.02,
+    -0.086
+   ],
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "from": -15,
+   "to": 15,
+   "cycles": 1
+  }
+ ],
+ "motionFrames": 30,
+ "motionView": {
+  "azimuth": 0,
+  "elevation": 10
+ }
+}

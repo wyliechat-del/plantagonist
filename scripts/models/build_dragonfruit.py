@@ -168,51 +168,17 @@ def mirror_px(pts):
     return [(2 * centre - x, y) for x, y in pts]
 
 
-def circle(c, r, n=48):
-    return [(c[0] + r * math.cos(2 * math.pi * i / n), c[1] + r * math.sin(2 * math.pi * i / n)) for i in range(n)]
-
-
-def below_line(poly, a, b):
-    """Keep the part of a convex outline below the line a-b (larger y in the drawing)."""
-    def side(p):
-        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
-    sign = 1 if side((a[0], a[1] + 1000)) > 0 else -1
-    out = []
-    for i, p in enumerate(poly):
-        q = poly[(i + 1) % len(poly)]
-        sp, sq = side(p) * sign, side(q) * sign
-        if sp >= 0:
-            out.append(p)
-        if (sp >= 0) != (sq >= 0):
-            k = sp / (sp - sq)
-            out.append((p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k))
-    return out
+circle, below_line = kit.circle, kit.below_line
 
 
 PX = HEIGHT / (EGG_BOTTOM - EGG_TOP)       # studs per drawing pixel
 
 
-def on_face(x, y, lift_px):
-    """Drawing pixel (x, y) on the front of the egg, lifted off the skin."""
-    t = (EGG_BOTTOM - y) / (EGG_BOTTOM - EGG_TOP)
-    mx = -(x - (EGG_LEFT + EGG_RIGHT) / 2) * PX   # +x shows on the left of the front view
-    r = egg_radius(t)
-    mx = max(-r * 0.98, min(r * 0.98, mx))
-    z = -math.sqrt(r * r - mx * mx)
-    n = np.array([mx, 0.0, z]) / r
-    return np.array([mx, HEIGHT * t, z]) + n * lift_px * PX
+on_face = kit.front_mapper(lambda h: egg_radius(h / HEIGHT), (EGG_LEFT + EGG_RIGHT) / 2, EGG_BOTTOM, PX)
 
 
 def face_plate(outline_px, lift_px, thick_px, ring_px=None):
-    """A flat shape (or a band round its edge) bent onto the egg's skin."""
-    m = kit.ring_shape(outline_px, ring_px, thick_px) if ring_px else kit.flat_shape(outline_px, thick_px)
-    # Cut into small triangles first, so the shape follows the curve of the
-    # egg instead of cutting straight across it (and dipping under the skin).
-    v, f = kit.trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=35)
-    m = kit.trimesh.Trimesh(v, f)
-    m.vertices = np.array([on_face(x, y, lift_px + z) for x, y, z in m.vertices])
-    m.fix_normals()
-    return m
+    return kit.bend_onto(on_face, outline_px, lift_px, thick_px, ring_px)
 
 
 def face():
