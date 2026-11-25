@@ -66,8 +66,15 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
   // time 0..1 is one animation loop; null shows the rest pose.
   for (const { pivot, mv, hinge, axis } of movers) {
-    let angle = 0, size = 1, sy = 1, hop = 0;
-    if (time !== null && mv.bounce) {
+    let angle = 0, size = 1, sy = 1, hop = 0, sxz = 1;
+    if (time !== null && mv.spread) {
+      // Spread: during the landing squish (same timing as a bounce), widen
+      // by `wide` and shorten by `short` about the hinge, so leaves fan out.
+      const s = mv.spread, c = (mv.cycles * time) % 1, air = 1 - s.squashShare;
+      const f = c < air ? 0 : Math.sin(Math.PI * (c - air) / s.squashShare);
+      sxz = 1 + (s.wide - 1) * f;
+      sy = 1 - (1 - s.short) * f;
+    } else if (time !== null && mv.bounce) {
       // Bounce: a hop (a smooth arc up and down), then on landing a squish
       // to `squash` of full height and back, for the last `squashShare` of each cycle.
       const b = mv.bounce, c = (mv.cycles * time) % 1, air = 1 - b.squashShare;
@@ -87,7 +94,7 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
       angle = mv.from + (mv.to - mv.from) * (1 - Math.cos(2 * Math.PI * mv.cycles * time)) / 2;
     }
     pivot.quaternion.setFromAxisAngle(axis, THREE.MathUtils.degToRad(angle));
-    pivot.scale.set(size, size * sy, size);
+    pivot.scale.set(size * sxz, size * sy, size * sxz);
     pivot.position.set(hinge.x, hinge.y + hop, hinge.z);
   }
   // azimuth 0 looks at the front (-Z side), 90 from the +X side.
