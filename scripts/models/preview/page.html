@@ -62,11 +62,27 @@ window.setup = async (url, info, size) => {
   radius = box.getSize(new THREE.Vector3()).length() / 2;
 };
 
-window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
+window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [], zoom = 1 }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
   // time 0..1 is one animation loop; null shows the rest pose.
   for (const { pivot, mv, hinge, axis } of movers) {
     let angle = 0, size = 1, sy = 1, hop = 0, sxz = 1;
+    pivot.visible = !(time === null && mv.hiddenAtRest);
+    if (time !== null && mv.keys) {
+      // Keyframes: [time, offset [x, y, z], scale [x, y, z]], eased between keys.
+      const k = mv.keys;
+      let i = 0;
+      while (i < k.length - 2 && time > k[i + 1][0]) i++;
+      const [t0, o0, s0] = k[i], [t1, o1, s1] = k[i + 1];
+      let f = Math.min(1, Math.max(0, (time - t0) / (t1 - t0)));
+      f = f * f * (3 - 2 * f);
+      const mix = (a, b) => a.map((v, j) => v + (b[j] - v) * f);
+      const o = mix(o0, o1), sc = mix(s0, s1);
+      pivot.quaternion.identity();
+      pivot.scale.set(Math.max(sc[0], 1e-4), Math.max(sc[1], 1e-4), Math.max(sc[2], 1e-4));
+      pivot.position.set(hinge.x + o[0], hinge.y + o[1], hinge.z + o[2]);
+      continue;
+    }
     if (time !== null && mv.spread) {
       // Spread: during the landing squish (same timing as a bounce), widen
       // by `wide` and shorten by `short` about the hinge, so leaves fan out.
@@ -100,7 +116,8 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
   }
   // azimuth 0 looks at the front (-Z side), 90 from the +X side.
   const a = THREE.MathUtils.degToRad(azimuth), e = THREE.MathUtils.degToRad(elevation);
-  const d = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;
+  // zoom > 1 pulls the camera back (e.g. to fit blobs that fly out).
+  const d = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05 * zoom;
   camera.position.set(centre.x + d * Math.cos(e) * Math.sin(a), centre.y + d * Math.sin(e),
                       centre.z - d * Math.cos(e) * Math.cos(a));
   camera.lookAt(centre);
