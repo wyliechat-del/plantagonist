@@ -121,6 +121,13 @@ def rotate_about(mesh, angle_deg, axis, point):
     return m
 
 
+def srgb_to_linear(c):
+    """GLB colours are stored as linear light, not as the 0-255 values in a
+    colour picker. Without this the colours come out pale."""
+    c = c / 255
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
 def export(path, parts, colours, extras=None):
     """parts: {name: mesh}. colours: {name: (r, g, b, a)}. Writes a GLB with
     one node per part and a JSON sidecar with sizes, triangle counts and
@@ -132,7 +139,7 @@ def export(path, parts, colours, extras=None):
         m.merge_vertices()
         r, g, b, a = colours[name]
         mat = trimesh.visual.material.PBRMaterial(
-            name=name, baseColorFactor=[r / 255, g / 255, b / 255, a / 255],
+            name=name, baseColorFactor=[srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), a / 255],
             alphaMode="BLEND" if a < 255 else "OPAQUE",
             metallicFactor=0, roughnessFactor=0.7, doubleSided=a < 255)
         m.visual = trimesh.visual.TextureVisuals(material=mat)

@@ -34,6 +34,10 @@ pictures, and only then imported into Studio. The fly was the first.
 ## Rules learned so far
 - Roblox ignores see-through pixels in imported textures. See-through parts
   are plain coloured parts whose Transparency the game sets (fly wings: 0.6).
+- Colours: GLB files store colour as linear light, so `creature_kit.export`
+  converts the 0-255 picker values (without that the previews looked pale).
+  The JSON keeps the picker values; the game should set each part's Color
+  from them, in case Studio's importer reads the GLB colour differently.
 - The fly's legs are one part that swings 15 degrees about the middle hips.
 - Anything that moves is its own part, so a script can turn it.
 - Axes: +Y up, the creature faces -Z (Roblox's forward), 1 unit = 1 stud.

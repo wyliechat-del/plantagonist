@@ -89,8 +89,7 @@ def trumpet():
                (0.042, 0.2), (0.045, 0.34), (0, 0.34)]   # (radius, height)
     m = kit.trimesh.creation.revolve(profile, sections=14)
     m.apply_transform(kit.trimesh.transformations.rotation_matrix(-math.pi / 2, (1, 0, 0)))  # stand it up
-    m.apply_transform(kit.trimesh.transformations.rotation_matrix(math.radians(-15), (1, 0, 0)))  # bell a bit forward
-    m.apply_translation((0, -0.6, -0.44))
+    m.apply_translation((0, -0.5, -0.4))   # straight down; the top sits inside the body
     return m
 
 
@@ -148,9 +147,9 @@ def build():
         "moving": [
             # Wings turn about an axis along the body; positive lifts the right wing.
             {"parts": ["WingR", "WingRimR"], "hinge": hinge_r, "axis": [0, 0, 1],
-             "from": FLAP_UP, "to": FLAP_DOWN, "cycles": 4},
+             "from": FLAP_UP, "to": FLAP_DOWN, "cycles": 3},
             {"parts": ["WingL", "WingRimL"], "hinge": hinge_l, "axis": [0, 0, 1],
-             "from": -FLAP_UP, "to": -FLAP_DOWN, "cycles": 4},
+             "from": -FLAP_UP, "to": -FLAP_DOWN, "cycles": 3},
             # Legs swing forward and back about a side to side axis.
             {"parts": ["Legs"], "hinge": (leg_hinge * scale).round(3).tolist(), "axis": [1, 0, 0],
              "from": -LEG_SWING / 2, "to": LEG_SWING / 2, "cycles": 1},
