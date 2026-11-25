@@ -24,3 +24,5 @@ sourcemap.json
 
 # Node packages (creature preview renderer)
 node_modules/
+__pycache__/
+*.pyc
