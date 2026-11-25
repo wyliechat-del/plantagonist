@@ -33,7 +33,8 @@ CAP_WIDTH = 2.0          # studs
 ROCK = 15                # degrees either side of upright
 SHRINK = 0.15            # 15% smaller at the ends of each rock
 ROCKS_PER_LOOP = 1
-OUTLINE = 6              # keyline thickness, px
+OUTLINE = 10             # keyline thickness, px (thick, as the nut is small on screen)
+EYE_RIM = 11             # black ring round each white eye, px
 
 NUT = (161, 99, 60, 255)
 CAP = (101, 56, 41, 255)
@@ -123,28 +124,33 @@ def build():
     flip = np.diag([1.0, 1.0, -1.0, 1.0])   # face the front (-Z)
     leaf = kit.flat_shape(outline_2d, 8)
     leaf.apply_transform(place @ flip)
-    leaf_rim = kit.ring_shape(outline_2d, 10, 12)   # black keyline round the leaf
+    leaf_rim = kit.ring_shape(outline_2d, 15, 12)   # black keyline round the leaf
     leaf_rim.apply_transform(place @ flip)
 
-    eyes, pupils = [], []
+    eyes, pupils, eye_rims = [], [], []
     for side in (-1, 1):
         x = side * EYE_X
-        c = on_front(x, EYE_H, lift=10)   # stands out so the whole round edge shows
+        c = on_front(x, EYE_H, lift=20)   # stands out so the whole round edge shows
         normal = np.array([x, 0, c[2]]) / math.hypot(x, c[2])
         eye = kit.ellipsoid((0, 0, 0), (EYE_R, EYE_R, 22), rings=8, segments=16)
         eye.apply_transform(kit.frame((0, 1, 0), -normal))
         eye.apply_translation(c)
         eyes.append(eye)
+        # Black ring: a slightly bigger black disc just behind the white one.
+        rim = kit.ellipsoid((0, 0, 0), (EYE_R + EYE_RIM, EYE_R + EYE_RIM, 22), rings=8, segments=16)
+        rim.apply_transform(kit.frame((0, 1, 0), -normal))
+        rim.apply_translation(np.array(c) - normal * 5)
+        eye_rims.append(rim)
         pupil = kit.ellipsoid((0, 0, 0), (PUPIL_R, PUPIL_R, 6), rings=5, segments=12)
         pupil.apply_transform(kit.frame((0, 1, 0), -normal))
-        pupil.apply_translation(np.array(c) + normal * 20)
+        pupil.apply_translation(np.array(c) + normal * 21)
         pupils.append(pupil)
-    mouth = kit.tube([on_front(x, h) for x, h in MOUTH], 6, sections=6)
-    tick = kit.tube([on_front(x, h) for x, h in MOUTH_TICK], 6, sections=6)
+    mouth = kit.tube([on_front(x, h) for x, h in MOUTH], 9, sections=6)
+    tick = kit.tube([on_front(x, h) for x, h in MOUTH_TICK], 9, sections=6)
 
     outline = kit.trimesh.util.concatenate(
         [kit.outline_shell(nut, OUTLINE), kit.outline_shell(cap, OUTLINE),
-         kit.outline_shell(stem, OUTLINE)] + [kit.outline_shell(e, OUTLINE) for e in eyes] + [leaf_rim])
+         kit.outline_shell(stem, OUTLINE)] + eye_rims + [leaf_rim])
     parts = {
         "Nut": nut,
         "Cap": kit.trimesh.util.concatenate([cap, stem]),
