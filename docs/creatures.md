@@ -22,7 +22,8 @@ pictures, and only then imported into Studio. The fly was the first.
    `cd scripts/models/preview && npm install && cd -`, then
    `node scripts/models/preview/render.mjs models/creatures/<Name>.glb OUT_DIR`.
    It writes `views.png` (front, three quarter, side, top), `views-plain.png`
-   (no outline) and `flap.gif` when the JSON lists wings.
+   (no outline) and `motion.gif` when the JSON lists moving parts (`moving`: parts, hinge,
+   axis, swing range in degrees, swings per loop).
 5. Show Wylie the previews. Change, rebuild and preview until approved.
 6. After approval: Wylie imports the GLB in Studio (File > Import) and keeps
    the model in ServerStorage (see Known traps in CLAUDE.md about `.rbxm`).
@@ -33,6 +34,7 @@ pictures, and only then imported into Studio. The fly was the first.
 ## Rules learned so far
 - Roblox ignores see-through pixels in imported textures. See-through parts
   are plain coloured parts whose Transparency the game sets (fly wings: 0.6).
+- The fly's legs are one part that swings 15 degrees about the middle hips.
 - Anything that moves is its own part, so a script can turn it.
 - Axes: +Y up, the creature faces -Z (Roblox's forward), 1 unit = 1 stud.
 - The black cartoon outline is a separate `Outline` part (a slightly bigger

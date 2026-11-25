@@ -4,6 +4,8 @@ six thin black legs trailing behind and two purple wings at 60% transparency.
 Round 2 changes from Wylie (2026-11-25): black keyline kept, legs further
 back and trailing (middle leg 1.5 times longer), wings uneven (long arc on
 top, shallow arc underneath), simple trumpet snout, eyes 1.5 times bigger.
+Round 3: eyes back to the drawing's size, pupils 1.5 times bigger instead,
+wings 1.3 times bigger, legs swing 15 degrees as it flies.
 
 Usage (from the repo root):
   python3 scripts/models/build_fly.py models/creatures/Fly.glb
@@ -17,12 +19,14 @@ is BODY_LENGTH studs long.
 Parts (one MeshPart each in Studio):
   Body      grey body and snout
   Eyes      both green eyes
-  Black     pupils and legs
+  Pupils    black pupils
+  Legs      all six legs; swing together about LEG_HINGE
   Outline   black cartoon outline round body, eyes and snout (delete it for
             the plain look)
   WingL/R   purple wings; set Transparency 0.6 in the game
   WingRimL/R  black edge round each wing (goes with the outline look)
-The JSON written next to the GLB gives each wing's hinge point and flap axis.
+The JSON written next to the GLB lists the moving parts with their hinge,
+axis and swing range.
 """
 import math
 import sys
@@ -33,7 +37,8 @@ import creature_kit as kit
 
 BODY_LENGTH = 1.2                 # studs, body only (eyes and wings stick out)
 OUTLINE = 0.03                    # outline thickness, in body units
-FLAP_UP, FLAP_DOWN = 30, -45      # degrees either side of the rest pose
+FLAP_UP, FLAP_DOWN = 30, -45      # wing flap, degrees either side of the rest pose
+LEG_SWING = 15                    # legs swing back and forth through this many degrees
 
 GREY = (98, 98, 98, 255)
 GREEN = (140, 198, 63, 255)
@@ -41,16 +46,15 @@ BLACK = (0, 0, 0, 255)
 PURPLE = (147, 39, 143, 102)      # alpha 102 = 60% see-through (preview only)
 
 BODY_R = (0.36, 0.345, 0.5)       # half width, half height, half length
-EYE_SIZE = 1.5                    # Wylie: eyes 1.5 times the drawing's size
-EYE_R = (0.27 * EYE_SIZE, 0.30 * EYE_SIZE, 0.27 * EYE_SIZE)
-EYE_C = (0.27 * EYE_SIZE, 0.08, -0.62)   # right eye; the left is mirrored. The eyes touch in the middle.
-PUPIL_R = 0.067 * EYE_SIZE
+EYE_R = (0.27, 0.30, 0.27)
+EYE_C = (0.28, 0.03, -0.47)       # right eye; the left is mirrored
+PUPIL_R = 0.067 * 1.5             # Wylie: pupils 1.5 times the drawing's size
 PUPIL_LOOK = (0.5, 0.05, -1.0)   # out, up, forward
 HINGE = np.array([0.12, 0.31, 0.04])
 WING_DIR = (0.6, 0.8, 0.6)       # up, out and back, as in the side and front views
 
 
-WING_LEN = 0.95
+WING_LEN = 0.95 * 1.3             # Wylie: wings 1.3 times bigger
 WING_TOP, WING_BOTTOM = 0.95, 0.28   # how far each edge bulges (top edge is the long arc)
 
 
@@ -86,7 +90,7 @@ def trumpet():
     m = kit.trimesh.creation.revolve(profile, sections=14)
     m.apply_transform(kit.trimesh.transformations.rotation_matrix(-math.pi / 2, (1, 0, 0)))  # stand it up
     m.apply_transform(kit.trimesh.transformations.rotation_matrix(math.radians(-15), (1, 0, 0)))  # bell a bit forward
-    m.apply_translation((0, -0.6, -0.5))
+    m.apply_translation((0, -0.6, -0.44))
     return m
 
 
@@ -106,6 +110,7 @@ def build():
 
     # Legs hang down and back while the fly hovers. Right side, then mirrored.
     legs = [leg((0.12, -0.28, z), length) for z, length in LEG_HIPS]
+    leg_hinge = np.array([0.0, -0.28, LEG_HIPS[1][0]])   # through the middle hips
     legs = kit.trimesh.util.concatenate(legs + [kit.mirror_x(m) for m in legs])
 
     outline_2d = wing_outline()
@@ -123,7 +128,8 @@ def build():
     parts = {
         "Body": body_all,
         "Eyes": kit.trimesh.util.concatenate([eye_r, eye_l]),
-        "Black": kit.trimesh.util.concatenate([pupil_r, pupil_l, legs]),
+        "Pupils": kit.trimesh.util.concatenate([pupil_r, pupil_l]),
+        "Legs": legs,
         "Outline": outline,
         "WingR": wing_r, "WingL": kit.mirror_x(wing_r),
         "WingRimR": rim_r, "WingRimL": kit.mirror_x(rim_r),
@@ -132,21 +138,26 @@ def build():
     scale = BODY_LENGTH / (2 * BODY_R[2])
     for m in parts.values():
         m.apply_scale(scale)
-    hinge_r = HINGE * scale
-    hinge_l = hinge_r * np.array([-1, 1, 1])
+    hinge_r = (HINGE * scale).round(3).tolist()
+    hinge_l = (HINGE * scale * np.array([-1, 1, 1])).round(3).tolist()
     extras = {
         "bodyLength": BODY_LENGTH,
-        "wings": {
-            # The wing turns about an axis along the body (front to back)
-            # through its hinge. Positive angles lift the right wing; the
-            # left wing uses the mirrored angle.
-            "WingR": {"hinge": hinge_r.round(3).tolist(), "axis": [0, 0, 1], "sign": 1, "rim": "WingRimR"},
-            "WingL": {"hinge": hinge_l.round(3).tolist(), "axis": [0, 0, 1], "sign": -1, "rim": "WingRimL"},
-            "flapUp": FLAP_UP, "flapDown": FLAP_DOWN,
-        },
+        # Moving parts. Each turns about `axis` through `hinge`, back and
+        # forth between `from` and `to` degrees. `cycles` is how many swings
+        # it makes per animation loop (wings beat faster than legs swing).
+        "moving": [
+            # Wings turn about an axis along the body; positive lifts the right wing.
+            {"parts": ["WingR", "WingRimR"], "hinge": hinge_r, "axis": [0, 0, 1],
+             "from": FLAP_UP, "to": FLAP_DOWN, "cycles": 4},
+            {"parts": ["WingL", "WingRimL"], "hinge": hinge_l, "axis": [0, 0, 1],
+             "from": -FLAP_UP, "to": -FLAP_DOWN, "cycles": 4},
+            # Legs swing forward and back about a side to side axis.
+            {"parts": ["Legs"], "hinge": (leg_hinge * scale).round(3).tolist(), "axis": [1, 0, 0],
+             "from": -LEG_SWING / 2, "to": LEG_SWING / 2, "cycles": 1},
+        ],
         "transparentParts": {"WingR": 0.6, "WingL": 0.6},
     }
-    colours = {"Body": GREY, "Eyes": GREEN, "Black": BLACK, "Outline": BLACK,
+    colours = {"Body": GREY, "Eyes": GREEN, "Pupils": BLACK, "Legs": BLACK, "Outline": BLACK,
                "WingR": PURPLE, "WingL": PURPLE, "WingRimR": BLACK, "WingRimL": BLACK}
     return parts, colours, extras
 

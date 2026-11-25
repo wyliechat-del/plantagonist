@@ -1,10 +1,10 @@
 // Renders preview pictures of a creature GLB, without Blender or Studio.
 // Usage (from the repo root, after `npm install` in this folder):
 //   node scripts/models/preview/render.mjs models/creatures/Fly.glb OUT_DIR
-// Reads the JSON written next to the GLB (wing hinges, flap range) and writes:
+// Reads the JSON written next to the GLB (moving parts and their hinges) and writes:
 //   views.png        front, three quarter, side and top, with the outline look
 //   views-plain.png  the same without the Outline and wing rim parts
-//   flap.gif         the wings flapping, three quarter view
+//   motion.gif       one loop of the moving parts (wings, legs), three quarter view
 // Uses the Playwright Chromium already on the machine.
 import { createRequire } from "node:module";
 import { createServer } from "node:http";
@@ -64,18 +64,15 @@ for (const [look, hide] of [["views", []], ["views-plain", plain]]) {
   execFileSync("python3", [join(here, "sheet.py"), join(outDir, `${look}.png`), ...files]);
 }
 
-// Flap clip: a smooth up and down cycle between the JSON's flap limits.
-const w = info.wings || {};
-const up = w.flapUp ?? 0, down = w.flapDown ?? 0;
+// Motion clip: one loop of every moving part listed in the JSON.
 const frames = [];
-const N = 12;
+const N = (info.moving || []).length ? 32 : 0;
 for (let i = 0; i < N; i++) {
-  const t = (1 - Math.cos((2 * Math.PI * i) / N)) / 2;   // 0 -> 1 -> 0
-  const f = join(tmp, `flap-${String(i).padStart(2, "0")}.png`);
-  await shot({ azimuth: -35, elevation: 12, flap: up + (down - up) * t }, f);
+  const f = join(tmp, `move-${String(i).padStart(2, "0")}.png`);
+  await shot({ azimuth: -35, elevation: 12, time: i / N }, f);
   frames.push(f);
 }
-execFileSync("python3", [join(here, "sheet.py"), "--gif", join(outDir, "flap.gif"), ...frames]);
+if (N) execFileSync("python3", [join(here, "sheet.py"), "--gif", join(outDir, "motion.gif"), ...frames]);
 await browser.close();
 server.close();
 console.log("written to", outDir);

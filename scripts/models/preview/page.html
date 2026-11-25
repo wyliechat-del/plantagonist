@@ -26,7 +26,7 @@ sun.position.set(2, 4, -3);
 scene.add(sun);
 const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
 const nodes = {};
-const wings = [];
+const movers = [];
 let radius = 1, centre = new THREE.Vector3();
 
 window.setup = async (url, info, size) => {
@@ -35,10 +35,9 @@ window.setup = async (url, info, size) => {
   scene.add(gltf.scene);
   gltf.scene.traverse((o) => { if (o.isMesh) nodes[o.name] = o; });
   // Moving parts turn about a hinge: wrap each in a group placed at its hinge.
-  for (const [name, w] of Object.entries(info.wings || {})) {
-    if (!w.hinge) continue;
-    const hinge = new THREE.Vector3(...w.hinge);
-    for (const part of [name, w.rim]) {
+  for (const mv of info.moving || []) {
+    const hinge = new THREE.Vector3(...mv.hinge);
+    for (const part of mv.parts) {
       const mesh = nodes[part];
       if (!mesh) continue;
       const pivot = new THREE.Group();
@@ -46,7 +45,7 @@ window.setup = async (url, info, size) => {
       mesh.parent.add(pivot);
       pivot.add(mesh);
       mesh.position.sub(hinge);
-      wings.push({ pivot, axis: new THREE.Vector3(...w.axis), sign: w.sign });
+      movers.push({ pivot, mv, axis: new THREE.Vector3(...mv.axis) });
     }
   }
   const box = new THREE.Box3().setFromObject(gltf.scene);
@@ -54,9 +53,14 @@ window.setup = async (url, info, size) => {
   radius = box.getSize(new THREE.Vector3()).length() / 2;
 };
 
-window.draw = ({ azimuth = 0, elevation = 0, flap = 0, hide = [] }) => {
+window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
-  for (const w of wings) w.pivot.quaternion.setFromAxisAngle(w.axis, THREE.MathUtils.degToRad(flap * w.sign));
+  // time 0..1 is one animation loop; null shows the rest pose.
+  for (const { pivot, mv, axis } of movers) {
+    const t = time === null ? null : (1 - Math.cos(2 * Math.PI * mv.cycles * time)) / 2;
+    const angle = t === null ? 0 : mv.from + (mv.to - mv.from) * t;
+    pivot.quaternion.setFromAxisAngle(axis, THREE.MathUtils.degToRad(angle));
+  }
   // azimuth 0 looks at the front (-Z side), 90 from the +X side.
   const a = THREE.MathUtils.degToRad(azimuth), e = THREE.MathUtils.degToRad(elevation);
   const d = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;

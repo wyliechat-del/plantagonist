@@ -10,7 +10,7 @@ args = sys.argv[1:]
 if args[0] == "--gif":
     out, files = args[1], args[2:]
     frames = [Image.open(f).convert("RGB") for f in files]
-    frames[0].save(out, save_all=True, append_images=frames[1:], duration=45, loop=0)
+    frames[0].save(out, save_all=True, append_images=frames[1:], duration=40, loop=0)
 else:
     out, files = args[0], args[1:]
     imgs = [Image.open(f).convert("RGB") for f in files]
