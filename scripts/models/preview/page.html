@@ -24,7 +24,7 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1.9));
 const sun = new THREE.DirectionalLight(0xffffff, 1.4);
 sun.position.set(2, 4, -3);
 scene.add(sun);
-const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 5000);
 const nodes = {};
 const movers = [];
 let radius = 1, centre = new THREE.Vector3();

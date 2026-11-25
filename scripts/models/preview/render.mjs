@@ -59,7 +59,9 @@ for (const [name, v] of Object.entries(info.previewViews || {})) {
   const i = views.findIndex(([n]) => n === name);
   if (i >= 0) views[i][1] = v;
 }
-for (const [look, hide] of [["views", []], ["views-plain", plain]]) {
+// Preview-only parts (like the rain shadow) show only in the motion clip.
+const only = info.previewOnly || [];
+for (const [look, hide] of [["views", only], ["views-plain", [...plain, ...only]]]) {
   const files = [];
   for (const [name, v] of views) {
     const f = join(tmp, `${look}-${name}.png`);
