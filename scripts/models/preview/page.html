@@ -66,7 +66,10 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
   // time 0..1 is one animation loop; null shows the rest pose.
   for (const { pivot, mv, axis } of movers) {
     let angle = 0, size = 1;
-    if (time !== null && mv.swing !== undefined) {
+    if (time !== null && mv.spin !== undefined) {
+      // Spin: turn steadily, `spin` degrees per cycle.
+      angle = mv.spin * mv.cycles * time;
+    } else if (time !== null && mv.swing !== undefined) {
       // Rock: swing degrees either side of upright, shrinking by `shrink`
       // at the ends of the swing and back to full size when upright.
       const s = Math.sin(2 * Math.PI * mv.cycles * time);

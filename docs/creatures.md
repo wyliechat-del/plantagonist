@@ -42,7 +42,7 @@ pictures, and only then imported into Studio. The fly was the first.
   The JSON keeps the picker values; the game should set each part's Color
   from them, in case Studio's importer reads the GLB colour differently.
 - A `moving` entry can also rock: `swing` degrees either side of upright and
-  `shrink` (0.15 = 15% smaller at the ends of the swing), as the Nut does on
+  `shrink` (0.15 = 15% smaller at the ends of the swing), or spin: `spin` degrees per cycle, as the Nut does on
   its tip. `parts: "all"` moves the whole model. `motionView` in the JSON sets
   the camera for `motion.gif`.
 - The fly's legs are one part that swings 15 degrees about the middle hips.
