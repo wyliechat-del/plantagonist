@@ -54,6 +54,11 @@ const views = [
 ];
 const tmp = join(outDir, "frames");
 mkdirSync(tmp, { recursive: true });
+// A model can swap in its own camera angles, e.g. to show a dip from above.
+for (const [name, v] of Object.entries(info.previewViews || {})) {
+  const i = views.findIndex(([n]) => n === name);
+  if (i >= 0) views[i][1] = v;
+}
 for (const [look, hide] of [["views", []], ["views-plain", plain]]) {
   const files = [];
   for (const [name, v] of views) {

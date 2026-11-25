@@ -45,20 +45,23 @@ CENTRE_X, BOTTOM_Y = 977, 1375
 # widest a third of the way up, rounded shoulders, then a dip in the top.
 PROFILE = [(0, 0), (65, 2), (150, 25), (223, 75), (275, 130), (313, 175), (340, 240),
            (355, 300), (360, 405), (352, 480), (323, 525), (280, 580), (243, 615),
-           (190, 655), (130, 685), (70, 700), (35, 690), (0, 655)]
-TOP_INDEX = 15               # the highest point of the profile (start of the dip)
+           (200, 650), (150, 672), (105, 670), (70, 650), (42, 615), (22, 590), (0, 585)]
+TOP_INDEX = 14               # the highest point of the profile (start of the dip)
+# Wylie: the stem sits in a clear dip about 85 px deep and 300 px across.
 PX = HEIGHT / 700            # studs per drawing pixel
 KEYLINE_W = 0.018 * 2.0      # same keyline as the dragonfruit
 
-EYES = [((837, 1010), 108), ((1112, 1010), 108)]
-PUPILS = [((837, 1012), 52), ((1112, 1012), 52)]
-SMILE = [(888, 1220), (920, 1237), (952, 1243), (990, 1235), (1025, 1214), (1052, 1190)]
-SMILE_TICK = [(1042, 1145), (1044, 1168), (1055, 1190), (1075, 1200), (1097, 1203)]
-# Curved lines round the dip at the top.
-TOP_LINES = [[(790, 720), (850, 713), (900, 722), (960, 752)],
-             [(1000, 745), (1050, 720), (1100, 707), (1150, 718), (1205, 748)],
-             [(1000, 752), (1035, 760), (1060, 780), (1083, 805)]]
-STEM = [(970, 715), (978, 680), (985, 640), (995, 605)]
+FACE_UP = 70                 # Wylie: face a little higher than in the drawing
+EYES = [((837, 1010 - FACE_UP), 108), ((1112, 1010 - FACE_UP), 108)]
+PUPILS = [((837, 1012 - FACE_UP), 52), ((1112, 1012 - FACE_UP), 52)]
+SMILE = [(x, y - FACE_UP) for x, y in
+         [(888, 1220), (920, 1237), (952, 1243), (990, 1235), (1025, 1214), (1052, 1190)]]
+SMILE_TICK = [(x, y - FACE_UP) for x, y in
+              [(1042, 1145), (1044, 1168), (1055, 1190), (1075, 1200), (1097, 1203)]]
+# A curved line round the front of the dip's rim, like the drawing's lines
+# round the top (radius and height in px, degrees either side of the front).
+RIM_LINE = (128, 674, 130)
+STEM = [(968, 790), (972, 730), (980, 670), (995, 605)]   # rises from the bottom of the dip
 # Leaf traced from the drawing, starting where it meets the stem.
 LEAF = [(975, 668), (940, 620), (880, 560), (820, 515), (760, 490), (710, 485), (660, 492),
         (600, 520), (550, 560), (505, 600), (560, 588), (585, 585), (610, 600), (650, 635),
@@ -102,8 +105,12 @@ def build():
         blacks.append(kit.bend_onto(on_face, eye, 7, 4, ring_px=rim_px))
     for c, r in PUPILS:
         blacks.append(kit.bend_onto(on_face, kit.circle(c, r, 32), 6, 4))
-    for line in [SMILE, SMILE_TICK] + TOP_LINES:
+    for line in [SMILE, SMILE_TICK]:
         blacks.append(kit.tube([on_face(x, y, 4) for x, y in line], KEYLINE_W * 0.35, sections=6))
+    r, h, span = RIM_LINE
+    rim = [np.array([r * math.sin(math.radians(a)), h, -r * math.cos(math.radians(a))]) * PX
+           for a in range(-span, span + 1, 10)]
+    blacks.append(kit.tube(rim, KEYLINE_W * 0.35, sections=6))
 
     outline = kit.trimesh.util.concatenate(
         [kit.outline_shell(apple, KEYLINE_W), kit.outline_shell(stem, KEYLINE_W * 0.6)] + blacks)
@@ -130,6 +137,7 @@ def build():
         ],
         "motionFrames": 30,
         "motionView": {"azimuth": 0, "elevation": 10},
+        "previewViews": {"three-quarter": {"azimuth": -40, "elevation": 40}},   # shows the dip
     }
     colours = {"Apple": RED, "Stem": BROWN, "Leaf": GREEN, "Eyes": WHITE, "Outline": BLACK, "LeafRim": BLACK}
     return parts, colours, extras
