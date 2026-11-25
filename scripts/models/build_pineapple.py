@@ -64,13 +64,16 @@ SMILE_TICK = [(x, y - FACE_UP) for x, y in
               [(1066, 1280), (1068, 1305), (1080, 1325), (1100, 1337), (1122, 1340)]]
 FACE_LIFT = 12               # px off the skin, above the lattice lines
 
-# Crown: rings of flat spikes round the top, from the drawing: short ones
-# leaning out at the sides, tall ones near upright in the middle.
-# (count, spike length px, base width px, lean out degrees, ring radius px, turn degrees)
-# The first ring is the outer one: Wylie wants it nearer upright at rest,
-# tipping out by OUTER_TURN degrees as the fruit lands.
-CROWN = [(5, 280, 150, 28, 95, 36), (4, 400, 150, 24, 65, 0), (3, 520, 140, 8, 30, 60)]
-OUTER_TURN = 28
+# Crown (redrawn from Wylie's references): curved, pointed leaves that all
+# grow out of one spot on top. Short ones curl out low, tall ones stand up
+# in the middle. Each leaf has a channel down its middle.
+# (count, length px, widest px, start lean degrees, extra bend to the tip, turn degrees)
+# The first ring is the outer one; its leaves tip out OUTER_TURN degrees
+# as the fruit lands.
+CROWN = [(6, 310, 165, 38, 22, 0), (5, 430, 155, 24, 18, 36), (3, 520, 135, 7, 10, 60)]
+OUTER_TURN = 22
+LEAF_FOLD = 0.6              # how deep the channel is, as a share of the half width
+LEAF_THICK = 10              # px
 CROWN_BASE = 735             # px up from the bottom, a little inside the top
 
 
@@ -81,44 +84,46 @@ def radius_at(h_studs):
 on_face = kit.front_mapper(radius_at, CENTRE_X, BOTTOM_Y, PX)
 
 
-def spike(length, width):
-    """Outline of one crown spike, base on v = 0, tip at v = length."""
-    w, L = width / 2, length
-    return [(-w, 0), (-w * 0.78, L * 0.35), (-w * 0.42, L * 0.72), (0, L),
-            (w * 0.42, L * 0.72), (w * 0.78, L * 0.35), (w, 0), (0, 0)]
-
-
-SPIKE_FOLD = 0.9             # spikes fold outward along the middle, so they never look like a line edge on
+def leaf_width(t, widest):
+    """Narrow at the base, widest a third of the way up, pointed tip."""
+    if t < 0.33:
+        return widest * (0.45 + 0.55 * math.sin(math.pi / 2 * t / 0.33))
+    return max(widest * ((1 - t) / 0.67) ** 0.85, 2)
 
 
 def crown():
-    """Returns the inner spikes (dark, light, rims) and the outer spikes as a
-    list of (dark or light, spike, rim, hinge, axis): each outer spike is its
-    own part so it can tip out about its base."""
+    """Returns the inner leaves (dark, light, keylines) and the outer leaves
+    as a list of (dark or light, leaf, keyline, hinge, axis): each outer leaf
+    is its own part so it can tip out about its base."""
     leaves, light, rims, outer = [], [], [], []
-    n = 0                    # counts spikes across all rings, so exactly half are light
-    for ring_no, (count, length, width, lean, ring, turn) in enumerate(CROWN):
+    n = 0                    # counts leaves across all rings, so exactly half are light
+    y_axis = np.array([0.0, 1.0, 0.0])
+    for ring_no, (count, length, widest, lean, bend, turn) in enumerate(CROWN):
         for i in range(count):
             phi = math.radians(turn + 360 * i / count)
             out = np.array([math.sin(phi), 0, -math.cos(phi)])     # phi 0 is the front
             side = np.array([math.cos(phi), 0, math.sin(phi)])
-            up = math.cos(math.radians(lean)) * np.array([0, 1, 0]) + math.sin(math.radians(lean)) * out
-            normal = np.cross(side, up)
-            base = out * ring * PX + np.array([0, CROWN_BASE * PX, 0])
-            outline = spike(length, width)
-            made = []
-            for m in (kit.flat_shape(outline, 8), kit.ring_shape(outline, KEYLINE_W / PX, 12)):
-                w = width / 2
-                m.vertices = np.array([base + (u * side + v * up + (z + SPIKE_FOLD * (w - abs(u))) * normal) * PX
-                                       for u, v, z in m.vertices])
-                m.fix_normals()
-                made.append(m)
+            base = np.array([0, CROWN_BASE * PX, 0]) + out * 8 * PX
+            spine, across, inner, widths = [], [], [], []
+            p = base.copy()
+            steps = 14
+            for k in range(steps + 1):
+                t = k / steps
+                a = math.radians(lean + bend * t * t)              # bends more towards the tip
+                d = math.sin(a) * out + math.cos(a) * y_axis
+                spine.append(p.copy())
+                across.append(side)
+                inner.append(-math.cos(a) * out + math.sin(a) * y_axis)
+                widths.append(leaf_width(t, widest) * PX)
+                p = p + d * length / steps * PX
+            m = kit.blade(spine, across, inner, widths, LEAF_FOLD, LEAF_THICK * PX)
+            rim = kit.outline_shell(m, KEYLINE_W * 0.6)
             if ring_no == 0:
-                # Turning about -side tips the spike's top outward.
-                outer.append((n % 2, made[0], made[1], base, -side))
+                # Turning about -side tips the leaf outward.
+                outer.append((n % 2, m, rim, base, -side))
             else:
-                (light if n % 2 else leaves).append(made[0])
-                rims.append(made[1])
+                (light if n % 2 else leaves).append(m)
+                rims.append(rim)
             n += 1
     cat = kit.trimesh.util.concatenate
     return cat(leaves), cat(light), cat(rims), outer

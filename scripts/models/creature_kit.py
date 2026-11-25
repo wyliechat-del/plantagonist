@@ -95,6 +95,39 @@ def ring_shape(outline_2d, width, thickness):
     return m
 
 
+def blade(spine, across, inner, widths, fold, thickness):
+    """A curved leaf with a channel down its middle (like a pineapple leaf),
+    as a closed thin solid. spine: points from base to tip; across: unit
+    vector across the leaf at each point; inner: unit vector the leaf's
+    inside faces at each point; widths: full width at each point. The edges
+    rise `fold` times the half width towards `inner`, so the leaf never
+    looks like a line when seen edge on."""
+    n = len(spine)
+    top = []
+    for p, a, i, w in zip(spine, across, inner, widths):
+        h = w / 2
+        top += [p - a * h + i * fold * h, p, p + a * h + i * fold * h]
+    top = np.array(top)
+    bottom = top - np.repeat(np.asarray(inner), 3, axis=0) * thickness
+    verts = np.vstack([top, bottom])
+    b = 3 * n
+    faces = []
+    for k in range(n - 1):
+        for j in range(2):
+            a0, a1, c0, c1 = 3 * k + j, 3 * k + j + 1, 3 * (k + 1) + j, 3 * (k + 1) + j + 1
+            faces += [[a0, c0, c1], [a0, c1, a1], [b + a0, b + c1, b + c0], [b + a0, b + a1, b + c1]]
+        for e in (0, 2):                                   # the two long edges
+            a0, c0 = 3 * k + e, 3 * (k + 1) + e
+            faces += [[a0, b + a0, b + c0], [a0, b + c0, c0]]
+    for k in (0, n - 1):                                   # base and tip ends
+        for j in range(2):
+            a0, a1 = 3 * k + j, 3 * k + j + 1
+            faces += [[a0, a1, b + a1], [a0, b + a1, b + a0]]
+    m = trimesh.Trimesh(verts, np.array(faces), process=False)
+    m.fix_normals()
+    return m
+
+
 def frame(direction, side_hint):
     """Rotation whose local X points along `direction` and local Z (the flat
     face's normal) points as close to `side_hint` as it can."""
