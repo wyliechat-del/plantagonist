@@ -1,6 +1,6 @@
 # Making a creature model
 
-Creatures are built by a Python script from Wylie's drawing, previewed as
+Creatures (and pickups like the Nut) are built by a Python script from Wylie's drawing, previewed as
 pictures, and only then imported into Studio. The fly was the first.
 
 ## What the drawing needs
@@ -38,6 +38,10 @@ pictures, and only then imported into Studio. The fly was the first.
   converts the 0-255 picker values (without that the previews looked pale).
   The JSON keeps the picker values; the game should set each part's Color
   from them, in case Studio's importer reads the GLB colour differently.
+- A `moving` entry can also rock: `swing` degrees either side of upright and
+  `shrink` (0.15 = 15% smaller at the ends of the swing), as the Nut does on
+  its tip. `parts: "all"` moves the whole model. `motionView` in the JSON sets
+  the camera for `motion.gif`.
 - The fly's legs are one part that swings 15 degrees about the middle hips.
 - Anything that moves is its own part, so a script can turn it.
 - Axes: +Y up, the creature faces -Z (Roblox's forward), 1 unit = 1 stud.

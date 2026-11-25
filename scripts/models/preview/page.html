@@ -45,7 +45,7 @@ window.setup = async (url, info, size) => {
   // Moving parts turn about a hinge: wrap each in a group placed at its hinge.
   for (const mv of info.moving || []) {
     const hinge = new THREE.Vector3(...mv.hinge);
-    for (const part of mv.parts) {
+    for (const part of mv.parts === "all" ? Object.keys(nodes) : mv.parts) {
       const mesh = nodes[part];
       if (!mesh) continue;
       const pivot = new THREE.Group();
@@ -65,9 +65,19 @@ window.draw = ({ azimuth = 0, elevation = 0, time = null, hide = [] }) => {
   for (const [name, m] of Object.entries(nodes)) m.visible = !hide.includes(name);
   // time 0..1 is one animation loop; null shows the rest pose.
   for (const { pivot, mv, axis } of movers) {
-    const t = time === null ? null : (1 - Math.cos(2 * Math.PI * mv.cycles * time)) / 2;
-    const angle = t === null ? 0 : mv.from + (mv.to - mv.from) * t;
+    let angle = 0, size = 1;
+    if (time !== null && mv.swing !== undefined) {
+      // Rock: swing degrees either side of upright, shrinking by `shrink`
+      // at the ends of the swing and back to full size when upright.
+      const s = Math.sin(2 * Math.PI * mv.cycles * time);
+      angle = mv.swing * s;
+      size = 1 - (mv.shrink || 0) * Math.abs(s);
+    } else if (time !== null) {
+      // Flap: back and forth between `from` and `to`.
+      angle = mv.from + (mv.to - mv.from) * (1 - Math.cos(2 * Math.PI * mv.cycles * time)) / 2;
+    }
     pivot.quaternion.setFromAxisAngle(axis, THREE.MathUtils.degToRad(angle));
+    pivot.scale.setScalar(size);
   }
   // azimuth 0 looks at the front (-Z side), 90 from the +X side.
   const a = THREE.MathUtils.degToRad(azimuth), e = THREE.MathUtils.degToRad(elevation);

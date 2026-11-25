@@ -1,0 +1,147 @@
+{
+ "parts": {
+  "Nut": {
+   "triangles": 432,
+   "colour": [
+    161,
+    99,
+    60
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.062,
+    0.0
+   ],
+   "size": [
+    1.556,
+    2.125,
+    1.556
+   ]
+  },
+  "Cap": {
+   "triangles": 1672,
+   "colour": [
+    101,
+    56,
+    41
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    2.09,
+    0.0
+   ],
+   "size": [
+    2.0,
+    1.694,
+    2.0
+   ]
+  },
+  "Leaf": {
+   "triangles": 240,
+   "colour": [
+    140,
+    198,
+    63
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.597,
+    2.555,
+    -0.213
+   ],
+   "size": [
+    0.813,
+    0.819,
+    0.581
+   ]
+  },
+  "Eyes": {
+   "triangles": 768,
+   "colour": [
+    255,
+    255,
+    255
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.191,
+    -0.653
+   ],
+   "size": [
+    1.047,
+    0.42,
+    0.221
+   ]
+  },
+  "Black": {
+   "triangles": 864,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    0.916,
+    -0.61
+   ],
+   "size": [
+    0.874,
+    0.736,
+    0.267
+   ]
+  },
+  "Outline": {
+   "triangles": 3352,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    1.472,
+    0.0
+   ],
+   "size": [
+    2.042,
+    2.985,
+    2.041
+   ]
+  }
+ },
+ "triangles": 7328,
+ "size": [
+  2.042,
+  2.985,
+  2.041
+ ],
+ "capWidth": 2.0,
+ "motionView": {
+  "azimuth": 0,
+  "elevation": 8
+ },
+ "moving": [
+  {
+   "parts": "all",
+   "hinge": [
+    0,
+    0,
+    0
+   ],
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "swing": 15,
+   "shrink": 0.15,
+   "cycles": 1
+  }
+ ]
+}

@@ -28,6 +28,14 @@ def ellipsoid(centre, radii, rings=8, segments=14):
     return m
 
 
+def lathe(profile, sections=20):
+    """Round shape spun from a side profile: a list of (radius, height)
+    points from bottom to top. Stands upright along +Y."""
+    m = trimesh.creation.revolve(profile, sections=sections)
+    m.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2, (1, 0, 0)))
+    return m
+
+
 def tube(points, radius, sections=6, joints=True):
     """Thin round tube along a list of points (legs, antennae)."""
     parts = []

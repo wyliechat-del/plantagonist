@@ -69,7 +69,7 @@ const frames = [];
 const N = (info.moving || []).length ? 32 : 0;
 for (let i = 0; i < N; i++) {
   const f = join(tmp, `move-${String(i).padStart(2, "0")}.png`);
-  await shot({ azimuth: -35, elevation: 12, time: i / N }, f);
+  await shot({ ...(info.motionView || { azimuth: -35, elevation: 12 }), time: i / N }, f);
   frames.push(f);
 }
 if (N) execFileSync("python3", [join(here, "sheet.py"), "--gif", join(outDir, "motion.gif"), ...frames]);
