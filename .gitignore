@@ -21,3 +21,6 @@ sourcemap.json
 *.blend1
 *.blend2
 /models/export/
+
+# Node packages (creature preview renderer)
+node_modules/

@@ -1,0 +1,152 @@
+"""Shared building blocks for creature models (fly first, more to follow).
+
+A creature script builds named parts from these shapes and calls export().
+Each part becomes one MeshPart in Studio, so give every colour its own part,
+and keep anything that moves (wings, tails) as its own part too.
+
+Axes match Roblox: +Y up, -Z is the front (where the creature looks).
+Build one side at +X and copy it to the other side with mirror_x().
+1 unit = 1 stud.
+
+See transparency: Roblox ignores see-through pixels in imported textures, so
+a see-through part is exported as a plain colour and the game sets the
+part's Transparency (the alpha below is only for the preview renders).
+"""
+import json
+import math
+
+import numpy as np
+import trimesh
+
+OUTLINE_COLOUR = (0, 0, 0, 255)
+
+
+def ellipsoid(centre, radii, rings=8, segments=14):
+    m = trimesh.creation.uv_sphere(radius=1.0, count=[rings, segments])
+    m.apply_scale(radii)
+    m.apply_translation(centre)
+    return m
+
+
+def tube(points, radius, sections=6, joints=True):
+    """Thin round tube along a list of points (legs, antennae)."""
+    parts = []
+    pts = [np.asarray(p, float) for p in points]
+    radii = radius if isinstance(radius, (list, tuple)) else [radius] * (len(pts) - 1)
+    for a, b, r in zip(pts, pts[1:], radii):
+        parts.append(trimesh.creation.cylinder(radius=r, segment=[a, b], sections=sections))
+    if joints:
+        for p, r in zip(pts[1:-1], radii[1:]):
+            parts.append(ellipsoid(p, (r, r, r), rings=3, segments=sections))
+    return trimesh.util.concatenate(parts)
+
+
+def flat_shape(outline_2d, thickness):
+    """Extrude a 2D outline (list of (u, v)) into a thin slab centred on z = 0.
+    Built by hand (fan from the centre) so no extra geometry library is needed."""
+    pts = np.asarray(outline_2d, float)
+    n = len(pts)
+    c = pts.mean(axis=0)
+    h = thickness / 2
+    verts = [[c[0], c[1], h], [c[0], c[1], -h]]
+    verts += [[u, v, h] for u, v in pts] + [[u, v, -h] for u, v in pts]
+    faces = []
+    for i in range(n):
+        j = (i + 1) % n
+        top_i, top_j, bot_i, bot_j = 2 + i, 2 + j, 2 + n + i, 2 + n + j
+        faces.append([0, top_i, top_j])
+        faces.append([1, bot_j, bot_i])
+        faces.append([top_i, bot_i, bot_j])
+        faces.append([top_i, bot_j, top_j])
+    m = trimesh.Trimesh(np.array(verts), np.array(faces), process=False)
+    if m.volume < 0:
+        m.invert()
+    return m
+
+
+def ring_shape(outline_2d, width, thickness):
+    """A flat band just inside an outline (a black rim round a wing)."""
+    pts = np.asarray(outline_2d, float)
+    c = pts.mean(axis=0)
+    inner = c + (pts - c) * (1 - width / np.linalg.norm(pts - c, axis=1, keepdims=True))
+    n = len(pts)
+    h = thickness / 2
+    verts = np.vstack([np.c_[pts, np.full(n, h)], np.c_[inner, np.full(n, h)],
+                       np.c_[pts, np.full(n, -h)], np.c_[inner, np.full(n, -h)]])
+    faces = []
+    for i in range(n):
+        j = (i + 1) % n
+        o, ii, ob, ib = 0, n, 2 * n, 3 * n
+        faces += [[o + i, o + j, ii + j], [o + i, ii + j, ii + i]]          # top
+        faces += [[ob + i, ib + j, ob + j], [ob + i, ib + i, ib + j]]        # bottom
+        faces += [[o + i, ob + i, ob + j], [o + i, ob + j, o + j]]           # outer edge
+        faces += [[ii + i, ii + j, ib + j], [ii + i, ib + j, ib + i]]        # inner edge
+    m = trimesh.Trimesh(verts, np.array(faces), process=False)
+    m.fix_normals()
+    return m
+
+
+def frame(direction, side_hint):
+    """Rotation whose local X points along `direction` and local Z (the flat
+    face's normal) points as close to `side_hint` as it can."""
+    d = np.asarray(direction, float)
+    d /= np.linalg.norm(d)
+    w = np.cross(side_hint, d)
+    w /= np.linalg.norm(w)
+    n = np.cross(d, w)
+    m = np.eye(4)
+    m[:3, 0], m[:3, 1], m[:3, 2] = d, w, n
+    return m
+
+
+def mirror_x(mesh):
+    m = mesh.copy()
+    m.apply_transform(np.diag([-1, 1, 1, 1]))   # trimesh fixes the face order itself
+    return m
+
+
+def outline_shell(mesh, thickness):
+    """Cartoon outline: a slightly bigger copy, turned inside out, drawn black.
+    Only the back faces show, so it looks like a line round the edge."""
+    m = mesh.copy()
+    m.merge_vertices()
+    m.vertices = m.vertices + m.vertex_normals * thickness
+    m.invert()
+    return m
+
+
+def rotate_about(mesh, angle_deg, axis, point):
+    m = mesh.copy()
+    m.apply_transform(trimesh.transformations.rotation_matrix(math.radians(angle_deg), axis, point))
+    return m
+
+
+def export(path, parts, colours, extras=None):
+    """parts: {name: mesh}. colours: {name: (r, g, b, a)}. Writes a GLB with
+    one node per part and a JSON sidecar with sizes, triangle counts and
+    `extras` (pivots and anything the game script needs)."""
+    scene = trimesh.Scene()
+    info = {"parts": {}, "triangles": 0}
+    for name, m in parts.items():
+        m = m.copy()
+        m.merge_vertices()
+        r, g, b, a = colours[name]
+        mat = trimesh.visual.material.PBRMaterial(
+            name=name, baseColorFactor=[r / 255, g / 255, b / 255, a / 255],
+            alphaMode="BLEND" if a < 255 else "OPAQUE",
+            metallicFactor=0, roughnessFactor=0.7, doubleSided=a < 255)
+        m.visual = trimesh.visual.TextureVisuals(material=mat)
+        scene.add_geometry(m, node_name=name, geom_name=name)
+        tris = int(len(m.faces))
+        info["parts"][name] = {"triangles": tris, "colour": [r, g, b],
+                               "transparency": round(1 - a / 255, 2),
+                               "centre": [round(float(v), 3) for v in m.bounds.mean(axis=0)],
+                               "size": [round(float(v), 3) for v in m.extents]}
+        info["triangles"] += tris
+    lo, hi = scene.bounds
+    info["size"] = [round(float(v), 3) for v in hi - lo]
+    info.update(extras or {})
+    scene.export(path, include_normals=True)
+    with open(path.rsplit(".", 1)[0] + ".json", "w") as f:
+        json.dump(info, f, indent=1)
+    return info

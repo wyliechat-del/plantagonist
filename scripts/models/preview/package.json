@@ -1,0 +1,9 @@
+{
+  "name": "creature-preview",
+  "private": true,
+  "type": "module",
+  "description": "Renders preview pictures and a flap clip of a creature GLB (three.js in headless Chromium)",
+  "dependencies": {
+    "three": "0.170.0"
+  }
+}
