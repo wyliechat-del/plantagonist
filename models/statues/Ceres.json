@@ -1,0 +1,190 @@
+{
+ "parts": {
+  "Marble": {
+   "triangles": 13588,
+   "colour": [
+    243,
+    240,
+    232
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.004,
+    9.417,
+    -0.132
+   ],
+   "size": [
+    3.789,
+    9.226,
+    3.448
+   ]
+  },
+  "Pedestal": {
+   "triangles": 72,
+   "colour": [
+    226,
+    223,
+    216
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    2.427,
+    0.0
+   ],
+   "size": [
+    6.567,
+    4.776,
+    6.567
+   ]
+  },
+  "Letters": {
+   "triangles": 704,
+   "colour": [
+    66,
+    66,
+    74
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    2.606,
+    -2.687
+   ],
+   "size": [
+    3.306,
+    0.663,
+    0.09
+   ]
+  },
+  "Veins": {
+   "triangles": 3440,
+   "colour": [
+    190,
+    188,
+    196
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.212,
+    5.265,
+    0.003
+   ],
+   "size": [
+    5.553,
+    8.363,
+    6.179
+   ]
+  },
+  "Grain": {
+   "triangles": 11408,
+   "colour": [
+    243,
+    240,
+    232
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.046,
+    9.331,
+    -0.277
+   ],
+   "size": [
+    5.913,
+    9.113,
+    5.331
+   ]
+  },
+  "Grain2": {
+   "triangles": 10924,
+   "colour": [
+    243,
+    240,
+    232
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.06,
+    9.318,
+    -0.108
+   ],
+   "size": [
+    5.608,
+    9.087,
+    5.304
+   ]
+  },
+  "Outline": {
+   "triangles": 17960,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    0.0,
+    7.047,
+    0.0
+   ],
+   "size": [
+    6.645,
+    14.095,
+    6.645
+   ]
+  },
+  "OutlineGrain": {
+   "triangles": 12372,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.067,
+    9.339,
+    -0.28
+   ],
+   "size": [
+    6.002,
+    9.174,
+    5.372
+   ]
+  },
+  "OutlineGrain2": {
+   "triangles": 11900,
+   "colour": [
+    0,
+    0,
+    0
+   ],
+   "transparency": 0.0,
+   "centre": [
+    -0.114,
+    9.335,
+    -0.107
+   ],
+   "size": [
+    6.081,
+    9.168,
+    5.347
+   ]
+  }
+ },
+ "triangles": 82368,
+ "size": [
+  6.645,
+  14.095,
+  6.645
+ ],
+ "pedestalTop": 4.815,
+ "scale": 1.4926,
+ "note": "Static statue. Set each part's Color from the colour values here; Material SmoothPlastic keeps the cartoon look.",
+ "previewViews": {
+  "top": {
+   "azimuth": 150,
+   "elevation": 18
+  }
+ }
+}
