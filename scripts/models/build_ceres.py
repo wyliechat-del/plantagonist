@@ -5,8 +5,9 @@ the same size.
 Wylie's brief (2026-11-26): Ceres holding a bundle of plants and grains,
 with a flower wreath crown. Following the reference, she holds a sheaf of
 wheat up against her right shoulder and a second sheaf low at her left
-hip. Her crown is roses and daisies; daisies and a stray ear of wheat lie
-on the pedestal top.
+hip. Her crown is roses and daisies. Round 2 (Wylie): the fallen wheat is
+gone; big leaves lie at the pedestal's corners with toad-sized bees and
+ants on them, and two daisies between.
 
 Usage (from the repo root):
   python3 scripts/models/build_ceres.py models/statues/Ceres.glb
@@ -20,6 +21,7 @@ import numpy as np
 import trimesh
 
 import build_flora as f
+from build_diana import Animal
 import creature_kit as kit
 
 FLORA_SCALE = 1.4926     # from Flora.json, so all the statues are the same size
@@ -141,19 +143,93 @@ def arms():
           spread=0.38, out=(-1, 0.15, 0))
 
 
+def big_leaf(base, direction, length=1.75, width=0.65):
+    """A broad leaf lying on the pedestal, edges curling up a little, with
+    a midrib and side veins drawn on. Returns the middle of its top face."""
+    d = unit((direction[0], 0, direction[2]))
+    side = unit(np.cross(d, (0, 1, 0)))
+    up = np.array([0.0, 1.0, 0.0])
+    t = np.linspace(0, 1, 9)
+    spine = [np.asarray(base) + d * length * s + up * (0.07 + 0.06 * math.sin(math.pi * s)) for s in t]
+    widths = width * 1.6 * np.array([0.15, 0.6, 0.85, 0.97, 1.0, 0.93, 0.75, 0.45, 0.03])
+    m = kit.blade(spine, [side] * 9, [up] * 9, widths, fold=0.25, thickness=0.04)
+    detail(m, f.OUTLINE_SMALL)
+    lift = up * 0.03
+    f.line([p + lift for p in spine[:-1]], f.LINE * 0.7, to=f.flower_lines)
+    for k in range(1, 7):
+        for sx in (1, -1):
+            a = spine[k] + lift
+            b = spine[min(k + 1, 8)] + side * sx * widths[k] * 0.4 + up * (0.02 + 0.25 * widths[k] * 0.4)
+            f.line([a, b], f.LINE * 0.5, to=f.flower_lines)
+    return spine[4] + up * 0.03
+
+
+def bee():
+    """A round cartoon bee standing on six legs, wings up, facing -Z."""
+    a = Animal()
+    ab_c, ab_r = np.array([0, 0.34, 0.22]), np.array([0.26, 0.25, 0.34])
+    a.ball(ab_c, ab_r)
+    for zz in (-0.12, 0.04, 0.19):                         # stripes
+        k = math.sqrt(1 - (zz / ab_r[2]) ** 2) * 1.03
+        a.line([ab_c + (ab_r[0] * k * math.cos(t), ab_r[1] * k * math.sin(t), zz)
+                for t in np.linspace(0, 2 * math.pi, 17)], f.LINE * 0.9, up=(0, 0, 1))
+    sting = trimesh.creation.cone(radius=0.05, height=0.13, sections=8)
+    sting.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], [0, -0.2, 1]))
+    sting.apply_translation(ab_c + (0, -0.04, 0.32))
+    a.part(sting)
+    a.ball((0, 0.36, -0.12), (0.21, 0.2, 0.2))             # fuzzy middle
+    head_c, head_r = np.array([0, 0.4, -0.37]), np.array([0.18, 0.17, 0.16])
+    a.ball(head_c, head_r)
+    for sx in (1, -1):
+        a.dot(head_c + (sx * 0.08, 0.04, -0.15), 0.035)     # eyes
+        tip = head_c + (sx * 0.15, 0.32, -0.12)
+        a.line([head_c + (sx * 0.06, 0.13, -0.06), head_c + (sx * 0.1, 0.26, -0.06), tip])
+        a.ball(tip, (0.035, 0.035, 0.035), rings=4, segments=6)
+        wing = kit.flat_shape([(0.13 * math.cos(t), 0.3 * math.sin(t)) for t in np.linspace(0, 2 * math.pi, 20, endpoint=False)], 0.025)
+        wing.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, (1, 0, 0)))
+        wing.apply_transform(trimesh.transformations.rotation_matrix(math.radians(sx * 28), (0, 0, 1)))
+        wing.apply_translation((sx * 0.2, 0.6, 0.12))
+        a.part(wing)
+        for z in (-0.2, -0.08, 0.05):                       # legs
+            a.tube([(sx * 0.12, 0.25, z), (sx * 0.24, 0.16, z - 0.03), (sx * 0.27, 0.02, z - 0.06)], 0.03, sections=6)
+    a.line([head_c + (math.sin(u) * 0.12, -0.05 - 0.03 * math.cos(u), -0.15) for u in np.linspace(-1.0, 1.0, 7)])
+    return a
+
+
+def ant():
+    """A cartoon ant: big head, small middle, round back end, elbowed
+    feelers and six bent legs, facing -Z."""
+    a = Animal()
+    head_c = np.array([0, 0.36, -0.42])
+    a.ball(head_c, (0.17, 0.15, 0.16))
+    a.ball((0, 0.3, -0.16), (0.1, 0.1, 0.17))              # middle
+    a.ball((0, 0.28, 0.03), (0.06, 0.06, 0.06), rings=5, segments=8)   # waist
+    a.ball((0, 0.33, 0.27), (0.21, 0.2, 0.27))             # back end
+    for sx in (1, -1):
+        a.dot(head_c + (sx * 0.09, 0.05, -0.14), 0.035)
+        elbow = head_c + (sx * 0.1, 0.3, -0.02)
+        a.line([head_c + (sx * 0.06, 0.12, -0.08), elbow, elbow + (sx * 0.08, 0.05, -0.22)])
+        a.ball(head_c + (sx * 0.05, -0.1, -0.15), (0.035, 0.03, 0.06), rings=4, segments=6)   # jaws
+        for z, lean in ((-0.25, -0.12), (-0.16, 0.0), (-0.07, 0.14)):
+            a.tube([(sx * 0.07, 0.27, z), (sx * 0.21, 0.33, z + lean * 0.5), (sx * 0.28, 0.02, z + lean)], 0.035, sections=6)
+    a.line([head_c + (math.sin(u) * 0.1, -0.06 - 0.03 * math.cos(u), -0.15) for u in np.linspace(-1.0, 1.0, 7)])
+    return a
+
+
+TOAD_SIZE = 1.1          # Diana's toad is put at this size; bees and ants match it
+
+
 def base_plants():
-    y = PT + 0.05
-    for (x, z, s) in [(-1.45, -1.35, 0.28), (-0.95, -1.62, 0.22), (1.55, 1.25, 0.26), (-1.55, 1.3, 0.27)]:
-        daisy((x, y + 0.04, z), s, (f.rng.uniform(-0.25, 0.25), 1, f.rng.uniform(-0.25, 0.25)))
-        for a in f.rng.uniform(0, 6.3, 2):
-            d = np.array([math.cos(a), -0.15, math.sin(a)])
-            f.leaf((x + d[0] * s * 0.6, y + 0.02, z + d[2] * s * 0.6), d, 0.28, 0.14)
-    # Two stray ears of wheat lying at the front right.
-    for (x, z, a) in [(1.0, -1.55, 2.6), (1.35, -1.25, 2.2)]:
-        d = np.array([math.cos(a), 0.05, math.sin(a)])
-        start = np.array([x, y + 0.04, z])
-        stalk([start - d * 0.4, start])
-        ear(start, d, grains=6)
+    """Big leaves at the four corners with a bee or an ant on each (Wylie,
+    round 2: the fallen wheat is gone), and two daisies between them."""
+    y = PT
+    for (cx, cz, make, yaw) in [(-1.0, -1.0, bee, -25), (1.0, -1.0, ant, 25),
+                                (1.0, 1.0, bee, 100), (-1.0, 1.0, ant, -100)]:
+        d = np.array([cx, 0, cz])
+        top = big_leaf(np.array([cx * 0.55, y, cz * 0.55]), d)
+        make().put(top, yaw, TOAD_SIZE)
+    for (x, z, s) in [(0.62, -1.75, 0.2), (0.0, 1.75, 0.22)]:
+        daisy((x, y + 0.09, z), s, (0, 1, 0))
 
 
 def build():

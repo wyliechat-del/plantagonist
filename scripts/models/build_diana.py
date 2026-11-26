@@ -78,9 +78,10 @@ class Animal:
         w = list(w) if hasattr(w, "__len__") else [w] * len(pts)
         self.part(kit.sweep(pts, w, w, sections=sections, up=up), t)
 
-    def line(self, pts, r=f.LINE * 0.8):
+    def line(self, pts, r=f.LINE * 0.8, up=None):
         p = np.asarray(pts, float)
-        up = (0, 1, 0) if abs((p[-1] - p[0])[1]) < 0.9 * np.linalg.norm(p[-1] - p[0]) else (1, 0, 0)
+        if up is None:
+            up = (0, 1, 0) if abs((p[-1] - p[0])[1]) < 0.9 * np.linalg.norm(p[-1] - p[0]) else (1, 0, 0)
         self.lines.append(kit.sweep(p, [r] * len(p), [r] * len(p), sections=5, up=up))
 
     def dot(self, p, r=0.03):
