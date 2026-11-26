@@ -53,6 +53,7 @@ FIXED_SCALE = None       # set by other statues (build_pomona.py) to match Flora
 ROSE_SCALE = 1.35        # all roses, so they read from a distance
 HEAD_TILT = 14           # degrees, face turned up like the reference
 NAME = "FLORA"           # on the pedestal panel
+WREATH = True            # build_diana.py has a crescent moon instead
 DETAIL = "Flowers"       # part name for what she holds (build_pomona.py: Fruit)
 FOLDS = 9                # folds round the robe
 
@@ -433,6 +434,8 @@ def head():
         p = wc + tilt @ np.array([0.72 * math.cos(a), 0, 0.72 * math.sin(a)])
         wreath.append((transform([p], TILT)[0], transform([wc], TILT)[0]))
     for k, (p, c) in enumerate(wreath):
+        if not WREATH:
+            break
         out = p - c
         wreath_item(p, k, out / np.linalg.norm(out) + (0, 0.7, 0))
         q = wreath[(k + 1) % len(wreath)][0]
