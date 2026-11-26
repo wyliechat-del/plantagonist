@@ -49,8 +49,11 @@ VEIN = 0.022             # radius of a marble vein
 
 PEDESTAL_TOP = 3.2       # in build units, before scaling to TOTAL_HEIGHT
 TOTAL_HEIGHT = 14.0      # studs, pedestal base to the top of her bun (Wylie, round 3)
+FIXED_SCALE = None       # set by other statues (build_pomona.py) to match Flora's size exactly
 ROSE_SCALE = 1.35        # all roses, so they read from a distance
 HEAD_TILT = 14           # degrees, face turned up like the reference
+NAME = "FLORA"           # on the pedestal panel
+DETAIL = "Flowers"       # part name for what she holds (build_pomona.py: Fruit)
 FOLDS = 9                # folds round the robe
 
 rng = np.random.default_rng(7)
@@ -89,7 +92,7 @@ def box(lo, hi):
 
 DIE = 1.7                # half width of the pedestal's main block
 DIE_LO, DIE_HI = 0.7, 2.7
-PANEL_W = 2.84           # FLORA fits inside 78% of this, so it never touches the plaque edge
+PANEL_W = 2.84           # NAME fits inside 78% of this, so it never touches the plaque edge
 
 
 def build_pedestal():
@@ -99,21 +102,21 @@ def build_pedestal():
                    ((-1.9, 2.7, -1.9), (1.9, 2.95, 1.9)),
                    ((-2.05, 2.95, -2.05), (2.05, PEDESTAL_TOP, 2.05))]:
         add(box(lo, hi), OUTLINE, to=pedestal)
-    # Raised panel on the front (-Z) face, with FLORA on it.
+    # Raised panel on the front (-Z) face, with her NAME on it.
     add(box((-PANEL_W / 2, 1.15, -DIE - 0.07), (PANEL_W / 2, 2.3, -DIE + 0.05)), 0.03, to=pedestal)
-    letters.append(flora_text(centre_y=1.72, face_z=-DIE - 0.07, height=0.6, depth=0.06,
+    letters.append(name_text(centre_y=1.72, face_z=-DIE - 0.07, height=0.6, depth=0.06,
                               max_width=PANEL_W * 0.78))
     pedestal_veins()
 
 
-def flora_text(centre_y, face_z, height, depth, max_width):
-    """FLORA as raised letters, read from the front (-Z)."""
+def name_text(centre_y, face_z, height, depth, max_width):
+    """NAME as raised letters, read from the front (-Z)."""
     from matplotlib.font_manager import FontProperties
     from matplotlib.textpath import TextPath
     from shapely.geometry import Polygon
     from shapely.ops import unary_union
 
-    path = TextPath((0, 0), "FLORA", size=1.0,
+    path = TextPath((0, 0), NAME, size=1.0,
                     prop=FontProperties(family="DejaVu Serif", weight="bold"))
     rings = [Polygon(p) for p in path.to_polygons() if len(p) > 2]
     rings = [r.buffer(0) for r in rings if r.area > 1e-6]
@@ -342,7 +345,7 @@ NECK = np.array([0.0, PEDESTAL_TOP + 4.1, 0.0])
 PIVOT = np.array([0.0, PEDESTAL_TOP + 4.65, 0.0])
 HEAD_C = np.array([0.0, PEDESTAL_TOP + 5.3, -0.04])
 HEAD_R = np.array([0.66, 0.72, 0.66])
-TILT = trimesh.transformations.rotation_matrix(math.radians(HEAD_TILT), (1, 0, 0), PIVOT)
+
 
 
 def on_head(u, v, lift=0.0, scale=1.0):
@@ -357,7 +360,13 @@ def on_head(u, v, lift=0.0, scale=1.0):
     return HEAD_C + p + n * lift
 
 
+def wreath_item(p, k, facing):
+    """One item of the wreath round her head (Flora: roses)."""
+    rose(p, 0.15 if k % 2 else 0.13, facing)
+
+
 def head():
+    TILT = trimesh.transformations.rotation_matrix(math.radians(HEAD_TILT), (1, 0, 0), PIVOT)
     m = []   # untilted head meshes, tilted together at the end
     o = []
     lines = []
@@ -425,7 +434,7 @@ def head():
         wreath.append((transform([p], TILT)[0], transform([wc], TILT)[0]))
     for k, (p, c) in enumerate(wreath):
         out = p - c
-        rose(p, 0.15 if k % 2 else 0.13, out / np.linalg.norm(out) + (0, 0.7, 0))
+        wreath_item(p, k, out / np.linalg.norm(out) + (0, 0.7, 0))
         q = wreath[(k + 1) % len(wreath)][0]
         mid = (p + q) / 2
         d = (mid - c)
@@ -483,18 +492,18 @@ def build():
              "Pedestal": trimesh.util.concatenate(pedestal),
              "Letters": trimesh.util.concatenate(letters),
              "Veins": trimesh.util.concatenate(veins),
-             "Flowers": trimesh.util.concatenate(flowers_a),
-             "Flowers2": trimesh.util.concatenate(flowers_b),
+             DETAIL: trimesh.util.concatenate(flowers_a),
+             DETAIL + "2": trimesh.util.concatenate(flowers_b),
              "Outline": trimesh.util.concatenate(outline),
-             "OutlineFlowers": trimesh.util.concatenate(lines_a),
-             "OutlineFlowers2": trimesh.util.concatenate(lines_b)}
+             "Outline" + DETAIL: trimesh.util.concatenate(lines_a),
+             "Outline" + DETAIL + "2": trimesh.util.concatenate(lines_b)}
     colours = {"Marble": MARBLE, "Pedestal": PEDESTAL, "Letters": LETTERS,
-               "Veins": VEINS, "Flowers": MARBLE, "Flowers2": MARBLE,
-               "Outline": BLACK, "OutlineFlowers": BLACK, "OutlineFlowers2": BLACK}
+               "Veins": VEINS, DETAIL: MARBLE, DETAIL + "2": MARBLE,
+               "Outline": BLACK, "Outline" + DETAIL: BLACK, "Outline" + DETAIL + "2": BLACK}
     # Built at about 9.4 studs, then scaled as a whole (Wylie: 14 studs tall).
     low = min(m.bounds[0][1] for m in parts.values())   # the keyline dips just under the base
     height = max(m.bounds[1][1] for m in parts.values()) - low
-    scale = TOTAL_HEIGHT / height
+    scale = FIXED_SCALE or TOTAL_HEIGHT / height
     for m in parts.values():
         m.apply_translation((0, -low, 0))
         m.apply_scale(scale)
