@@ -143,13 +143,16 @@ Map.MoonBridge = table.freeze({
 	z = -116,
 	width = 16,
 	-- Length from bank to bank, and how high the middle of the deck is.
-	span = 60,
-	rise = 12,
-	thickness = 2.5,
+	span = 64,
+	rise = 15,
+	thickness = 2,
 	segments = 20,
 	parapetHeight = 2.5,
 	parapetThickness = 1,
 	passUnderMaxLevel = 4,
+	-- Studs to spare above a level 4 plant's nominal height (its head ball
+	-- sticks up past it), checked a little off the middle too.
+	headroom = 3,
 	colour = table.freeze({ 150, 150, 140 }),
 	parapetColour = table.freeze({ 130, 130, 122 }),
 })
@@ -173,9 +176,10 @@ Map.RopeBridge = table.freeze({
 	ropeHeight = 3.5,
 	ropeThickness = 0.35,
 	rampLength = 5,
-	-- Sway: roll side to side by this many degrees, once every `swaySeconds`.
-	swayDegrees = 4,
-	swaySeconds = 3,
+	-- Sway: the deck swings like a cradle hanging from the tops of the posts,
+	-- this many degrees each way, once every `swaySeconds`.
+	swayDegrees = 3,
+	swaySeconds = 4,
 	plankColour = table.freeze({ 140, 105, 70 }),
 	postColour = table.freeze({ 115, 85, 55 }),
 	ropeColour = table.freeze({ 175, 150, 105 }),
@@ -200,9 +204,17 @@ Map.Ford = table.freeze({
 	-- Rocks tip this many degrees at most, so they don't look laid flat.
 	tiltDegrees = 4,
 	-- Small rocks scattered in the water near the ford, for looks.
-	looseRocks = 10,
+	looseRocks = 26,
 	looseMinSize = 1.5,
-	looseMaxSize = 3.5,
+	looseMaxSize = 4,
+	-- How far up and down the river from the ford the loose rocks spread.
+	looseSpread = 22,
+	-- Splashes: white spray on the upstream side of this many ford rocks.
+	splashRocks = 8,
+	splashRate = 14,
+	splashSpeed = 6,
+	splashLifetime = 0.7,
+	splashSize = 1.4,
 	colours = table.freeze({
 		table.freeze({ 120, 115, 105 }),
 		table.freeze({ 105, 100, 95 }),
@@ -215,7 +227,7 @@ Map.Ford = table.freeze({
 -- Path of separate stone pavers from the moon bridge to the gate.
 Map.Path = table.freeze({
 	centreLine = points({
-		{ -139, -139 },
+		{ -140, -141 },
 		{ -165, -155 },
 		{ -182, -175 },
 		{ -202, -216 },
@@ -243,7 +255,9 @@ Map.Path = table.freeze({
 Map.Gate = table.freeze({
 	x = -228,
 	-- Total width, and the small side gate's share of it.
-	width = 48,
+	-- Side gate, pillar, big double gate, pillar, side gate, with pillars at
+	-- both ends.
+	width = 62,
 	sideGateWidth = 10,
 	height = 12,
 	pillarSize = 4,
@@ -257,6 +271,37 @@ Map.Gate = table.freeze({
 	ironColour = table.freeze({ 25, 25, 25 }),
 	pillarColour = table.freeze({ 235, 220, 190 }),
 	lampColour = table.freeze({ 255, 210, 140 }),
+	-- Big padlock on the middle of the double gate.
+	padlockSize = 2.6,
+	padlockHeight = 5,
+	padlockColour = table.freeze({ 190, 150, 60 }),
+})
+
+-- Loose stone wall along the edge of the River quarter: from the gate east
+-- to the river, and from the gate west to the corner and down the left edge
+-- to the river. Each quarter will get its own border.
+Map.StoneWall = table.freeze({
+	-- Runs of wall as { fromX, fromZ, toX, toZ }, inside the edge.
+	runs = table.freeze({
+		table.freeze({ -197, -347.5, -44, -347.5 }),
+		table.freeze({ -259, -347.5, -347.5, -347.5 }),
+		table.freeze({ -347.5, -347.5, -347.5, -44 }),
+	}),
+	height = 4.5,
+	thickness = 3,
+	-- Stones on the face and top: lengths and heights vary between these.
+	minStoneLength = 2.6,
+	maxStoneLength = 4.4,
+	minStoneHeight = 1.2,
+	maxStoneHeight = 1.8,
+	coreColour = table.freeze({ 95, 90, 82 }),
+	colours = table.freeze({
+		table.freeze({ 150, 140, 125 }),
+		table.freeze({ 135, 128, 115 }),
+		table.freeze({ 165, 155, 135 }),
+		table.freeze({ 120, 115, 105 }),
+		table.freeze({ 175, 165, 150 }),
+	}),
 })
 
 -- Marsh between the path and the river: mud that slows big plants.
@@ -288,7 +333,9 @@ Map.Marsh = table.freeze({
 })
 
 -- Lily pads on the marsh. Landing on one springs a plant up for a frog hop:
--- `hopSeconds` in the air, steering at `hopSpeed` studs per second.
+-- up to `hopHeight` studs, steering at `hopSpeed` studs per second for
+-- `hopSeconds`. The map has `extraPadsPer` more pads round each guide
+-- position (placed by a fixed seed, so every server matches).
 Map.LilyPads = table.freeze({
 	positions = points({
 		{ -175, -335 },
@@ -322,8 +369,17 @@ Map.LilyPads = table.freeze({
 	notchDegrees = 40,
 	colour = table.freeze({ 80, 165, 70 }),
 	rimColour = table.freeze({ 55, 120, 50 }),
-	flowerChance = 0.25,
-	flowerColour = table.freeze({ 240, 150, 190 }),
+	extraPadsPer = 2,
+	extraMinDistance = 7,
+	extraMaxDistance = 13,
+	layoutSeed = 7,
+	-- White water lilies (decoration only), one per guide position, sitting
+	-- on pads.
+	lilyFlowers = 22,
+	petalColour = table.freeze({ 250, 250, 245 }),
+	petalTipColour = table.freeze({ 245, 215, 225 }),
+	flowerCentreColour = table.freeze({ 250, 205, 60 }),
+	hopHeight = 10.3,
 	hopSeconds = 0.75,
 	hopSpeed = 28,
 })

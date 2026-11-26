@@ -3,7 +3,7 @@
 	- Swimming is off, so plants wade through the shallow river.
 	- Lily pads: landing on one springs your plant into a frog hop you can
 	  steer (your own client moves your character).
-	- The rope bridge sways (looks only).
+	- The rope bridge swings like a cradle from its post tops (looks only).
 	- Plants hiding in grass (server sets `InGrass` on their model) vanish
 	  for everyone else; their name tag stays. Your own looks see-through.
 ]]
@@ -61,7 +61,7 @@ local function stepHop(now: number)
 		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 		local move = humanoid.MoveDirection * pads.hopSpeed
 		root.AssemblyLinearVelocity =
-			Vector3.new(move.X, MapRules.hopLaunchSpeed(workspace.Gravity, pads.hopSeconds), move.Z)
+			Vector3.new(move.X, MapRules.hopLaunchSpeed(workspace.Gravity, pads.hopHeight), move.Z)
 	end
 end
 
@@ -103,11 +103,19 @@ local function stepSway(now: number)
 		return
 	end
 	local pivot = swayPivot :: CFrame
-	local angle = math.rad(swayDegrees) * math.sin(now * math.pi * 2 / swaySeconds)
-	-- Roll about the bridge's length.
-	local roll = pivot * CFrame.Angles(0, 0, angle) * pivot:Inverse()
+	-- Swing like a cradle about a line along the bridge at the post tops.
+	local rate = math.pi * 2 / swaySeconds
+	local amplitude = math.rad(swayDegrees)
+	local angle = amplitude * math.sin(now * rate)
+	local spin = pivot.ZVector * amplitude * rate * math.cos(now * rate)
+	local swing = pivot * CFrame.Angles(0, 0, angle) * pivot:Inverse()
 	for _, entry in swayParts do
-		entry.part.CFrame = roll * entry.base
+		local part = entry.part
+		part.CFrame = swing * entry.base
+		-- Give the anchored parts the speed they move at, so a plant standing
+		-- on the deck rides along smoothly instead of being jolted each frame.
+		part.AssemblyLinearVelocity = spin:Cross(part.Position - pivot.Position)
+		part.AssemblyAngularVelocity = spin
 	end
 end
 
@@ -187,10 +195,14 @@ function World.start()
 	end)
 
 	local grassTimer = 0
+	-- The bridge moves before each physics step, so plants on it move with it.
+	RunService.PreSimulation:Connect(function()
+		stepSway(os.clock())
+	end)
+
 	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
 		stepHop(now)
-		stepSway(now)
 		grassTimer += dt
 		if grassTimer >= Map.HidingGrass.checkSeconds then
 			grassTimer = 0

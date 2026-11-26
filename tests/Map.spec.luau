@@ -83,14 +83,17 @@ return function(t)
 		t.expect(math.abs(last[1] - Map.Gate.x) < 1, "path ends at the gate")
 	end)
 
-	t.test("moon bridge: levels 1 to 4 fit under the middle, 5 doesn't", function()
+	t.test("moon bridge: levels 1 to 4 fit under the middle with room to spare", function()
 		local bridge = Map.MoonBridge
-		local function height(level)
-			return CHARACTER_HEIGHT * Plants.scaleByLevel[level]
+		local height = CHARACTER_HEIGHT * Plants.scaleByLevel[bridge.passUnderMaxLevel]
+		local radius = Plants.radiusAtScale1 * Plants.scaleByLevel[bridge.passUnderMaxLevel]
+		for _, offset in { 0, radius * 2 } do
+			local underside = MapRules.moonBridgeHeight(Map, offset) - bridge.thickness
+			t.expect(
+				height + bridge.headroom < underside,
+				`level 4 fits {offset} studs off the middle`
+			)
 		end
-		local underside = MapRules.moonBridgeHeight(Map, 0) - bridge.thickness
-		t.expect(height(bridge.passUnderMaxLevel) < underside, "level 4 fits")
-		t.expect(height(bridge.passUnderMaxLevel + 1) > underside, "level 5 doesn't")
 		t.expectEqual(MapRules.moonBridgeHeight(Map, bridge.span / 2), 0, "meets the bank")
 		-- Not steeper than a plant can walk.
 		local slope = 4 * bridge.rise / bridge.span
@@ -102,10 +105,27 @@ return function(t)
 		t.expect(Map.Ford.minTop > Map.River.depth, "ford rocks")
 	end)
 
-	t.test("frog hop: launch speed gives the hop time", function()
+	t.test("frog hop: launch speed reaches the hop height", function()
 		local gravity = 196.2
-		local speed = MapRules.hopLaunchSpeed(gravity, Map.LilyPads.hopSeconds)
-		t.expect(math.abs(2 * speed / gravity - Map.LilyPads.hopSeconds) < 1e-6)
+		local speed = MapRules.hopLaunchSpeed(gravity, Map.LilyPads.hopHeight)
+		t.expect(math.abs(speed * speed / (2 * gravity) - Map.LilyPads.hopHeight) < 1e-6)
+	end)
+
+	t.test("three times the lily pads, all on the marsh and not overlapping", function()
+		local pads = MapRules.lilyPadLayout(Map)
+		t.expectEqual(#pads, #Map.LilyPads.positions * (1 + Map.LilyPads.extraPadsPer))
+		local minGap = Map.LilyPads.size * (1 + Map.LilyPads.sizeVariation)
+		for i, pad in pads do
+			t.expect(MapRules.inMarsh(Map, pad[1], pad[2]), "on the marsh")
+			for j = i + 1, #pads do
+				local other = pads[j]
+				t.expect(
+					math.sqrt((pad[1] - other[1]) ^ 2 + (pad[2] - other[2]) ^ 2) >= minGap,
+					"no overlap"
+				)
+			end
+		end
+		t.expectEqual(MapRules.lilyPadLayout(Map)[30][1], pads[30][1], "same layout every time")
 	end)
 
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()

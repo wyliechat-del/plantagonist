@@ -560,7 +560,8 @@ local function buildRopeBridge(parent: Instance)
 	local function at(offset: number, height: number): Vector3
 		return centre + along * offset + Vector3.yAxis * height
 	end
-	local pivot = CFrame.lookAt(at(0, bridge.endHeight), at(0, bridge.endHeight) + along)
+	-- The deck hangs from the tops of the posts and swings like a cradle.
+	local pivot = CFrame.lookAt(at(0, bridge.postHeight), at(0, bridge.postHeight) + along)
 	model:SetAttribute("SwayPivot", pivot)
 	model:SetAttribute("SwayDegrees", bridge.swayDegrees)
 	model:SetAttribute("SwaySeconds", bridge.swaySeconds)
@@ -699,10 +700,50 @@ local function buildFord(parent: Instance)
 			rock(x, z, size, top, "Rock"):SetAttribute("RaisedMaxLevel", 6)
 		end
 	end
+	-- Splashes: white spray off the upstream side of some ford rocks. The
+	-- river runs along (riverX, riverZ), so upstream is the other way.
+	local upstreamRow = -(ford.rows - 1) / 2 * ford.spacing
+	for i = 1, ford.splashRocks do
+		local acrossOffset = ((i - 0.5) / ford.splashRocks - 0.5) * Map.River.width
+		local spot = Util.part({
+			Name = "Splash",
+			Size = Vector3.new(1, 1, 1),
+			Position = Vector3.new(
+				ford.x + ax * acrossOffset + riverX * (upstreamRow - ford.minSize / 2),
+				GROUND + Map.River.depth,
+				ford.z + az * acrossOffset + riverZ * (upstreamRow - ford.minSize / 2)
+			),
+			Transparency = 1,
+			CanCollide = false,
+			CanQuery = false,
+			CanTouch = false,
+			Parent = model,
+		})
+		local spray = Instance.new("ParticleEmitter")
+		spray.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		spray.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		spray.LightEmission = 0.3
+		spray.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		spray.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, ford.splashSize * 0.4),
+			NumberSequenceKeypoint.new(1, ford.splashSize),
+		})
+		spray.Rate = ford.splashRate
+		spray.Lifetime = NumberRange.new(ford.splashLifetime * 0.6, ford.splashLifetime)
+		spray.Speed = NumberRange.new(ford.splashSpeed * 0.6, ford.splashSpeed)
+		spray.SpreadAngle = Vector2.new(35, 35)
+		spray.Acceleration = Vector3.new(0, -workspace.Gravity * 0.15, 0)
+		spray.EmissionDirection = Enum.NormalId.Top
+		spray.Parent = spot
+	end
 	-- Loose rocks in the water either side.
 	for _ = 1, ford.looseRocks do
 		local side = if Util.random() < 0.5 then -1 else 1
-		local alongRiver = side * (ford.rows * ford.spacing / 2 + 2 + Util.random() * 10)
+		local alongRiver = side
+			* (ford.rows * ford.spacing / 2 + 2 + Util.random() * (ford.looseSpread - 2))
 		local acrossRiver = (Util.random() * 2 - 1) * Map.River.width / 2
 		rock(
 			ford.x + riverX * alongRiver + ax * acrossRiver,
@@ -758,7 +799,7 @@ local function buildGate(parent: Instance)
 	local cream = Util.colour(gate.pillarColour)
 	local left = gate.x - gate.width / 2
 	local pillar = gate.pillarSize
-	local bigWidth = gate.width - gate.sideGateWidth - 3 * pillar
+	local bigWidth = gate.width - 2 * gate.sideGateWidth - 4 * pillar
 
 	local function block(
 		name: string,
@@ -808,10 +849,11 @@ local function buildGate(parent: Instance)
 		)
 	end
 
-	-- Pillars: left, between the side gate and the big gate, right.
+	-- Pillars at both ends and either side of the big gate.
 	local pillarXs = {
 		left + pillar / 2,
 		left + pillar + gate.sideGateWidth + pillar / 2,
+		left + gate.width - pillar - gate.sideGateWidth - pillar / 2,
 		left + gate.width - pillar / 2,
 	}
 	for _, x in pillarXs do
@@ -899,6 +941,8 @@ local function buildGate(parent: Instance)
 
 	local sideX0 = left + pillar
 	panel(sideX0, sideX0 + gate.sideGateWidth, gate.height - 2, 0)
+	local rightX1 = left + gate.width - pillar
+	panel(rightX1 - gate.sideGateWidth, rightX1, gate.height - 2, 0)
 	local bigX0 = sideX0 + gate.sideGateWidth + pillar
 	local half = bigWidth / 2
 	-- Two leaves meeting at a thicker post, arched like the photo.
@@ -911,6 +955,151 @@ local function buildGate(parent: Instance)
 		iron,
 		Enum.Material.Metal
 	)
+
+	-- Big padlock on the middle post, facing into the map.
+	local lockSize = gate.padlockSize
+	local lockX = bigX0 + half
+	local lockY = GROUND + gate.padlockHeight
+	local lockZ = wallZ + 0.8
+	local brass = Util.colour(gate.padlockColour)
+	block(
+		"Padlock",
+		Vector3.new(lockSize, lockSize * 0.85, lockSize * 0.35),
+		Vector3.new(lockX, lockY, lockZ),
+		brass,
+		Enum.Material.Metal
+	)
+	-- Shackle: two legs and a rounded top.
+	local legHeight = lockSize * 0.45
+	local legGap = lockSize * 0.32
+	for _, side in { -1, 1 } do
+		block(
+			"Shackle",
+			Vector3.new(lockSize * 0.13, legHeight, lockSize * 0.13),
+			Vector3.new(lockX + side * legGap, lockY + lockSize * 0.42 + legHeight / 2, lockZ),
+			iron,
+			Enum.Material.Metal
+		)
+	end
+	Util.part({
+		Name = "Shackle",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(
+			lockSize * 0.13,
+			legGap * 2 + lockSize * 0.13,
+			legGap * 2 + lockSize * 0.13
+		),
+		CFrame = CFrame.new(lockX, lockY + lockSize * 0.42 + legHeight, lockZ)
+			* CFrame.Angles(0, math.rad(90), 0),
+		Color = iron,
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	-- Keyhole.
+	block(
+		"Keyhole",
+		Vector3.new(lockSize * 0.12, lockSize * 0.3, 0.1),
+		Vector3.new(lockX, lockY - lockSize * 0.1, lockZ + lockSize * 0.18),
+		iron,
+		Enum.Material.SmoothPlastic
+	)
+end
+
+-- Loose (dry) stone wall: a dark core with irregular stones on the inner
+-- face and along the top.
+local function buildStoneWall(parent: Instance)
+	local wall = Map.StoneWall
+	local model = Instance.new("Model")
+	model.Name = "StoneWall"
+	model.Parent = parent
+	local function stoneColour(): Color3
+		return Util.colour(Util.pick(wall.colours))
+	end
+	for _, run in wall.runs do
+		local x0, z0, x1, z1 = run[1], run[2], run[3], run[4]
+		local length = math.sqrt((x1 - x0) ^ 2 + (z1 - z0) ^ 2)
+		local dx, dz = (x1 - x0) / length, (z1 - z0) / length
+		-- Inward is towards the map centre.
+		local nx, nz = -dz, dx
+		local midX, midZ = (x0 + x1) / 2, (z0 + z1) / 2
+		if nx * -midX + nz * -midZ < 0 then
+			nx, nz = -nx, -nz
+		end
+		local frame = CFrame.fromMatrix(
+			Vector3.new(midX, GROUND, midZ),
+			Vector3.new(dx, 0, dz),
+			Vector3.yAxis
+		)
+		local inward = Vector3.new(nx, 0, nz)
+		-- Which local Z side faces inward.
+		local faceSign = if frame.LookVector:Dot(inward) < 0 then 1 else -1
+		Util.part({
+			Name = "WallCore",
+			Size = Vector3.new(length, wall.height - 0.4, wall.thickness - 0.6),
+			CFrame = frame * CFrame.new(0, (wall.height - 0.4) / 2, 0),
+			Color = Util.colour(wall.coreColour),
+			Material = Enum.Material.Slate,
+			Parent = model,
+		})
+		-- Face stones, course by course.
+		local y = 0
+		while y < wall.height - 0.6 do
+			local course = wall.minStoneHeight
+				+ Util.random() * (wall.maxStoneHeight - wall.minStoneHeight)
+			course = math.min(course, wall.height - y)
+			local along = -length / 2 + Util.random() * wall.minStoneLength * 0.5
+			while along < length / 2 do
+				local stone = wall.minStoneLength
+					+ Util.random() * (wall.maxStoneLength - wall.minStoneLength)
+				stone = math.min(stone, length / 2 - along)
+				if stone > 0.6 then
+					local depthOut = 0.4 + Util.random() * 0.4
+					Util.part({
+						Name = "Stone",
+						Size = Vector3.new(stone - 0.15, course - 0.12, 1.2),
+						CFrame = frame * CFrame.new(
+							along + stone / 2,
+							y + course / 2,
+							faceSign * (wall.thickness / 2 - 0.6 + depthOut * 0.5)
+						) * CFrame.Angles(
+							math.rad((Util.random() * 2 - 1) * 3),
+							math.rad((Util.random() * 2 - 1) * 4),
+							math.rad((Util.random() * 2 - 1) * 3)
+						),
+						Color = stoneColour(),
+						Material = Enum.Material.Slate,
+						Parent = model,
+					})
+				end
+				along += stone
+			end
+			y += course
+		end
+		-- Capstones along the top.
+		local along = -length / 2
+		while along < length / 2 do
+			local stone = wall.minStoneLength
+				+ Util.random() * (wall.maxStoneLength - wall.minStoneLength)
+			stone = math.min(stone, length / 2 - along)
+			if stone > 0.6 then
+				Util.part({
+					Name = "Capstone",
+					Size = Vector3.new(stone - 0.1, 0.7, wall.thickness),
+					CFrame = frame
+						* CFrame.new(along + stone / 2, wall.height - 0.2, 0)
+						* CFrame.Angles(
+							0,
+							math.rad((Util.random() * 2 - 1) * 4),
+							math.rad((Util.random() * 2 - 1) * 3)
+						),
+					Color = stoneColour(),
+					Material = Enum.Material.Slate,
+					Parent = model,
+				})
+			end
+			along += stone
+		end
+	end
 end
 
 -- Marsh mud: strips that follow the outline, so the marsh has the right
@@ -1055,6 +1244,65 @@ local function lilyPadShape(parent: Instance, size: number, colour: Color3): Bas
 	return disc
 end
 
+-- A white water lily (decoration only): two rings of pointed petals
+-- opening upwards round a yellow middle. `base` is the pad's top surface.
+local function waterLily(parent: Instance, base: CFrame)
+	local pads = Map.LilyPads
+	local white = Util.colour(pads.petalColour)
+	local tip = Util.colour(pads.petalTipColour)
+	local spot = base * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
+	local rings = {
+		{ count = 8, length = 1.5, width = 0.6, lean = 30, turn = 0, colour = tip },
+		{ count = 8, length = 1.2, width = 0.5, lean = 55, turn = 22.5, colour = white },
+	}
+	for _, ring in rings do
+		for i = 0, ring.count - 1 do
+			local angle = math.rad(i * 360 / ring.count + ring.turn)
+			-- Each petal starts at the middle, points outwards and leans up.
+			local petalFrame = spot
+				* CFrame.Angles(0, angle, 0)
+				* CFrame.Angles(0, 0, math.rad(ring.lean))
+				* CFrame.new(ring.length / 2, 0.1, 0)
+			local petal = Util.part({
+				Name = "Petal",
+				Size = Vector3.new(ring.length, 0.12, ring.width),
+				CFrame = petalFrame,
+				Color = ring.colour,
+				Material = Enum.Material.SmoothPlastic,
+				CanCollide = false,
+				CanQuery = false,
+				CastShadow = false,
+				Parent = parent,
+			})
+			-- Pointed tip: a small turned square at the outer end.
+			Util.part({
+				Name = "PetalTip",
+				Size = Vector3.new(ring.width * 0.7, 0.12, ring.width * 0.7),
+				CFrame = petal.CFrame
+					* CFrame.new(ring.length / 2, 0, 0)
+					* CFrame.Angles(0, math.rad(45), 0),
+				Color = ring.colour,
+				Material = Enum.Material.SmoothPlastic,
+				CanCollide = false,
+				CanQuery = false,
+				CastShadow = false,
+				Parent = parent,
+			})
+		end
+	end
+	Util.part({
+		Name = "LilyMiddle",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.5, 0.8, 0.8),
+		CFrame = spot * CFrame.new(0, 0.35, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Util.colour(pads.flowerCentreColour),
+		Material = Enum.Material.SmoothPlastic,
+		CanCollide = false,
+		CanQuery = false,
+		Parent = parent,
+	})
+end
+
 local function buildLilyPads(parent: Instance)
 	local pads = Map.LilyPads
 	local model = Instance.new("Model")
@@ -1065,8 +1313,8 @@ local function buildLilyPads(parent: Instance)
 	local padShape = lilyPadShape(model, pads.size, Util.colour(pads.colour))
 	local rimShape = lilyPadShape(model, pads.size + 0.5, Util.colour(pads.rimColour))
 	local padFrame, rimFrame = padShape.CFrame, rimShape.CFrame
-	local flower = Util.colour(pads.flowerColour)
-	for _, position in pads.positions do
+	local layout = MapRules.lilyPadLayout(Map)
+	for index, position in layout do
 		local scale = 1 + (Util.random() * 2 - 1) * pads.sizeVariation
 		local turn = CFrame.Angles(0, Util.random() * math.pi * 2, 0)
 		local top = GROUND + pads.thickness + 0.2
@@ -1087,33 +1335,9 @@ local function buildLilyPads(parent: Instance)
 		pad:SetAttribute("RaisedMaxLevel", 6)
 		pad.Parent = model
 
-		if Util.random() < pads.flowerChance then
-			local spot = centre * CFrame.new(-pads.size * 0.15, pads.thickness / 2 + 0.3, 0)
-			for petal = 0, 4 do
-				local angle = petal * math.pi * 2 / 5
-				Util.part({
-					Name = "Petal",
-					Shape = Enum.PartType.Ball,
-					Size = Vector3.new(0.8, 0.5, 0.8),
-					CFrame = spot * CFrame.new(math.cos(angle) * 0.45, 0, math.sin(angle) * 0.45),
-					Color = flower,
-					Material = Enum.Material.SmoothPlastic,
-					CanCollide = false,
-					CanQuery = false,
-					Parent = model,
-				})
-			end
-			Util.part({
-				Name = "FlowerMiddle",
-				Shape = Enum.PartType.Ball,
-				Size = Vector3.one * 0.5,
-				CFrame = spot * CFrame.new(0, 0.15, 0),
-				Color = Color3.fromRGB(250, 220, 90),
-				Material = Enum.Material.Neon,
-				CanCollide = false,
-				CanQuery = false,
-				Parent = model,
-			})
+		-- White water lilies on the first pads (the guide positions).
+		if index <= pads.lilyFlowers then
+			waterLily(model, centre * CFrame.new(0, pads.thickness / 2, 0))
 		end
 	end
 	padShape:Destroy()
@@ -1200,6 +1424,7 @@ local function buildRiverQuarter()
 	buildMarsh(decor)
 	buildPath(decor)
 	buildGate(decor)
+	buildStoneWall(decor)
 	buildHidingGrass(decor)
 end
 

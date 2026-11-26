@@ -204,10 +204,55 @@ function MapRules.ropeBridgeHeight(map: any, offset: number): number
 	return bridge.endHeight - bridge.sag * (1 - share * share)
 end
 
--- Upward speed that keeps a frog hop in the air for `seconds` under
--- `gravity` (studs per second squared).
-function MapRules.hopLaunchSpeed(gravity: number, seconds: number): number
-	return gravity * seconds / 2
+-- Upward speed that lifts a frog hop `height` studs under `gravity`
+-- (studs per second squared).
+function MapRules.hopLaunchSpeed(gravity: number, height: number): number
+	return math.sqrt(2 * gravity * height)
+end
+
+-- All lily pads: the guide positions from the map, plus `extraPadsPer` more
+-- round each one, on the marsh, clear of the edge and of other pads. Uses
+-- its own fixed-seed random numbers, so every server builds the same marsh.
+function MapRules.lilyPadLayout(map: any): { { number } }
+	local pads = map.LilyPads
+	local seed = pads.layoutSeed
+	local function random(): number
+		seed = (seed * 16807) % 2147483647
+		return seed / 2147483647
+	end
+	local placed = {}
+	for _, position in pads.positions do
+		table.insert(placed, { position[1], position[2] })
+	end
+	local limit = map.halfSize - map.edgeMargin
+	local minGap = pads.size * (1 + pads.sizeVariation) + 0.5
+	local function clear(x: number, z: number): boolean
+		if math.abs(x) > limit or math.abs(z) > limit or not MapRules.inMarsh(map, x, z) then
+			return false
+		end
+		for _, other in placed do
+			if (other[1] - x) ^ 2 + (other[2] - z) ^ 2 < minGap * minGap then
+				return false
+			end
+		end
+		return true
+	end
+	for _, position in pads.positions do
+		local added, tries = 0, 0
+		while added < pads.extraPadsPer and tries < 40 do
+			tries += 1
+			local angle = random() * math.pi * 2
+			local distance = pads.extraMinDistance
+				+ random() * (pads.extraMaxDistance - pads.extraMinDistance)
+			local x = position[1] + math.cos(angle) * distance
+			local z = position[2] + math.sin(angle) * distance
+			if clear(x, z) then
+				table.insert(placed, { x, z })
+				added += 1
+			end
+		end
+	end
+	return placed
 end
 
 -- Share of normal speed for a plant at (x, z), given its level and whether

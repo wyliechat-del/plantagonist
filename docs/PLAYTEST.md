@@ -129,6 +129,21 @@ quarter (top left from above) and check:
 8. Blowfish appear in the river and toads on the marsh; other creatures stay
    on dry land.
 
+## 2h. New in build 8: River quarter fixes
+
+1. **Gate** has a side gate at each end and a big brass padlock on the
+   middle post.
+2. **Loose stone wall** runs from the gate east to the river, and west to
+   the corner and down the left edge to the river.
+3. **Moon bridge** is higher (15 in the middle): a level 4 walks under
+   without its head going through. Level 5 now fits too.
+4. **Ford**: more loose rocks up and down the river, and white spray on the
+   upstream rocks.
+5. **Lily pads**: three times as many, plus 22 white water lilies. The hop
+   is lower (about 10 studs).
+6. **Rope bridge** swings like a cradle from the post tops. Standing on it
+   should feel smooth, with no camera shake.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
