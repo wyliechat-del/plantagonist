@@ -87,6 +87,7 @@ def box(lo, hi):
 
 DIE = 1.7                # half width of the pedestal's main block
 DIE_LO, DIE_HI = 0.7, 2.7
+PANEL_W = 2.84           # FLORA fits inside 78% of this, so it never touches the plaque edge
 
 
 def build_pedestal():
@@ -97,12 +98,13 @@ def build_pedestal():
                    ((-2.05, 2.95, -2.05), (2.05, PEDESTAL_TOP, 2.05))]:
         add(box(lo, hi), OUTLINE, to=pedestal)
     # Raised panel on the front (-Z) face, with FLORA on it.
-    add(box((-1.42, 1.15, -DIE - 0.07), (1.42, 2.3, -DIE + 0.05)), 0.03, to=pedestal)
-    letters.append(flora_text(centre_y=1.72, face_z=-DIE - 0.07, height=0.6, depth=0.06))
+    add(box((-PANEL_W / 2, 1.15, -DIE - 0.07), (PANEL_W / 2, 2.3, -DIE + 0.05)), 0.03, to=pedestal)
+    letters.append(flora_text(centre_y=1.72, face_z=-DIE - 0.07, height=0.6, depth=0.06,
+                              max_width=PANEL_W * 0.78))
     pedestal_veins()
 
 
-def flora_text(centre_y, face_z, height, depth):
+def flora_text(centre_y, face_z, height, depth, max_width):
     """FLORA as raised letters, read from the front (-Z)."""
     from matplotlib.font_manager import FontProperties
     from matplotlib.textpath import TextPath
@@ -122,7 +124,7 @@ def flora_text(centre_y, face_z, height, depth):
     meshes = [trimesh.creation.extrude_polygon(s, depth) for s in shapes]
     m = trimesh.util.concatenate(meshes)
     lo, hi = m.bounds
-    scale = height / (hi[1] - lo[1])
+    scale = min(height / (hi[1] - lo[1]), max_width / (hi[0] - lo[0]))
     m.apply_translation([-(lo[0] + hi[0]) / 2, -(lo[1] + hi[1]) / 2, 0])
     m.apply_scale([scale, scale, 1])
     # Turn to face -Z: (x, y, z) -> (-x, y, -z), then onto the panel.
@@ -181,7 +183,7 @@ def robe_point(theta, y, lift=0.0):
     zs = float(np.interp(y, [0, 2.0, 3.0, 4.4], [0.88, 0.8, 0.7, 0.62]))
     amp = float(np.interp(y, [0, 1.0, 2.6, 3.2], [0.09, 0.07, 0.035, 0.0]))
     r = r * (1 + amp * math.sin(FOLDS * theta + 0.5)) + lift
-    sway = 0.24 * max(0.0, 1 - y / 2.8) ** 2   # the hem blows out to her right (+X)
+    sway = 0.0   # Wylie: base centred on the pedestal (was blown out to +X)
     return np.array([r * math.cos(theta) + sway, y + PEDESTAL_TOP, r * math.sin(theta) * zs])
 
 
@@ -189,7 +191,7 @@ def robe():
     nt, ys = 72, np.linspace(0, PROFILE[-1][1], 40)
     thetas = np.linspace(0, 2 * math.pi, nt, endpoint=False)
     verts = [robe_point(t, y) for y in ys for t in thetas]
-    verts += [np.array([0.12, PEDESTAL_TOP, 0]), np.array([0, PEDESTAL_TOP + PROFILE[-1][1], 0])]
+    verts += [np.array([0.0, PEDESTAL_TOP, 0]), np.array([0, PEDESTAL_TOP + PROFILE[-1][1], 0])]
     faces = []
     for j in range(len(ys) - 1):
         for i in range(nt):
