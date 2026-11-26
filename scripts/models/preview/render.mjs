@@ -45,7 +45,7 @@ async function shot(opts, file) {
   await page.screenshot({ path: file });
 }
 
-const plain = Object.keys(info.parts).filter((n) => n === "Outline" || n.startsWith("WingRim"));
+const plain = Object.keys(info.parts).filter((n) => n.startsWith("Outline") || n.startsWith("WingRim"));
 const views = [
   ["front", { azimuth: 0, elevation: 5 }],
   ["three-quarter", { azimuth: -40, elevation: 15 }],

@@ -55,3 +55,11 @@ pictures, and only then imported into Studio. The fly was the first.
 - Faces drawn flat (the fruit face) are bent onto the body
   (`kit.front_mapper` + `kit.bend_onto`, used by the dragonfruit and apple): cut the shape into small triangles first, or the
   flat pieces dip under a curved body.
+
+## Statues
+Conservatory statues are built the same way: `scripts/models/build_flora.py`
+writes `models/statues/Flora.glb` + `.json` (cartoony white marble, black
+keyline, light grey veins as their own `Veins` part, raised letters on the
+pedestal panel from a font via matplotlib). Parts over 20,000 triangles are
+split in two (`Flowers`/`Flowers2`); every part whose name starts with
+`Outline` is hidden in `views-plain.png`.
