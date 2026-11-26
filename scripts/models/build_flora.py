@@ -13,7 +13,8 @@ Usage (from the repo root):
 
 Sizes are in studs. The pedestal stands on the origin; Flora stands on its
 top (PEDESTAL_TOP). Cartoon proportions: the head is about a quarter of her
-height. With the pedestal she is about 10 studs tall, twice a player.
+height. The statue is built about 9.4 units tall and scaled at the end so
+that, with the pedestal, it is TOTAL_HEIGHT studs tall (14, Wylie round 3).
 
 Parts (one MeshPart each in Studio):
   Marble    Flora and her hair (off-white marble)
@@ -46,7 +47,8 @@ OUTLINE_SMALL = 0.022    # on flowers, leaves and the face
 LINE = 0.024             # radius of drawn lines (face, folds, rose spirals)
 VEIN = 0.022             # radius of a marble vein
 
-PEDESTAL_TOP = 3.2
+PEDESTAL_TOP = 3.2       # in build units, before scaling to TOTAL_HEIGHT
+TOTAL_HEIGHT = 14.0      # studs, pedestal base to the top of her bun (Wylie, round 3)
 ROSE_SCALE = 1.35        # all roses, so they read from a distance
 HEAD_TILT = 14           # degrees, face turned up like the reference
 FOLDS = 9                # folds round the robe
@@ -489,7 +491,14 @@ def build():
     colours = {"Marble": MARBLE, "Pedestal": PEDESTAL, "Letters": LETTERS,
                "Veins": VEINS, "Flowers": MARBLE, "Flowers2": MARBLE,
                "Outline": BLACK, "OutlineFlowers": BLACK, "OutlineFlowers2": BLACK}
-    extras = {"pedestalTop": PEDESTAL_TOP,
+    # Built at about 9.4 studs, then scaled as a whole (Wylie: 14 studs tall).
+    low = min(m.bounds[0][1] for m in parts.values())   # the keyline dips just under the base
+    height = max(m.bounds[1][1] for m in parts.values()) - low
+    scale = TOTAL_HEIGHT / height
+    for m in parts.values():
+        m.apply_translation((0, -low, 0))
+        m.apply_scale(scale)
+    extras = {"pedestalTop": round((PEDESTAL_TOP - low) * scale, 3), "scale": round(scale, 4),
               "note": "Static statue. Set each part's Color from the colour values here; "
                       "Material SmoothPlastic keeps the cartoon look.",
               "previewViews": {"top": {"azimuth": 150, "elevation": 18}}}
