@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local CombatConfig = require(ReplicatedStorage.Shared.Config.Combat)
 local CreaturesConfig = require(ReplicatedStorage.Shared.Config.Creatures)
 local Levels = require(ReplicatedStorage.Shared.Config.Levels)
+local Map = require(ReplicatedStorage.Shared.Config.Map)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local Rings = require(ReplicatedStorage.Shared.Config.Rings)
@@ -211,6 +212,8 @@ function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boole
 		return false
 	end
 	local reach = Bite.reachStuds(CombatConfig, attacker.level) + PlantsConfig.hitTolerance
+	-- Attacking from hiding grass gives the plant away.
+	attacker.grassRevealUntil = now + Map.HidingGrass.revealSeconds
 
 	if target == nil then
 		miss(attacker, point, now)
@@ -525,6 +528,7 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?, point: V
 	end
 	local id = slot.id
 	local boost = slot.boost
+	plant.grassRevealUntil = now + Map.HidingGrass.revealSeconds
 	local kind = PowerUps.kindOf(PowerUpsConfig, id)
 	local victim = Plants.fromModel(target)
 	if victim == plant or (victim and victim.model:GetAttribute("Invisible") == true) then

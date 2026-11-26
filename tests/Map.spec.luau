@@ -29,16 +29,114 @@ return function(t)
 		t.expect(not MapRules.isExitAngle(Map, 0))
 	end)
 
-	t.test("swamp slows only big plants; the river slows everyone off the bridges", function()
-		local swamp = Map.Swamp
-		local sx, sz = (swamp.minX + swamp.maxX) / 2, (swamp.minZ + swamp.maxZ) / 2
-		t.expectEqual(MapRules.speedFactor(Map, 3, sx, sz, false), 1)
-		t.expectEqual(MapRules.speedFactor(Map, 4, sx, sz, false), swamp.speedFactor)
-		t.expectEqual(MapRules.speedFactor(Map, 4, sx, sz, true), 1, "lily pad or bridge")
-		local river = Map.River
-		local rx, rz = (river.minX + river.maxX) / 2, (river.minZ + river.maxZ) / 2
-		t.expectEqual(MapRules.speedFactor(Map, 1, rx, rz, false), river.speedFactor)
+	t.test("river slows everyone; marsh slows only levels 4 to 6; crossings don't slow", function()
+		local rx, rz = Map.River.centreLine[5][1], Map.River.centreLine[5][2]
+		t.expectEqual(MapRules.areaAt(Map, rx, rz), "Water")
+		t.expectEqual(MapRules.speedFactor(Map, 1, rx, rz, false), Map.River.speedFactor)
+		t.expectEqual(MapRules.speedFactor(Map, 6, rx, rz, true), 1, "on a bridge")
+		local pad = Map.LilyPads.positions[1]
+		t.expectEqual(MapRules.areaAt(Map, pad[1], pad[2]), "Marsh")
+		t.expectEqual(MapRules.speedFactor(Map, 3, pad[1], pad[2], false), 1)
+		t.expectEqual(MapRules.speedFactor(Map, 4, pad[1], pad[2], false), Map.Marsh.speedFactor)
+		t.expectEqual(MapRules.speedFactor(Map, 6, pad[1], pad[2], true), 1, "on a lily pad")
+		t.expectEqual(MapRules.speedFactor(Map, 6, -300, -200, false), 1, "green land")
+		local path = Map.Path.centreLine[4]
+		t.expectEqual(MapRules.speedFactor(Map, 6, path[1], path[2], false), 1, "the path")
 	end)
+
+	t.test("all lily pads sit on the marsh, and the river stays in the River quarter", function()
+		for _, pad in Map.LilyPads.positions do
+			t.expect(MapRules.inMarsh(Map, pad[1], pad[2]), `pad at {pad[1]}, {pad[2]}`)
+		end
+		for _, point in MapRules.pointsAlong(Map.River.centreLine, 5, 0) do
+			local x, z = point[1], point[2]
+			if math.abs(x) < Map.halfSize and math.abs(z) < Map.halfSize then
+				t.expect(
+					x + Map.River.width / 2 <= 0 and z + Map.River.width / 2 <= 0,
+					`river at {x}, {z}`
+				)
+				local clear = MapRules.distanceFromCentre(x, z) - Map.River.width / 2
+				t.expect(clear > Map.Field.radius + 10, "river clear of the safe field")
+			end
+		end
+	end)
+
+	t.test("crossings sit on the river and the path starts at the moon bridge", function()
+		for _, crossing in { Map.MoonBridge, Map.RopeBridge, Map.Ford } do
+			t.expect(MapRules.inRiver(Map, crossing.x, crossing.z), "crossing over water")
+		end
+		local _, dx, dz =
+			MapRules.closestOnLine(Map.River.centreLine, Map.MoonBridge.x, Map.MoonBridge.z)
+		local first = Map.Path.centreLine[1]
+		local ex, ez =
+			Map.MoonBridge.x - dz * Map.MoonBridge.span / 2,
+			Map.MoonBridge.z + dx * Map.MoonBridge.span / 2
+		local fx, fz =
+			Map.MoonBridge.x + dz * Map.MoonBridge.span / 2,
+			Map.MoonBridge.z - dx * Map.MoonBridge.span / 2
+		local nearest = math.min(
+			math.sqrt((ex - first[1]) ^ 2 + (ez - first[2]) ^ 2),
+			math.sqrt((fx - first[1]) ^ 2 + (fz - first[2]) ^ 2)
+		)
+		t.expect(nearest < 6, `path starts {nearest} studs from a bridge end`)
+		local last = Map.Path.centreLine[#Map.Path.centreLine]
+		t.expect(math.abs(last[1] - Map.Gate.x) < 1, "path ends at the gate")
+	end)
+
+	t.test("moon bridge: levels 1 to 4 fit under the middle, 5 doesn't", function()
+		local bridge = Map.MoonBridge
+		local function height(level)
+			return CHARACTER_HEIGHT * Plants.scaleByLevel[level]
+		end
+		local underside = MapRules.moonBridgeHeight(Map, 0) - bridge.thickness
+		t.expect(height(bridge.passUnderMaxLevel) < underside, "level 4 fits")
+		t.expect(height(bridge.passUnderMaxLevel + 1) > underside, "level 5 doesn't")
+		t.expectEqual(MapRules.moonBridgeHeight(Map, bridge.span / 2), 0, "meets the bank")
+		-- Not steeper than a plant can walk.
+		local slope = 4 * bridge.rise / bridge.span
+		t.expect(math.deg(math.atan(slope)) < 50, "walkable slope")
+	end)
+
+	t.test("rope bridge and ford rocks stay above the water", function()
+		t.expect(MapRules.ropeBridgeHeight(Map, 0) > Map.River.depth, "rope bridge middle")
+		t.expect(Map.Ford.minTop > Map.River.depth, "ford rocks")
+	end)
+
+	t.test("frog hop: launch speed gives the hop time", function()
+		local gravity = 196.2
+		local speed = MapRules.hopLaunchSpeed(gravity, Map.LilyPads.hopSeconds)
+		t.expect(math.abs(2 * speed / gravity - Map.LilyPads.hopSeconds) < 1e-6)
+	end)
+
+	t.test("hiding grass hides levels 1 to 3 until they attack", function()
+		local circle = Map.HidingGrass.circles[1]
+		t.expect(MapRules.hiddenInGrass(Map, 3, circle.x, circle.z, 10, 0))
+		t.expect(not MapRules.hiddenInGrass(Map, 4, circle.x, circle.z, 10, 0), "too big")
+		t.expect(not MapRules.hiddenInGrass(Map, 1, circle.x, circle.z, 10, 12), "just attacked")
+		t.expect(not MapRules.hiddenInGrass(Map, 1, 0, 0, 10, 0), "not in grass")
+	end)
+
+	t.test(
+		"native blowfish spawn in the river, native toads in the marsh, others on land",
+		function()
+			t.expectEqual(MapRules.creatureArea(Map, "blowfish", true), "Water")
+			t.expectEqual(MapRules.creatureArea(Map, "toad", true), "Marsh")
+			t.expectEqual(MapRules.creatureArea(Map, "toad", false), "Land")
+			t.expectEqual(MapRules.creatureArea(Map, "eel", true), "Land")
+			local seed = 1
+			local function random()
+				seed = (seed * 16807 + 12345) % 2147483647
+				return seed / 2147483647
+			end
+			for _, area in { "Water", "Marsh", "Land" } do
+				for _ = 1, 20 do
+					local x, z = MapRules.randomPointInArea(Map, "River", area, random)
+					t.expectEqual(MapRules.areaAt(Map, x, z), area)
+					t.expectEqual(MapRules.territoryAt(Map, x, z), "River")
+				end
+			end
+		end
+	)
 
 	t.test("random points stay in their territory", function()
 		local seed = 0

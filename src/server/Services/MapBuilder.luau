@@ -1,11 +1,13 @@
 --[[
 	Builds the blockout map from Config/Map when the server starts: ground for
-	each territory, the conservatory and safe field, river and swamp, caves,
+	each territory, the conservatory and safe field, the River quarter (river,
+	bridges, ford, marsh, lily pads, path, gate, hiding grass), caves,
 	forest and grassland. Everything is plain parts in Workspace.Map, so custom
 	art can replace it later.
 
-	Parts with a `RaisedMaxLevel` attribute (bridges, lily pads) cancel water
-	and mud slowdown for plants up to that level.
+	Parts with a `RaisedMaxLevel` attribute (bridges, ford rocks, lily pads)
+	cancel water and mud slowdown for plants up to that level. Lily pads also
+	carry `LilyPad`, which the client uses for the frog hop.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -425,78 +427,780 @@ local function buildConservatory()
 	end
 end
 
-local function buildRiverAndSwamp()
-	local wet = Instance.new("Folder")
-	wet.Name = "RiverAndSwamp"
-	wet.Parent = folder
+-- A frame at ground point (x, z) whose X axis runs along (ax, az), tilted up
+-- by `pitch` radians, and whose Y axis points (nearly) up.
+local function alongFrame(position: Vector3, ax: number, az: number, pitch: number): CFrame
+	local cos, sin = math.cos(pitch), math.sin(pitch)
+	local xVector = Vector3.new(ax * cos, sin, az * cos)
+	local yVector = Vector3.new(-ax * sin, cos, -az * sin)
+	return CFrame.fromMatrix(position, xVector, yVector)
+end
+
+-- Direction of the river at (x, z), and the direction straight across it.
+local function riverAxes(x: number, z: number): (number, number, number, number)
+	local _, dx, dz = MapRules.closestOnLine(Map.River.centreLine, x, z)
+	return dx, dz, -dz, dx
+end
+
+local function setTerrainWaterLook()
 	local river = Map.River
-	local riverWidth = river.maxZ - river.minZ
-	local riverMidZ = (river.minZ + river.maxZ) / 2
-	Util.part({
-		Name = "River",
-		Size = Vector3.new(river.maxX - river.minX, 0.4, riverWidth),
-		Position = Vector3.new((river.minX + river.maxX) / 2, GROUND + 0.2, riverMidZ),
-		Color = Color3.fromRGB(60, 130, 200),
-		Material = Enum.Material.Glass,
-		Transparency = 0.3,
-		CanCollide = false,
-		Parent = wet,
-	})
-	for _, x in river.bridgeXs do
-		local length = riverWidth + 6
-		local bridge = Util.part({
-			Name = "Bridge",
-			Size = Vector3.new(river.bridgeWidth, river.bridgeHeight, length),
-			Position = Vector3.new(x, GROUND + river.bridgeHeight / 2, riverMidZ),
-			Color = BARK,
-			Material = Enum.Material.Wood,
-			Parent = wet,
-		})
-		bridge:SetAttribute("RaisedMaxLevel", 6)
-		for _, direction in { 1, -1 } do
-			local ramp = Instance.new("WedgePart")
-			ramp.Name = "BridgeRamp"
-			ramp.Anchored = true
-			ramp.Size = Vector3.new(river.bridgeWidth, river.bridgeHeight, 8)
-			ramp.CFrame = CFrame.new(
-				x,
-				GROUND + river.bridgeHeight / 2,
-				riverMidZ + direction * (length / 2 + 4)
-			) * CFrame.Angles(0, if direction == 1 then math.pi else 0, 0)
-			ramp.Color = BARK
-			ramp.Material = Enum.Material.Wood
-			ramp:SetAttribute("RaisedMaxLevel", 6)
-			ramp.Parent = wet
+	local terrain = workspace.Terrain
+	terrain.WaterColor = Util.colour(river.waterColour)
+	terrain.WaterTransparency = river.waterTransparency
+	terrain.WaterReflectance = river.waterReflectance
+	terrain.WaterWaveSize = river.waveSize
+	terrain.WaterWaveSpeed = river.waveSpeed
+end
+
+local function buildRiver(parent: Instance)
+	local river = Map.River
+	local points = river.centreLine
+	local terrain = workspace.Terrain
+	local y = GROUND + river.depth / 2
+	if river.terrainWater then
+		setTerrainWaterLook()
+	end
+	for i = 1, #points do
+		local px, pz = points[i][1], points[i][2]
+		if river.terrainWater then
+			-- Round joins between the straight pieces.
+			terrain:FillCylinder(
+				CFrame.new(px, y, pz),
+				river.depth,
+				river.width / 2,
+				Enum.Material.Water
+			)
+		end
+		if i < #points then
+			local qx, qz = points[i + 1][1], points[i + 1][2]
+			local length = math.sqrt((qx - px) ^ 2 + (qz - pz) ^ 2)
+			local frame = alongFrame(
+				Vector3.new((px + qx) / 2, y, (pz + qz) / 2),
+				(qx - px) / length,
+				(qz - pz) / length,
+				0
+			)
+			if river.terrainWater then
+				terrain:FillBlock(
+					frame,
+					Vector3.new(length, river.depth, river.width),
+					Enum.Material.Water
+				)
+			else
+				Util.part({
+					Name = "River",
+					Size = Vector3.new(length + river.width / 2, river.depth, river.width),
+					CFrame = frame,
+					Color = Util.colour(river.plainColour),
+					Material = Enum.Material.Glass,
+					Transparency = 0.3,
+					CanCollide = false,
+					CanQuery = false,
+					Parent = parent,
+				})
+			end
 		end
 	end
-	local swamp = Map.Swamp
-	Util.part({
-		Name = "Mud",
-		Size = Vector3.new(swamp.maxX - swamp.minX, 0.2, swamp.maxZ - swamp.minZ),
-		Position = Vector3.new(
-			(swamp.minX + swamp.maxX) / 2,
-			GROUND + 0.1,
-			(swamp.minZ + swamp.maxZ) / 2
-		),
-		Color = Color3.fromRGB(90, 85, 50),
-		Material = Enum.Material.Mud,
-		CanCollide = false,
-		Parent = wet,
-	})
-	for _ = 1, swamp.lilyPads do
-		local x = swamp.minX + Util.random() * (swamp.maxX - swamp.minX)
-		local z = swamp.minZ + Util.random() * (swamp.maxZ - swamp.minZ)
-		local pad = Util.part({
-			Name = "LilyPad",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.6, 6, 6),
-			CFrame = CFrame.new(x, GROUND + 0.3, z) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = Color3.fromRGB(80, 170, 70),
-			Parent = wet,
+end
+
+-- Stone moon bridge: a steep arch of deck pieces with low walls each side.
+local function buildMoonBridge(parent: Instance)
+	local bridge = Map.MoonBridge
+	local model = Instance.new("Model")
+	model.Name = "MoonBridge"
+	model.Parent = parent
+	local riverX, riverZ, ax, az = riverAxes(bridge.x, bridge.z)
+	local step = bridge.span / bridge.segments
+	local wallOffset = bridge.width / 2 - bridge.parapetThickness / 2
+	for i = 0, bridge.segments - 1 do
+		local from = -bridge.span / 2 + i * step
+		local to = from + step
+		local h0 = MapRules.moonBridgeHeight(Map, from)
+		local h1 = MapRules.moonBridgeHeight(Map, to)
+		local pitch = math.atan2(h1 - h0, step)
+		local length = math.sqrt(step * step + (h1 - h0) ^ 2) + 0.2
+		local middle = (from + to) / 2
+		local surface =
+			Vector3.new(bridge.x + ax * middle, GROUND + (h0 + h1) / 2, bridge.z + az * middle)
+		local frame = alongFrame(surface, ax, az, pitch)
+		local deck = Util.part({
+			Name = "Deck",
+			Size = Vector3.new(length, bridge.thickness, bridge.width),
+			CFrame = frame * CFrame.new(0, -bridge.thickness / 2, 0),
+			Color = Util.colour(bridge.colour),
+			Material = Enum.Material.Cobblestone,
+			Parent = model,
 		})
-		-- Only small plants hop across on lily pads.
-		pad:SetAttribute("RaisedMaxLevel", Map.Swamp.slowFromLevel - 1)
+		deck:SetAttribute("RaisedMaxLevel", 6)
+		for _, side in { -1, 1 } do
+			local offset = Vector3.new(riverX, 0, riverZ) * side * wallOffset
+			Util.part({
+				Name = "Parapet",
+				Size = Vector3.new(length, bridge.parapetHeight, bridge.parapetThickness),
+				CFrame = (frame + offset) * CFrame.new(0, bridge.parapetHeight / 2, 0),
+				Color = Util.colour(bridge.parapetColour),
+				Material = Enum.Material.Slate,
+				Parent = model,
+			})
+		end
 	end
+end
+
+-- Rope bridge: planks on a gentle sag between four posts, rope rails and
+-- hangers. Planks and ropes carry `Sway` so the client can rock them.
+local function buildRopeBridge(parent: Instance)
+	local bridge = Map.RopeBridge
+	local model = Instance.new("Model")
+	model.Name = "RopeBridge"
+	model.Parent = parent
+	local riverX, riverZ, ax, az = riverAxes(bridge.x, bridge.z)
+	local across = Vector3.new(riverX, 0, riverZ)
+	local along = Vector3.new(ax, 0, az)
+	local centre = Vector3.new(bridge.x, GROUND, bridge.z)
+	local function at(offset: number, height: number): Vector3
+		return centre + along * offset + Vector3.yAxis * height
+	end
+	local pivot = CFrame.lookAt(at(0, bridge.endHeight), at(0, bridge.endHeight) + along)
+	model:SetAttribute("SwayPivot", pivot)
+	model:SetAttribute("SwayDegrees", bridge.swayDegrees)
+	model:SetAttribute("SwaySeconds", bridge.swaySeconds)
+
+	local plankColour = Util.colour(bridge.plankColour)
+	local pitchStep = bridge.plankLength + bridge.plankGap
+	local count = math.floor(bridge.length / pitchStep)
+	local first = -(count - 1) * pitchStep / 2
+	for i = 0, count - 1 do
+		local offset = first + i * pitchStep
+		local top = MapRules.ropeBridgeHeight(Map, offset)
+		local plank = Util.part({
+			Name = "Plank",
+			Size = Vector3.new(bridge.plankLength, bridge.plankThickness, bridge.width),
+			CFrame = alongFrame(at(offset, top - bridge.plankThickness / 2), ax, az, 0),
+			Color = plankColour,
+			Material = Enum.Material.WoodPlanks,
+			Parent = model,
+		})
+		plank:SetAttribute("RaisedMaxLevel", 6)
+		plank:SetAttribute("Sway", true)
+	end
+	-- Ramps up from each bank.
+	for _, direction in { -1, 1 } do
+		local ramp = Instance.new("WedgePart")
+		ramp.Name = "Ramp"
+		ramp.Anchored = true
+		ramp.Size = Vector3.new(bridge.width, bridge.endHeight, bridge.rampLength)
+		local foot =
+			at(direction * (bridge.length / 2 + bridge.rampLength / 2), bridge.endHeight / 2)
+		-- A wedge is high at its back (+Z) and low at its front (-Z), so the
+		-- front points away from the bridge.
+		ramp.CFrame = CFrame.lookAt(foot, foot + along * direction)
+		ramp.Color = plankColour
+		ramp.Material = Enum.Material.WoodPlanks
+		ramp:SetAttribute("RaisedMaxLevel", 6)
+		ramp.Parent = model
+	end
+	-- Posts at the four corners.
+	local postColour = Util.colour(bridge.postColour)
+	local postOffset = bridge.width / 2 + bridge.postDiameter / 2
+	for _, direction in { -1, 1 } do
+		for _, side in { -1, 1 } do
+			local base = at(direction * bridge.length / 2, bridge.postHeight / 2)
+				+ across * side * postOffset
+			Util.part({
+				Name = "Post",
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(bridge.postHeight, bridge.postDiameter, bridge.postDiameter),
+				CFrame = CFrame.new(base) * CFrame.Angles(0, 0, math.rad(90)),
+				Color = postColour,
+				Material = Enum.Material.Wood,
+				Parent = model,
+			})
+		end
+	end
+	-- Rope rails along each side, following the sag, with hangers down to
+	-- the planks.
+	local ropeColour = Util.colour(bridge.ropeColour)
+	local function rope(a: Vector3, b: Vector3, name: string)
+		local length = (b - a).Magnitude
+		local part = Util.part({
+			Name = name,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(length, bridge.ropeThickness, bridge.ropeThickness),
+			CFrame = CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.rad(90), 0),
+			Color = ropeColour,
+			Material = Enum.Material.Fabric,
+			CanCollide = false,
+			CanQuery = false,
+			Parent = model,
+		})
+		part:SetAttribute("Sway", true)
+	end
+	local pieces = 10
+	for _, side in { -1, 1 } do
+		local sideOffset = across * side * (bridge.width / 2)
+		local previous: Vector3? = nil
+		for i = 0, pieces do
+			local offset = -bridge.length / 2 + i * bridge.length / pieces
+			local deck = at(offset, MapRules.ropeBridgeHeight(Map, offset)) + sideOffset
+			local rail = deck + Vector3.yAxis * bridge.ropeHeight
+			if previous then
+				rope(previous, rail, "Rail")
+			end
+			if i > 0 and i < pieces then
+				rope(deck, rail, "Hanger")
+			end
+			previous = rail
+		end
+	end
+end
+
+-- Rock ford: rows of flat rocks across the river, touching so plants walk
+-- over, plus a few small rocks around it.
+local function buildFord(parent: Instance)
+	local ford = Map.Ford
+	local model = Instance.new("Model")
+	model.Name = "Ford"
+	model.Parent = parent
+	local riverX, riverZ, ax, az = riverAxes(ford.x, ford.z)
+	local function rock(x: number, z: number, size: number, top: number, name: string)
+		local width = size * (0.85 + Util.random() * 0.3)
+		local depth = size * (0.85 + Util.random() * 0.3)
+		local height = top + 1
+		local tilt = math.rad((Util.random() * 2 - 1) * ford.tiltDegrees)
+		local part = Util.part({
+			Name = name,
+			Size = Vector3.new(width, height, depth),
+			CFrame = CFrame.new(x, GROUND + top - height / 2, z)
+				* CFrame.Angles(tilt, Util.random() * math.pi * 2, -tilt),
+			Color = Util.colour(Util.pick(ford.colours)),
+			Material = Enum.Material.Slate,
+			Parent = model,
+		})
+		return part
+	end
+	for row = 0, ford.rows - 1 do
+		local rowOffset = (row - (ford.rows - 1) / 2) * ford.spacing
+		for i = 0, ford.rocksAcross - 1 do
+			local acrossOffset = (i - (ford.rocksAcross - 1) / 2) * ford.spacing
+			local isBank = i == 0 or i == ford.rocksAcross - 1
+			local top = if isBank
+				then ford.bankTop
+				else ford.minTop + Util.random() * (ford.maxTop - ford.minTop)
+			local size = ford.minSize + Util.random() * (ford.maxSize - ford.minSize)
+			local jitter = ford.spacing * 0.15
+			local x = ford.x
+				+ ax * acrossOffset
+				+ riverX * rowOffset
+				+ (Util.random() * 2 - 1) * jitter
+			local z = ford.z
+				+ az * acrossOffset
+				+ riverZ * rowOffset
+				+ (Util.random() * 2 - 1) * jitter
+			rock(x, z, size, top, "Rock"):SetAttribute("RaisedMaxLevel", 6)
+		end
+	end
+	-- Loose rocks in the water either side.
+	for _ = 1, ford.looseRocks do
+		local side = if Util.random() < 0.5 then -1 else 1
+		local alongRiver = side * (ford.rows * ford.spacing / 2 + 2 + Util.random() * 10)
+		local acrossRiver = (Util.random() * 2 - 1) * Map.River.width / 2
+		rock(
+			ford.x + riverX * alongRiver + ax * acrossRiver,
+			ford.z + riverZ * alongRiver + az * acrossRiver,
+			ford.looseMinSize + Util.random() * (ford.looseMaxSize - ford.looseMinSize),
+			Map.River.depth * (0.6 + Util.random() * 0.6),
+			"LooseRock"
+		)
+	end
+end
+
+-- Path of separate pavers from the moon bridge to the gate.
+local function buildPath(parent: Instance)
+	local path = Map.Path
+	local model = Instance.new("Model")
+	model.Name = "Path"
+	model.Parent = parent
+	local step = path.paverSize + path.paverGap
+	local perRow = math.floor((path.width + path.paverGap) / step)
+	local first = -(perRow - 1) * step / 2
+	for _, point in MapRules.pointsAlong(path.centreLine, step, step / 2) do
+		local x, z, dx, dz = point[1], point[2], point[3], point[4]
+		for i = 0, perRow - 1 do
+			local offset = first + i * step
+			local jitterA = (Util.random() * 2 - 1) * path.paverJitter
+			local jitterB = (Util.random() * 2 - 1) * path.paverJitter
+			local px = x - dz * offset + dx * jitterA + dz * jitterB
+			local pz = z + dx * offset + dz * jitterA - dx * jitterB
+			local turn = math.rad((Util.random() * 2 - 1) * path.paverTurnDegrees)
+			local yaw = math.atan2(-dz, dx) + turn
+			Util.part({
+				Name = "Paver",
+				Size = Vector3.new(path.paverSize, path.paverThickness, path.paverSize),
+				CFrame = CFrame.new(px, GROUND + path.paverThickness / 2, pz)
+					* CFrame.Angles(0, yaw, 0),
+				Color = Util.colour(Util.pick(path.colours)),
+				Material = Enum.Material.Pavement,
+				Parent = model,
+			})
+		end
+	end
+end
+
+-- Decorative iron gate in the top wall: cream pillars with lamps, a small
+-- side gate and a big double gate with an arched top rail and spear tips.
+local function buildGate(parent: Instance)
+	local gate = Map.Gate
+	local model = Instance.new("Model")
+	model.Name = "Gate"
+	model.Parent = parent
+	local wallZ = -Map.halfSize + gate.pillarSize / 2
+	local iron = Util.colour(gate.ironColour)
+	local cream = Util.colour(gate.pillarColour)
+	local left = gate.x - gate.width / 2
+	local pillar = gate.pillarSize
+	local bigWidth = gate.width - gate.sideGateWidth - 3 * pillar
+
+	local function block(
+		name: string,
+		size: Vector3,
+		position: Vector3,
+		colour: Color3,
+		material: Enum.Material
+	)
+		return Util.part({
+			Name = name,
+			Size = size,
+			Position = position,
+			Color = colour,
+			Material = material,
+			Parent = model,
+		})
+	end
+
+	local function lamp(x: number)
+		local top = GROUND + gate.pillarHeight + 0.6
+		block(
+			"LampBase",
+			Vector3.new(1, 0.4, 1),
+			Vector3.new(x, top + 0.2, wallZ),
+			iron,
+			Enum.Material.Metal
+		)
+		local glass = block(
+			"Lamp",
+			Vector3.new(0.9, 1.3, 0.9),
+			Vector3.new(x, top + 1.05, wallZ),
+			Util.colour(gate.lampColour),
+			Enum.Material.Neon
+		)
+		glass.CanCollide = false
+		local light = Instance.new("PointLight")
+		light.Color = Util.colour(gate.lampColour)
+		light.Brightness = gate.lampBrightness
+		light.Range = gate.lampRange
+		light.Parent = glass
+		block(
+			"LampCap",
+			Vector3.new(1.2, 0.3, 1.2),
+			Vector3.new(x, top + 1.85, wallZ),
+			iron,
+			Enum.Material.Metal
+		)
+	end
+
+	-- Pillars: left, between the side gate and the big gate, right.
+	local pillarXs = {
+		left + pillar / 2,
+		left + pillar + gate.sideGateWidth + pillar / 2,
+		left + gate.width - pillar / 2,
+	}
+	for _, x in pillarXs do
+		block(
+			"Pillar",
+			Vector3.new(pillar, gate.pillarHeight, pillar),
+			Vector3.new(x, GROUND + gate.pillarHeight / 2, wallZ),
+			cream,
+			Enum.Material.Plaster
+		)
+		block(
+			"PillarCap",
+			Vector3.new(pillar + 0.6, 0.6, pillar + 0.6),
+			Vector3.new(x, GROUND + gate.pillarHeight + 0.3, wallZ),
+			cream,
+			Enum.Material.Plaster
+		)
+		lamp(x)
+	end
+
+	-- One iron panel from x0 to x1, with a top rail that arches by `rise`.
+	local function panel(x0: number, x1: number, topHeight: number, rise: number)
+		local width = x1 - x0
+		local function topAt(x: number): number
+			local share = (x - (x0 + x1) / 2) / (width / 2)
+			return topHeight + rise * (1 - share * share)
+		end
+		local t = gate.barThickness
+		-- Lattice at the bottom, and the bottom and middle rails.
+		block(
+			"Lattice",
+			Vector3.new(width, 1.8, 0.15),
+			Vector3.new((x0 + x1) / 2, GROUND + 1.4, wallZ),
+			iron,
+			Enum.Material.DiamondPlate
+		)
+		for _, height in { 0.5, 2.3, topHeight - 1.5 } do
+			block(
+				"Rail",
+				Vector3.new(width, t * 1.5, t * 1.5),
+				Vector3.new((x0 + x1) / 2, GROUND + height, wallZ),
+				iron,
+				Enum.Material.Metal
+			)
+		end
+		-- Arched top rail in short pieces.
+		local pieces = 8
+		for i = 0, pieces - 1 do
+			local a = x0 + i * width / pieces
+			local b = a + width / pieces
+			local ya, yb = GROUND + topAt(a), GROUND + topAt(b)
+			local from, to = Vector3.new(a, ya, wallZ), Vector3.new(b, yb, wallZ)
+			Util.part({
+				Name = "TopRail",
+				Size = Vector3.new((to - from).Magnitude + 0.1, t * 1.5, t * 1.5),
+				CFrame = CFrame.lookAt((from + to) / 2, to) * CFrame.Angles(0, math.rad(90), 0),
+				Color = iron,
+				Material = Enum.Material.Metal,
+				Parent = model,
+			})
+		end
+		-- Upright bars with spear tips above the top rail.
+		local count = math.max(1, math.floor(width / gate.barSpacing))
+		for i = 0, count do
+			local x = x0 + i * width / count
+			local height = topAt(x) + 0.8
+			block(
+				"Bar",
+				Vector3.new(t, height, t),
+				Vector3.new(x, GROUND + height / 2, wallZ),
+				iron,
+				Enum.Material.Metal
+			)
+			Util.part({
+				Name = "Spike",
+				Size = Vector3.new(0.5, 0.5, 0.2),
+				CFrame = CFrame.new(x, GROUND + height + 0.15, wallZ)
+					* CFrame.Angles(0, 0, math.rad(45)),
+				Color = iron,
+				Material = Enum.Material.Metal,
+				Parent = model,
+			})
+		end
+	end
+
+	local sideX0 = left + pillar
+	panel(sideX0, sideX0 + gate.sideGateWidth, gate.height - 2, 0)
+	local bigX0 = sideX0 + gate.sideGateWidth + pillar
+	local half = bigWidth / 2
+	-- Two leaves meeting at a thicker post, arched like the photo.
+	panel(bigX0, bigX0 + half, gate.height - gate.archRise, gate.archRise)
+	panel(bigX0 + half, bigX0 + bigWidth, gate.height - gate.archRise, gate.archRise)
+	block(
+		"MiddlePost",
+		Vector3.new(0.8, gate.height, 0.8),
+		Vector3.new(bigX0 + half, GROUND + gate.height / 2, wallZ),
+		iron,
+		Enum.Material.Metal
+	)
+end
+
+-- Marsh mud: strips that follow the outline, so the marsh has the right
+-- shape without one part per stud.
+local function buildMarsh(parent: Instance)
+	local marsh = Map.Marsh
+	local model = Instance.new("Model")
+	model.Name = "Marsh"
+	model.Parent = parent
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	for _, point in marsh.outline do
+		minX, maxX = math.min(minX, point[1]), math.max(maxX, point[1])
+		minZ, maxZ = math.min(minZ, point[2]), math.max(maxZ, point[2])
+	end
+	local row = marsh.stripWidth
+	local z = minZ + row / 2
+	while z < maxZ do
+		local runStart: number? = nil
+		local x = minX
+		while x <= maxX + 1 do
+			local inside = x <= maxX and MapRules.inMarsh(Map, x, z)
+			if inside and runStart == nil then
+				runStart = x
+			elseif not inside and runStart ~= nil then
+				Util.part({
+					Name = "Mud",
+					Size = Vector3.new(x - runStart, 0.2, row),
+					Position = Vector3.new((x + runStart) / 2, GROUND + 0.1, z),
+					Color = Util.colour(marsh.colour),
+					Material = Enum.Material.Mud,
+					CanCollide = false,
+					CanQuery = false,
+					Parent = model,
+				})
+				runStart = nil
+			end
+			x += 1
+		end
+		z += row
+	end
+	-- Reed clumps with cattails, away from the lily pads.
+	local reed = Util.colour(marsh.reedColour)
+	local cattail = Util.colour(marsh.cattailColour)
+	local placed, tries = 0, 0
+	while placed < marsh.reedClumps and tries < marsh.reedClumps * 20 do
+		tries += 1
+		local cx = minX + Util.random() * (maxX - minX)
+		local cz = minZ + Util.random() * (maxZ - minZ)
+		local clear = MapRules.inMarsh(Map, cx, cz)
+		for _, pad in Map.LilyPads.positions do
+			if (pad[1] - cx) ^ 2 + (pad[2] - cz) ^ 2 < (Map.LilyPads.size * 1.5) ^ 2 then
+				clear = false
+			end
+		end
+		if clear then
+			placed += 1
+			for _ = 1, Util.roll(4, 7) do
+				local rx = cx + (Util.random() * 2 - 1) * 1.5
+				local rz = cz + (Util.random() * 2 - 1) * 1.5
+				local height = 3.5 + Util.random() * 3
+				local lean = CFrame.Angles(
+					math.rad((Util.random() * 2 - 1) * 8),
+					0,
+					math.rad((Util.random() * 2 - 1) * 8)
+				)
+				local base = CFrame.new(rx, GROUND, rz) * lean
+				Util.part({
+					Name = "Reed",
+					Size = Vector3.new(0.25, height, 0.25),
+					CFrame = base * CFrame.new(0, height / 2, 0),
+					Color = reed,
+					Material = Enum.Material.Grass,
+					CanCollide = false,
+					CanQuery = false,
+					Parent = model,
+				})
+				if Util.random() < 0.5 then
+					Util.part({
+						Name = "Cattail",
+						Shape = Enum.PartType.Cylinder,
+						Size = Vector3.new(1.3, 0.55, 0.55),
+						CFrame = base
+							* CFrame.new(0, height - 0.8, 0)
+							* CFrame.Angles(0, 0, math.rad(90)),
+						Color = cattail,
+						Material = Enum.Material.Fabric,
+						CanCollide = false,
+						CanQuery = false,
+						Parent = model,
+					})
+				end
+			end
+		end
+	end
+end
+
+-- One lily pad shape with the classic wedge cut, made once and cloned.
+-- Falls back to a plain disc if the cut fails.
+local function lilyPadShape(parent: Instance, size: number, colour: Color3): BasePart
+	local pads = Map.LilyPads
+	local disc = Util.part({
+		Parent = parent,
+		Name = "LilyPad",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(pads.thickness, size, size),
+		CFrame = CFrame.Angles(0, 0, math.rad(90)),
+		Color = colour,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	-- Two flat wedges back to back make the V, with its point at the middle.
+	local radial = Vector3.xAxis
+	local length = size / 2 + 1
+	local spread = length * math.tan(math.rad(pads.notchDegrees / 2))
+	local cutters = {}
+	for _, side in { 1, -1 } do
+		local xVector = Vector3.yAxis * side
+		local yVector = Vector3.zAxis * side
+		local wedge = Instance.new("WedgePart")
+		wedge.Anchored = true
+		wedge.Size = Vector3.new(pads.thickness + 1, spread, length)
+		wedge.CFrame =
+			CFrame.fromMatrix(yVector * spread / 2 + radial * length / 2, xVector, yVector, radial)
+		wedge.Parent = parent
+		table.insert(cutters, wedge)
+	end
+	local ok, result = pcall(function()
+		return disc:SubtractAsync(cutters)
+	end)
+	for _, cutter in cutters do
+		cutter:Destroy()
+	end
+	if ok and result then
+		disc:Destroy()
+		result.Name = "LilyPad"
+		result.Anchored = true
+		result.UsePartColor = true
+		result.Color = colour
+		result.Parent = nil
+		return result
+	end
+	disc.Parent = nil
+	return disc
+end
+
+local function buildLilyPads(parent: Instance)
+	local pads = Map.LilyPads
+	local model = Instance.new("Model")
+	model.Name = "LilyPads"
+	model.Parent = parent
+	-- The shapes are made at the world origin; their frames there say how to
+	-- place a copy at each pad (the cut may change the part's own frame).
+	local padShape = lilyPadShape(model, pads.size, Util.colour(pads.colour))
+	local rimShape = lilyPadShape(model, pads.size + 0.5, Util.colour(pads.rimColour))
+	local padFrame, rimFrame = padShape.CFrame, rimShape.CFrame
+	local flower = Util.colour(pads.flowerColour)
+	for _, position in pads.positions do
+		local scale = 1 + (Util.random() * 2 - 1) * pads.sizeVariation
+		local turn = CFrame.Angles(0, Util.random() * math.pi * 2, 0)
+		local top = GROUND + pads.thickness + 0.2
+		local centre = CFrame.new(position[1], top - pads.thickness / 2, position[2]) * turn
+
+		local rim = rimShape:Clone()
+		rim.Name = "LilyPadRim"
+		rim.Size *= scale
+		rim.CFrame = centre * CFrame.new(0, -0.15, 0) * rimFrame
+		rim.CanCollide = false
+		rim.CanQuery = false
+		rim.Parent = model
+
+		local pad = padShape:Clone()
+		pad.Size *= scale
+		pad.CFrame = centre * padFrame
+		pad:SetAttribute("LilyPad", true)
+		pad:SetAttribute("RaisedMaxLevel", 6)
+		pad.Parent = model
+
+		if Util.random() < pads.flowerChance then
+			local spot = centre * CFrame.new(-pads.size * 0.15, pads.thickness / 2 + 0.3, 0)
+			for petal = 0, 4 do
+				local angle = petal * math.pi * 2 / 5
+				Util.part({
+					Name = "Petal",
+					Shape = Enum.PartType.Ball,
+					Size = Vector3.new(0.8, 0.5, 0.8),
+					CFrame = spot * CFrame.new(math.cos(angle) * 0.45, 0, math.sin(angle) * 0.45),
+					Color = flower,
+					Material = Enum.Material.SmoothPlastic,
+					CanCollide = false,
+					CanQuery = false,
+					Parent = model,
+				})
+			end
+			Util.part({
+				Name = "FlowerMiddle",
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.one * 0.5,
+				CFrame = spot * CFrame.new(0, 0.15, 0),
+				Color = Color3.fromRGB(250, 220, 90),
+				Material = Enum.Material.Neon,
+				CanCollide = false,
+				CanQuery = false,
+				Parent = model,
+			})
+		end
+	end
+	padShape:Destroy()
+	rimShape:Destroy()
+end
+
+-- Hiding grass: a pale patch covered in tufts of crossed blades, tall enough
+-- to hide a level 3 plant. Nothing in it blocks clicks or movement.
+local function buildHidingGrass(parent: Instance)
+	local grass = Map.HidingGrass
+	local model = Instance.new("Model")
+	model.Name = "HidingGrass"
+	model.Parent = parent
+	local colour = Util.colour(grass.colour)
+	for _, circle in grass.circles do
+		Util.part({
+			Name = "GrassPatch",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.2, circle.radius * 2, circle.radius * 2),
+			CFrame = CFrame.new(circle.x, GROUND + 0.1, circle.z)
+				* CFrame.Angles(0, 0, math.rad(90)),
+			Color = colour,
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+			CanQuery = false,
+			Parent = model,
+		})
+		local spacing = grass.tuftSpacing
+		local offset = -circle.radius
+		local rowIndex = 0
+		while offset <= circle.radius do
+			local shift = if rowIndex % 2 == 0 then 0 else spacing / 2
+			local along = -circle.radius + shift
+			while along <= circle.radius do
+				if offset * offset + along * along <= (circle.radius - 2) ^ 2 then
+					local height = grass.height * (0.85 + Util.random() * 0.3)
+					local shade = 0.85 + Util.random() * 0.25
+					local tuftColour = Color3.new(
+						math.min(1, colour.R * shade),
+						math.min(1, colour.G * shade),
+						math.min(1, colour.B * shade)
+					)
+					local base = CFrame.new(
+						circle.x + along,
+						GROUND + height / 2,
+						circle.z + offset
+					) * CFrame.Angles(0, Util.random() * math.pi, 0)
+					for _, turn in { 0, 90 } do
+						Util.part({
+							Name = "Tuft",
+							Size = Vector3.new(grass.tuftSize, height, 0.2),
+							CFrame = base * CFrame.Angles(0, math.rad(turn), 0),
+							Color = tuftColour,
+							Material = Enum.Material.Grass,
+							CanCollide = false,
+							CanQuery = false,
+							CastShadow = false,
+							Parent = model,
+						})
+					end
+				end
+				along += spacing
+			end
+			offset += spacing * 0.87
+			rowIndex += 1
+		end
+	end
+end
+
+-- The River quarter: river, crossings and marsh go in `River` (walkable, so
+-- the ground ray sees them); path, gate, grass and reeds go in `RiverDecor`.
+local function buildRiverQuarter()
+	local wet = Instance.new("Folder")
+	wet.Name = "River"
+	wet.Parent = folder
+	local decor = Instance.new("Folder")
+	decor.Name = "RiverDecor"
+	decor.Parent = folder
+	buildRiver(wet)
+	buildMoonBridge(wet)
+	buildRopeBridge(wet)
+	buildFord(wet)
+	buildLilyPads(wet)
+	buildMarsh(decor)
+	buildPath(decor)
+	buildGate(decor)
+	buildHidingGrass(decor)
 end
 
 local function buildHills()
@@ -676,12 +1380,12 @@ function MapBuilder.start()
 
 	buildGround()
 	buildHills()
-	buildRiverAndSwamp()
+	buildRiverQuarter()
 	-- The ground ray only looks at walkable ground, not trees or grass.
 	rayParams.FilterDescendantsInstances = {
 		folder:FindFirstChild("Ground") :: Instance,
 		folder:FindFirstChild("Hills") :: Instance,
-		folder:FindFirstChild("RiverAndSwamp") :: Instance,
+		folder:FindFirstChild("River") :: Instance,
 	}
 	buildField()
 	buildConservatory()

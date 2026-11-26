@@ -88,28 +88,272 @@ Map.Field = table.freeze({
 	pushOutMargin = 6,
 })
 
--- River: a slow band across the River quarter, with log bridges over it.
+--[[
+	River quarter (redesigned 2026-11-26 from Wylie's map). Points are
+	{ x, z } in studs, traced from the map picture
+	(/mnt/project-files/plantagonist/art/map-redesign/wylie-revised-map.png).
+]]
+
+local function points(list: { { number } }): { { number } }
+	for _, point in list do
+		table.freeze(point)
+	end
+	return table.freeze(list)
+end
+
+-- River: winds from the top edge, along the Hills border, past the safe
+-- field and out of the left edge. Plants wade through it anywhere, slowly.
 Map.River = table.freeze({
-	minX = -350,
-	maxX = -75,
-	minZ = -190,
-	maxZ = -160,
-	-- Everyone wades at this share of their speed unless on a bridge.
+	-- Centre line, from the top edge to the left edge.
+	centreLine = points({
+		{ -21, -356 },
+		{ -21, -265 },
+		{ -29, -212 },
+		{ -51, -171 },
+		{ -92, -139 },
+		{ -120, -116 },
+		{ -145, -82 },
+		{ -173, -45 },
+		{ -214, -27 },
+		{ -271, -21 },
+		{ -356, -21 },
+	}),
+	width = 40,
+	-- Everyone wades at this share of their speed unless on a crossing.
 	speedFactor = 0.6,
-	bridgeXs = table.freeze({ -120, -230, -320 }),
-	bridgeWidth = 10,
-	bridgeHeight = 3,
+	-- Water depth above the ground. Shallow, so plants wade, not swim.
+	depth = 1.6,
+	-- Roblox terrain water (moving waves, reflections). Set to false to use a
+	-- plain see-through blue part instead.
+	terrainWater = true,
+	waterColour = table.freeze({ 60, 130, 160 }),
+	waterTransparency = 0.6,
+	waterReflectance = 0.6,
+	waveSize = 0.08,
+	waveSpeed = 8,
+	-- Colour of the plain part used when `terrainWater` is false.
+	plainColour = table.freeze({ 60, 130, 200 }),
 })
 
--- Swamp: mud slows big plants; small plants hop across lily pads.
-Map.Swamp = table.freeze({
-	minX = -330,
-	maxX = -110,
-	minZ = -335,
-	maxZ = -225,
+-- Stone moon bridge: a steep arch that plants up to `passUnderMaxLevel`
+-- can walk under through the water. `x`, `z` is its middle; it lies across
+-- the river.
+Map.MoonBridge = table.freeze({
+	x = -120,
+	z = -116,
+	width = 16,
+	-- Length from bank to bank, and how high the middle of the deck is.
+	span = 60,
+	rise = 12,
+	thickness = 2.5,
+	segments = 20,
+	parapetHeight = 2.5,
+	parapetThickness = 1,
+	passUnderMaxLevel = 4,
+	colour = table.freeze({ 150, 150, 140 }),
+	parapetColour = table.freeze({ 130, 130, 122 }),
+})
+
+-- Rope bridge from the marsh to the Hills. It sways a little (client side,
+-- for looks).
+Map.RopeBridge = table.freeze({
+	x = -21,
+	z = -302,
+	width = 10,
+	length = 60,
+	-- Deck height at the ends and how far it sags in the middle (keep the
+	-- middle above `River.depth`).
+	endHeight = 3,
+	sag = 0.8,
+	plankLength = 1.2,
+	plankGap = 0.25,
+	plankThickness = 0.4,
+	postHeight = 8,
+	postDiameter = 1.6,
+	ropeHeight = 3.5,
+	ropeThickness = 0.35,
+	rampLength = 5,
+	-- Sway: roll side to side by this many degrees, once every `swaySeconds`.
+	swayDegrees = 4,
+	swaySeconds = 3,
+	plankColour = table.freeze({ 140, 105, 70 }),
+	postColour = table.freeze({ 115, 85, 55 }),
+	ropeColour = table.freeze({ 175, 150, 105 }),
+})
+
+-- Rock ford near the left edge: a wide band of flat rocks across the river,
+-- close enough together to walk over like a bridge.
+Map.Ford = table.freeze({
+	x = -300,
+	z = -21,
+	-- Rocks in each row across the river, and rows along the river.
+	rocksAcross = 10,
+	rows = 2,
+	spacing = 5,
+	-- Rock sizes, and top heights above the ground (above `River.depth`).
+	minSize = 6.5,
+	maxSize = 8.5,
+	minTop = 1.9,
+	maxTop = 2.5,
+	-- The first and last rock in each row are lower, as a step up from the bank.
+	bankTop = 1.2,
+	-- Rocks tip this many degrees at most, so they don't look laid flat.
+	tiltDegrees = 4,
+	-- Small rocks scattered in the water near the ford, for looks.
+	looseRocks = 10,
+	looseMinSize = 1.5,
+	looseMaxSize = 3.5,
+	colours = table.freeze({
+		table.freeze({ 120, 115, 105 }),
+		table.freeze({ 105, 100, 95 }),
+		table.freeze({ 135, 125, 110 }),
+		table.freeze({ 95, 95, 90 }),
+		table.freeze({ 125, 120, 115 }),
+	}),
+})
+
+-- Path of separate stone pavers from the moon bridge to the gate.
+Map.Path = table.freeze({
+	centreLine = points({
+		{ -139, -139 },
+		{ -165, -155 },
+		{ -182, -175 },
+		{ -202, -216 },
+		{ -214, -257 },
+		{ -222, -298 },
+		{ -228, -346 },
+	}),
+	width = 22,
+	paverSize = 4.2,
+	paverGap = 1,
+	paverThickness = 0.3,
+	-- Pavers turn up to this many degrees either way, and sit up to this far
+	-- off the grid, so the path looks laid by hand.
+	paverTurnDegrees = 8,
+	paverJitter = 0.4,
+	colours = table.freeze({
+		table.freeze({ 205, 195, 165 }),
+		table.freeze({ 190, 180, 150 }),
+		table.freeze({ 215, 205, 180 }),
+	}),
+})
+
+-- Decorative iron gate in the top wall at the end of the path. It does not
+-- open. Black iron between cream pillars, with lamps on top.
+Map.Gate = table.freeze({
+	x = -228,
+	-- Total width, and the small side gate's share of it.
+	width = 48,
+	sideGateWidth = 10,
+	height = 12,
+	pillarSize = 4,
+	pillarHeight = 14,
+	barSpacing = 1.2,
+	barThickness = 0.35,
+	-- How much the top rail of the big gate arches up in the middle.
+	archRise = 2,
+	lampBrightness = 2,
+	lampRange = 18,
+	ironColour = table.freeze({ 25, 25, 25 }),
+	pillarColour = table.freeze({ 235, 220, 190 }),
+	lampColour = table.freeze({ 255, 210, 140 }),
+})
+
+-- Marsh between the path and the river: mud that slows big plants.
+Map.Marsh = table.freeze({
+	outline = points({
+		{ -214, -350 },
+		{ -42, -350 },
+		{ -42, -249 },
+		{ -53, -196 },
+		{ -71, -175 },
+		{ -108, -155 },
+		{ -133, -139 },
+		{ -153, -145 },
+		{ -171, -167 },
+		{ -193, -204 },
+		{ -205, -245 },
+		{ -212, -294 },
+	}),
 	slowFromLevel = 4,
-	speedFactor = 0.7,
-	lilyPads = 30,
+	speedFactor = 0.8,
+	colour = table.freeze({ 105, 100, 55 }),
+	-- The mud is laid in strips this wide (smaller follows the outline more
+	-- closely but uses more parts).
+	stripWidth = 4,
+	-- Reed clumps for looks (no collision).
+	reedClumps = 26,
+	reedColour = table.freeze({ 110, 130, 60 }),
+	cattailColour = table.freeze({ 100, 65, 40 }),
+})
+
+-- Lily pads on the marsh. Landing on one springs a plant up for a frog hop:
+-- `hopSeconds` in the air, steering at `hopSpeed` studs per second.
+Map.LilyPads = table.freeze({
+	positions = points({
+		{ -175, -335 },
+		{ -146, -326 },
+		{ -94, -323 },
+		{ -59, -324 },
+		{ -206, -306 },
+		{ -180, -313 },
+		{ -161, -301 },
+		{ -135, -305 },
+		{ -115, -313 },
+		{ -98, -301 },
+		{ -73, -306 },
+		{ -117, -290 },
+		{ -191, -281 },
+		{ -171, -273 },
+		{ -146, -282 },
+		{ -91, -278 },
+		{ -69, -280 },
+		{ -125, -197 },
+		{ -144, -181 },
+		{ -113, -181 },
+		{ -91, -190 },
+		{ -126, -164 },
+	}),
+	size = 6,
+	-- Each pad is up to this share bigger or smaller.
+	sizeVariation = 0.12,
+	thickness = 0.5,
+	-- The classic cut: a wedge from the edge to the middle.
+	notchDegrees = 40,
+	colour = table.freeze({ 80, 165, 70 }),
+	rimColour = table.freeze({ 55, 120, 50 }),
+	flowerChance = 0.25,
+	flowerColour = table.freeze({ 240, 150, 190 }),
+	hopSeconds = 0.75,
+	hopSpeed = 28,
+})
+
+-- Grass to hide in. Plants up to `hideMaxLevel` can't be seen by other
+-- players inside it (their name tag still shows). Attacking reveals the
+-- attacker for `revealSeconds`.
+Map.HidingGrass = table.freeze({
+	circles = table.freeze({
+		table.freeze({ x = -292, z = -288, radius = 43 }),
+		table.freeze({ x = -249, z = -115, radius = 43 }),
+	}),
+	hideMaxLevel = 3,
+	revealSeconds = 3,
+	height = 7,
+	-- How see-through your own plant looks to you while hidden.
+	ownTransparency = 0.5,
+	-- How often each client checks who is hiding (seconds).
+	checkSeconds = 0.2,
+	tuftSize = 7,
+	tuftSpacing = 6,
+	colour = table.freeze({ 170, 200, 90 }),
+})
+
+-- Creature spawns in the River quarter: native creatures listed here spawn
+-- (and wander) only in that area; every other creature keeps out of the
+-- water and the marsh.
+Map.CreatureAreas = table.freeze({
+	blowfish = "Water",
+	toad = "Marsh",
 })
 
 -- Caves in the Hills: tunnels through hills whose ceiling only lets

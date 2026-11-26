@@ -27,6 +27,7 @@ export type Creature = {
 	id: string, -- creature id from Config/PowerUps, or "fly"
 	part: BasePart,
 	territory: string, -- territory name, or "Field" for flies
+	area: string, -- "Water", "Marsh" or "Land": where it may go
 	x: number,
 	z: number,
 	targetX: number,
@@ -126,8 +127,9 @@ local function randomFieldPoint(): (number, number)
 	return math.cos(angle) * distance, math.sin(angle) * distance
 end
 
-local function spawnCreature(id: string, territory: string)
+local function spawnCreature(id: string, territory: string, native: boolean)
 	local x, z
+	local area = MapRules.creatureArea(Map, id, native)
 	local size, colour, label
 	if id == "fly" then
 		x, z = randomFieldPoint()
@@ -135,7 +137,7 @@ local function spawnCreature(id: string, territory: string)
 		colour = Color3.fromRGB(30, 30, 30)
 		label = "Fly"
 	else
-		x, z = MapRules.randomPointIn(Map, territory, Util.random)
+		x, z = MapRules.randomPointInArea(Map, territory, area, Util.random)
 		local info = PowerUpsConfig.creatures[id]
 		size = CreaturesConfig.bodySize[info.size]
 		colour = Util.colour(PowerUpsConfig.families[info.family].colour)
@@ -159,6 +161,7 @@ local function spawnCreature(id: string, territory: string)
 		id = id,
 		part = part,
 		territory = territory,
+		area = area,
 		x = x,
 		z = z,
 		targetX = x,
@@ -185,17 +188,25 @@ local function spawnTick()
 			-- Mostly native creatures, some from next door, a few from across the map.
 			local source =
 				MapRules.spawnSource(Map, territory, CreaturesConfig.spawnMix, Util.random)
-			spawnCreature(Util.pick(idsByTerritory[source] or ids), territory)
+			spawnCreature(Util.pick(idsByTerritory[source] or ids), territory, source == territory)
 		end
 	end
 	if (counts.Field or 0) < CreaturesConfig.flies.cap then
-		spawnCreature("fly", "Field")
+		spawnCreature("fly", "Field", true)
 	end
 end
 
 local function newTarget(creature: Creature)
 	local tx, tz =
 		Steering.wanderTarget(creature.x, creature.z, CreaturesConfig.wanderRadius, Util.random)
+	-- Prefer a spot in the creature's own area (river, marsh or land).
+	for _ = 1, CreaturesConfig.areaTargetTries do
+		if creature.territory == "Field" or MapRules.areaAt(Map, tx, tz) == creature.area then
+			break
+		end
+		tx, tz =
+			Steering.wanderTarget(creature.x, creature.z, CreaturesConfig.wanderRadius, Util.random)
+	end
 	if creature.territory == "Field" then
 		local distance = MapRules.distanceFromCentre(tx, tz)
 		local limit = Map.Field.radius - 6
@@ -255,6 +266,12 @@ local function moveTick(dt: number)
 			if arrived then
 				newTarget(creature)
 			end
+		end
+		if not isFly and MapRules.areaAt(Map, nx, nz) ~= creature.area then
+			-- Blowfish stay in the river, toads in the marsh, the rest on land.
+			nx, nz = oldX, oldZ
+			creature.dodgeUntil = 0
+			newTarget(creature)
 		end
 		local ground = MapBuilder.groundY(nx, nz)
 		if not isFly and ground - oldGround > CreaturesConfig.maxClimb then

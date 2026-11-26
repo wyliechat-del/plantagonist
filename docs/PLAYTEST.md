@@ -106,6 +106,29 @@ Then press **Play** and check:
 5. **Coloured light**: pink, yellow, green and orange pools of light on the floor inside. Rojo now sets **Lighting > Technology** to **Future** so these lights show properly; phones lower it on their own if needed.
 6. **Doors**: plants walk in and out of all 4 doors, and can't pass through the walls or windows.
 
+## 2g. New in build 7: the River quarter
+
+The flag should read "Build 7". Walk out of the safe field into the River
+quarter (top left from above) and check:
+
+1. **River**: blue terrain water with small waves winds from the top edge to
+   the left edge. You wade through it (no swimming) at about 60% speed.
+2. **Moon bridge**: a grey stone arch. Walk over it. At level 4 or below you
+   can also walk under the middle through the water; level 5 bumps into it.
+3. **Paver path** of separate stones runs from the moon bridge to a black
+   iron **gate** with three cream pillars and lit lamps in the top wall.
+4. **Marsh**: brown mud with reeds. Levels 1 to 3 move at full speed,
+   levels 4 to 6 slower.
+5. **Lily pads** with a notch cut out. Land on one and you spring up and can
+   steer for about 0.75 s; land on another and you spring again.
+6. **Rope bridge** to the Hills sways a little. **Rock ford** near the left
+   edge: walk across on the rocks without jumping.
+7. **Hiding grass** (two pale circles): at level 1 to 3 you look see-through
+   to yourself and another player can't see you, only your name. Bite
+   something and you show for 3 seconds.
+8. Blowfish appear in the river and toads on the marsh; other creatures stay
+   on dry land.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

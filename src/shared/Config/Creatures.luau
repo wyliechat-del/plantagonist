@@ -32,6 +32,9 @@ Creatures.maxClimb = 1.5
 Creatures.spawnMix = table.freeze({ native = 0.7, neighbour = 0.2, opposite = 0.1 })
 -- A wandering creature picks a new spot within this distance.
 Creatures.wanderRadius = 30
+-- Tries at finding a wander spot in the creature's own area (river, marsh
+-- or land; see `Config/Map.luau` CreatureAreas) before settling for any.
+Creatures.areaTargetTries = 6
 
 -- Body size in studs by creature size.
 Creatures.bodySize = table.freeze({ Small = 1.5, Medium = 2.5, Large = 3.5 })

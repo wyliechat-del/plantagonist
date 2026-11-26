@@ -5,10 +5,6 @@
 
 local MapRules = {}
 
-local function inRect(rect: any, x: number, z: number): boolean
-	return x >= rect.minX and x <= rect.maxX and z >= rect.minZ and z <= rect.maxZ
-end
-
 function MapRules.distanceFromCentre(x: number, z: number): number
 	return math.sqrt(x * x + z * z)
 end
@@ -73,8 +69,149 @@ function MapRules.isExitAngle(map: any, angle: number): boolean
 	return false
 end
 
+-- Closest point on a line through `points` ({ x, z } pairs) to (x, z).
+-- Returns the distance to it, and the line's direction there (a unit
+-- vector `dx`, `dz`).
+function MapRules.closestOnLine(
+	points: { { number } },
+	x: number,
+	z: number
+): (number, number, number)
+	local best, bestDx, bestDz = math.huge, 1, 0
+	for i = 1, #points - 1 do
+		local ax, az = points[i][1], points[i][2]
+		local bx, bz = points[i + 1][1], points[i + 1][2]
+		local sx, sz = bx - ax, bz - az
+		local lengthSquared = sx * sx + sz * sz
+		if lengthSquared > 0 then
+			local t = math.clamp(((x - ax) * sx + (z - az) * sz) / lengthSquared, 0, 1)
+			local px, pz = ax + sx * t, az + sz * t
+			local distance = math.sqrt((x - px) ^ 2 + (z - pz) ^ 2)
+			if distance < best then
+				local length = math.sqrt(lengthSquared)
+				best, bestDx, bestDz = distance, sx / length, sz / length
+			end
+		end
+	end
+	return best, bestDx, bestDz
+end
+
+-- Is (x, z) inside the polygon `outline` ({ x, z } corners)?
+function MapRules.inPolygon(outline: { { number } }, x: number, z: number): boolean
+	local inside = false
+	local j = #outline
+	for i = 1, #outline do
+		local xi, zi = outline[i][1], outline[i][2]
+		local xj, zj = outline[j][1], outline[j][2]
+		if (zi > z) ~= (zj > z) and x < (xj - xi) * (z - zi) / (zj - zi) + xi then
+			inside = not inside
+		end
+		j = i
+	end
+	return inside
+end
+
+-- Evenly spaced points along a line, `step` studs apart, starting
+-- `startOffset` in. Each is { x, z, dx, dz } with the line's direction.
+function MapRules.pointsAlong(
+	points: { { number } },
+	step: number,
+	startOffset: number
+): { { number } }
+	local result = {}
+	local carry = startOffset
+	for i = 1, #points - 1 do
+		local ax, az = points[i][1], points[i][2]
+		local bx, bz = points[i + 1][1], points[i + 1][2]
+		local length = math.sqrt((bx - ax) ^ 2 + (bz - az) ^ 2)
+		if length > 0 then
+			local dx, dz = (bx - ax) / length, (bz - az) / length
+			local along = carry
+			while along <= length do
+				table.insert(result, { ax + dx * along, az + dz * along, dx, dz })
+				along += step
+			end
+			carry = along - length
+		end
+	end
+	return result
+end
+
+function MapRules.inRiver(map: any, x: number, z: number): boolean
+	local distance = MapRules.closestOnLine(map.River.centreLine, x, z)
+	return distance <= map.River.width / 2
+end
+
+function MapRules.onPath(map: any, x: number, z: number): boolean
+	local distance = MapRules.closestOnLine(map.Path.centreLine, x, z)
+	return distance <= map.Path.width / 2
+end
+
+function MapRules.inMarsh(map: any, x: number, z: number): boolean
+	return MapRules.inPolygon(map.Marsh.outline, x, z)
+		and not MapRules.inRiver(map, x, z)
+		and not MapRules.onPath(map, x, z)
+end
+
+-- "Water", "Marsh" or "Land": what kind of ground (x, z) is.
+function MapRules.areaAt(map: any, x: number, z: number): string
+	if MapRules.inRiver(map, x, z) then
+		return "Water"
+	end
+	if MapRules.inMarsh(map, x, z) then
+		return "Marsh"
+	end
+	return "Land"
+end
+
+function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
+	for _, circle in map.HidingGrass.circles do
+		if (x - circle.x) ^ 2 + (z - circle.z) ^ 2 <= circle.radius ^ 2 then
+			return true
+		end
+	end
+	return false
+end
+
+-- Is a plant hidden from other players? Only small plants hide, and not
+-- while revealed by their own attack.
+function MapRules.hiddenInGrass(
+	map: any,
+	level: number,
+	x: number,
+	z: number,
+	now: number,
+	revealedUntil: number
+): boolean
+	return level <= map.HidingGrass.hideMaxLevel
+		and now >= revealedUntil
+		and MapRules.inHidingGrass(map, x, z)
+end
+
+-- Height of the moon bridge deck above the ground at `offset` studs from its
+-- middle (along the bridge): a parabola, 0 at the banks.
+function MapRules.moonBridgeHeight(map: any, offset: number): number
+	local bridge = map.MoonBridge
+	local share = offset / (bridge.span / 2)
+	return math.max(0, bridge.rise * (1 - share * share))
+end
+
+-- Height of the rope bridge deck above the ground at `offset` studs from its
+-- middle: sags in the middle.
+function MapRules.ropeBridgeHeight(map: any, offset: number): number
+	local bridge = map.RopeBridge
+	local share = math.clamp(offset / (bridge.length / 2), -1, 1)
+	return bridge.endHeight - bridge.sag * (1 - share * share)
+end
+
+-- Upward speed that keeps a frog hop in the air for `seconds` under
+-- `gravity` (studs per second squared).
+function MapRules.hopLaunchSpeed(gravity: number, seconds: number): number
+	return gravity * seconds / 2
+end
+
 -- Share of normal speed for a plant at (x, z), given its level and whether
--- it is standing on something above the ground (a bridge or lily pad).
+-- it is standing on something above the ground (a bridge, rock or lily pad).
 function MapRules.speedFactor(
 	map: any,
 	level: number,
@@ -85,13 +222,41 @@ function MapRules.speedFactor(
 	if raised then
 		return 1
 	end
-	if inRect(map.Swamp, x, z) and level >= map.Swamp.slowFromLevel then
-		return map.Swamp.speedFactor
-	end
-	if inRect(map.River, x, z) then
+	if MapRules.inRiver(map, x, z) then
 		return map.River.speedFactor
 	end
+	if level >= map.Marsh.slowFromLevel and MapRules.inMarsh(map, x, z) then
+		return map.Marsh.speedFactor
+	end
 	return 1
+end
+
+-- Which area a creature spawns and wanders in: its own area from
+-- `map.CreatureAreas` when it is native to the territory, otherwise "Land".
+function MapRules.creatureArea(map: any, id: string, native: boolean): string
+	local area = map.CreatureAreas[id]
+	if native and area then
+		return area
+	end
+	return "Land"
+end
+
+-- A random point in a territory and area ("Water", "Marsh" or "Land").
+-- Falls back to any point in the territory if none is found.
+function MapRules.randomPointInArea(
+	map: any,
+	territory: string,
+	area: string,
+	random: () -> number
+): (number, number)
+	local x, z = MapRules.randomPointIn(map, territory, random)
+	for _ = 1, 60 do
+		if MapRules.areaAt(map, x, z) == area then
+			return x, z
+		end
+		x, z = MapRules.randomPointIn(map, territory, random)
+	end
+	return x, z
 end
 
 -- A random point in a territory, outside the field and away from the edges.

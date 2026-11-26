@@ -58,6 +58,8 @@ export type Plant = {
 	ballUntil: number,
 	burstUntil: number,
 	invisibleUntil: number,
+	-- Hiding grass doesn't hide a plant that attacked until this time.
+	grassRevealUntil: number,
 	stickyUntil: number,
 	fertilised: boolean,
 	inField: boolean,
@@ -346,6 +348,7 @@ local function resetTimers(plant: Plant, now: number)
 	plant.ballUntil = 0
 	plant.burstUntil = 0
 	plant.invisibleUntil = 0
+	plant.grassRevealUntil = 0
 	plant.stickyUntil = 0
 	plant.fertilised = false
 	plant.droppedSinceSpawn = false
@@ -412,6 +415,7 @@ function Plants.register(model: Model, player: Player?, name: string): Plant?
 		ballUntil = 0,
 		burstUntil = 0,
 		invisibleUntil = 0,
+		grassRevealUntil = 0,
 		stickyUntil = 0,
 		fertilised = false,
 		inField = false,
