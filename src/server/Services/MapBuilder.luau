@@ -1349,7 +1349,47 @@ local function buildLilyPads(parent: Instance)
 	rimShape:Destroy()
 end
 
--- Hiding grass: a pale patch covered in tufts of crossed blades, tall enough
+-- One grass blade standing at (x, z), turned any way and sized a little
+-- up or down: thin pieces from the base up, each bent sideways from the
+-- one below, the top one a point. Each piece keeps the blade's base in a
+-- `BladeBase` attribute so clients can wave the blade about it.
+local function grassBlade(parent: Instance, blade: any, x: number, z: number)
+	local grass = Map.HidingGrass
+	local size = Util.between(grass.sizeRange[1], grass.sizeRange[2])
+	local height = grass.height * blade.height * size
+	local pieces = #blade.widths
+	local length = height / pieces
+	local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
+	local colour = Util.colour(blade.colour)
+	local cursor = base
+	for n = 1, pieces do
+		cursor = cursor * CFrame.Angles(math.rad(blade.bends[n]), 0, 0)
+		local width = height * blade.widths[n]
+		local piece: BasePart
+		if n == pieces then
+			-- A wedge's slope runs across its Y and Z, so it makes the point.
+			piece = Instance.new("WedgePart")
+		else
+			piece = Instance.new("Part")
+		end
+		piece.Name = "Blade"
+		piece.Anchored = true
+		piece.CanCollide = false
+		piece.CanQuery = false
+		piece.CanTouch = false
+		piece.CastShadow = false
+		piece.Material = Enum.Material.SmoothPlastic
+		piece.Color = colour
+		-- A little longer than its share, so the pieces meet with no gap.
+		piece.Size = Vector3.new(grass.bladeThickness, length * 1.1, width)
+		piece.CFrame = cursor * CFrame.new(0, length / 2, 0)
+		piece:SetAttribute("BladeBase", base)
+		piece.Parent = parent
+		cursor = cursor * CFrame.new(0, length, 0)
+	end
+end
+
+-- Hiding grass: a pale patch covered in single grass blades, tall enough
 -- to hide a level 3 plant. Nothing in it blocks clicks or movement.
 local function buildHidingGrass(parent: Instance)
 	local grass = Map.HidingGrass
@@ -1370,7 +1410,7 @@ local function buildHidingGrass(parent: Instance)
 			CanQuery = false,
 			Parent = model,
 		})
-		local spacing = grass.tuftSpacing
+		local spacing = grass.clumpSpacing
 		local offset = -circle.radius
 		local rowIndex = 0
 		while offset <= circle.radius do
@@ -1378,30 +1418,14 @@ local function buildHidingGrass(parent: Instance)
 			local along = -circle.radius + shift
 			while along <= circle.radius do
 				if offset * offset + along * along <= (circle.radius - 2) ^ 2 then
-					local height = grass.height * (0.85 + Util.random() * 0.3)
-					local shade = 0.85 + Util.random() * 0.25
-					local tuftColour = Color3.new(
-						math.min(1, colour.R * shade),
-						math.min(1, colour.G * shade),
-						math.min(1, colour.B * shade)
-					)
-					local base = CFrame.new(
-						circle.x + along,
-						GROUND + height / 2,
-						circle.z + offset
-					) * CFrame.Angles(0, Util.random() * math.pi, 0)
-					for _, turn in { 0, 90 } do
-						Util.part({
-							Name = "Tuft",
-							Size = Vector3.new(grass.tuftSize, height, 0.2),
-							CFrame = base * CFrame.Angles(0, math.rad(turn), 0),
-							Color = tuftColour,
-							Material = Enum.Material.Grass,
-							CanCollide = false,
-							CanQuery = false,
-							CastShadow = false,
-							Parent = model,
-						})
+					for _, blade in grass.blades do
+						local spread = grass.clumpSpread
+						grassBlade(
+							model,
+							blade,
+							circle.x + along + Util.between(-spread, spread),
+							circle.z + offset + Util.between(-spread, spread)
+						)
 					end
 				end
 				along += spacing

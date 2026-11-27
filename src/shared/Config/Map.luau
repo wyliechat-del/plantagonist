@@ -399,9 +399,50 @@ Map.HidingGrass = table.freeze({
 	ownTransparency = 0.5,
 	-- How often each client checks who is hiding (seconds).
 	checkSeconds = 0.2,
-	tuftSize = 7,
-	tuftSpacing = 6,
+	-- The pale patch under the grass.
 	colour = table.freeze({ 170, 200, 90 }),
+	-- The grass is single blades (from Wylie's drawing, 2026-11-27) in
+	-- clumps `clumpSpacing` apart, each blade up to `clumpSpread` from its
+	-- clump's middle, turned any way, and sized `sizeRange` times. A
+	-- blade is pieces from the base up: each piece's width (a share of
+	-- the blade's height) and how far it bends from the piece below
+	-- (degrees, sideways). Its height is `height` times its own `height`.
+	clumpSpacing = 3.5,
+	clumpSpread = 1.5,
+	sizeRange = table.freeze({ 0.9, 1.1 }),
+	bladeThickness = 0.15,
+	blades = table.freeze({
+		-- Tall, light green, curling over at the top.
+		table.freeze({
+			colour = table.freeze({ 140, 198, 63 }),
+			height = 1,
+			widths = table.freeze({ 0.13, 0.11, 0.09 }),
+			bends = table.freeze({ -5, 8, 12 }),
+		}),
+		-- Middle, dark green, a straight leaf widest in the middle.
+		table.freeze({
+			colour = table.freeze({ 96, 125, 46 }),
+			height = 0.81,
+			widths = table.freeze({ 0.08, 0.13, 0.09 }),
+			bends = table.freeze({ 0, 0, 3 }),
+		}),
+		-- Short, yellow green, an S curve.
+		table.freeze({
+			colour = table.freeze({ 187, 196, 66 }),
+			height = 0.65,
+			widths = table.freeze({ 0.09, 0.11, 0.08 }),
+			bends = table.freeze({ -12, 16, -10 }),
+		}),
+	}),
+	-- Each blade waves (on each player's own screen): leans up to
+	-- `waveDegrees` and back every `waveSeconds`, the wave moving across
+	-- the grass (`waveSpread` of a turn per stud). Only blades within
+	-- `waveDistance` of the camera move, `waveRate` times a second.
+	waveDegrees = 3,
+	waveSeconds = 3,
+	waveSpread = 0.03,
+	waveDistance = 90,
+	waveRate = 30,
 })
 
 -- Creature spawns: native creatures listed here spawn (and wander) only in

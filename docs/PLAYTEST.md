@@ -297,6 +297,18 @@ From Wylie's drawing of 2026-11-27.
 1. The Hills ground is a darker brown (150, 120, 86) so the sand stands
    out more. The flag says Build 13F.
 
+## 2w. New in build 14A: grass blades in the hiding grass
+
+1. The hiding grass (marsh side of the River quarter) is single blades in
+   three shapes and greens (Wylie's drawing): tall light green curling
+   over, a dark green leaf, a short yellow green S curve.
+2. Each blade is turned a different way and sized 90% to 110%.
+3. The blades wave a little, like a breeze moving across the grass.
+4. Hiding still works as before (levels 1 to 3 vanish for others).
+5. About 9,000 small parts in all: if the game stutters near the grass,
+   tell Claude (`clumpSpacing` in Config/Map thins it out).
+6. The flag says Build 14A.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

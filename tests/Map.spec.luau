@@ -127,6 +127,28 @@ return function(t)
 		t.expectEqual(MapRules.lilyPadLayout(Map)[30][1], pads[30][1], "same layout every time")
 	end)
 
+	t.test("grass blades: tall enough to hide in, waving only a little", function()
+		local grass = Map.HidingGrass
+		local tallest = 0
+		for _, blade in grass.blades do
+			t.expectEqual(#blade.widths, #blade.bends)
+			tallest = math.max(tallest, grass.height * blade.height * grass.sizeRange[1])
+		end
+		t.expect(tallest >= grass.height * 0.9, "the tallest blade is near the grass height")
+		t.expect(grass.sizeRange[1] < 1 and grass.sizeRange[2] > 1, "sizes go both ways")
+		local most = 0
+		for step = 0, 100 do
+			local lean = MapRules.grassWave(Map, step * 0.1, step * 3, -step * 2)
+			most = math.max(most, math.abs(lean))
+		end
+		t.expect(most <= math.rad(grass.waveDegrees) + 1e-9, "never leans past waveDegrees")
+		t.expect(most > 0, "it waves")
+		t.expect(
+			MapRules.grassWave(Map, 1, 0, 0) ~= MapRules.grassWave(Map, 1, 20, 0),
+			"blades apart lean differently"
+		)
+	end)
+
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()
 		local circle = Map.HidingGrass.circles[1]
 		t.expect(MapRules.hiddenInGrass(Map, 3, circle.x, circle.z, 10, 0))

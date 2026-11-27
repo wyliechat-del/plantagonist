@@ -4,6 +4,7 @@
 	- Lily pads: landing on one springs your plant into a frog hop you can
 	  steer (your own client moves your character).
 	- The rope bridge swings like a cradle from its post tops (looks only).
+	- The hiding grass blades wave a little (looks only).
 	- Plants hiding in grass (server sets `InGrass` on their model) vanish
 	  for everyone else; their name tag stays. Your own looks see-through.
 ]]
@@ -119,6 +120,66 @@ local function stepSway(now: number)
 	end
 end
 
+-- Grass waving -----------------------------------------------------------
+
+type Blade = { base: CFrame, pieces: { BasePart }, offsets: { CFrame } }
+local blades: { Blade } = {}
+local grassModel: Instance? = nil
+
+local function findGrass()
+	local map = workspace:FindFirstChild("Map")
+	local model = map and map:FindFirstChild("HidingGrass", true)
+	if model == nil then
+		return
+	end
+	-- Vector3 is a value type, so blades sharing a base match by position.
+	local byBase: { [Vector3]: Blade } = {}
+	blades = {}
+	for _, piece in model:GetChildren() do
+		local base = piece:GetAttribute("BladeBase")
+		if piece:IsA("BasePart") and typeof(base) == "CFrame" then
+			local blade = byBase[base.Position]
+			if blade == nil then
+				blade = { base = base, pieces = {}, offsets = {} }
+				byBase[base.Position] = blade
+				table.insert(blades, blade)
+			end
+			table.insert(blade.pieces, piece)
+			table.insert(blade.offsets, base:ToObjectSpace(piece.CFrame))
+		end
+	end
+	grassModel = model
+end
+
+local function stepWave(now: number)
+	if grassModel == nil or grassModel.Parent == nil then
+		grassModel = nil
+		return
+	end
+	local camera = workspace.CurrentCamera
+	if camera == nil then
+		return
+	end
+	local grass = Map.HidingGrass
+	local eye = camera.CFrame.Position
+	local parts, frames = {}, {}
+	for _, blade in blades do
+		local base = blade.base
+		if (base.Position - eye).Magnitude <= grass.waveDistance then
+			local lean = MapRules.grassWave(Map, now, base.Position.X, base.Position.Z)
+			-- Lean about the world X axis at the blade's foot, like wind.
+			local moved = CFrame.Angles(lean, 0, 0) * base.Rotation + base.Position
+			for index, piece in blade.pieces do
+				table.insert(parts, piece)
+				table.insert(frames, moved * blade.offsets[index])
+			end
+		end
+	end
+	if #parts > 0 then
+		workspace:BulkMoveTo(parts, frames, Enum.BulkMoveMode.FireCFrameChanged)
+	end
+end
+
 -- Hiding grass ------------------------------------------------------------
 
 local hiddenModels: { [Model]: number } = {}
@@ -184,11 +245,15 @@ function World.start()
 	end
 	player.CharacterAdded:Connect(onCharacter)
 
-	-- Find the rope bridge once the map is built (and again if it's rebuilt).
+	-- Find the rope bridge and the grass once the map is built (and again
+	-- if it's rebuilt).
 	task.spawn(function()
 		while true do
 			if swayPivot == nil then
 				findRopeBridge()
+			end
+			if grassModel == nil then
+				findGrass()
 			end
 			task.wait(1)
 		end
@@ -200,9 +265,15 @@ function World.start()
 		stepSway(os.clock())
 	end)
 
+	local waveTimer = 0
 	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
 		stepHop(now)
+		waveTimer += dt
+		if waveTimer >= 1 / Map.HidingGrass.waveRate then
+			waveTimer = 0
+			stepWave(now)
+		end
 		grassTimer += dt
 		if grassTimer >= Map.HidingGrass.checkSeconds then
 			grassTimer = 0

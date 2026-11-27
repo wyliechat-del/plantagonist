@@ -623,6 +623,14 @@ function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
 	return false
 end
 
+-- How far a grass blade at (x, z) leans at time `now` (radians): a
+-- gentle sway that moves across the grass like wind.
+function MapRules.grassWave(map: any, now: number, x: number, z: number): number
+	local grass = map.HidingGrass
+	local turn = now / grass.waveSeconds + (x + z * 0.6) * grass.waveSpread
+	return math.rad(grass.waveDegrees) * math.sin(turn * math.pi * 2)
+end
+
 -- Is a plant hidden from other players? Only small plants hide, and not
 -- while revealed by their own attack.
 function MapRules.hiddenInGrass(
