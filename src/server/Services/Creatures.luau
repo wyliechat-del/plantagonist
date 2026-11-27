@@ -128,10 +128,10 @@ local function randomFieldPoint(): (number, number)
 	return math.cos(angle) * distance, math.sin(angle) * distance
 end
 
--- Ground under a creature. Tunnel creatures are under the rock, so the
--- ray (which stops on top of the rock) would put them on the roof.
+-- Ground under a creature. In a tunnel it is under the rock, so the ray
+-- (which stops on top of the rock) would put it on the roof.
 local function groundFor(area: string, x: number, z: number): number
-	if area == "Tunnel" then
+	if area == "Tunnel" and MapRules.inTunnel(Map, HillsShape, x, z) then
 		return Map.groundY
 	end
 	return MapBuilder.groundY(x, z)
@@ -267,7 +267,10 @@ local function moveTick(dt: number)
 			nx, nz = creature.x + creature.dodgeX * step, creature.z + creature.dodgeZ * step
 			nx, nz = MapRules.clampToTerritory(Map, creature.territory, nx, nz)
 		else
-			local speed = if isFly then CreaturesConfig.flies.speed else CreaturesConfig.wanderSpeed
+			local speed = if isFly
+				then CreaturesConfig.flies.speed
+				else CreaturesConfig.wanderSpeed
+					* (CreaturesConfig.wanderSpeedShare[creature.id] or 1)
 			local arrived
 			nx, nz, arrived = Steering.moveTowards(
 				creature.x,

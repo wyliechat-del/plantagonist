@@ -330,37 +330,28 @@ return function(t)
 		t.expect(high - low > 4, "the width changes")
 	end)
 
-	t.test("cave bats fly the tunnels under the roof and clear the rock outside", function()
-		local route = Map.Hills.caveBats.route
-		local total = MapRules.loopLength(route)
-		local x, y, z = MapRules.alongLoop(route, 0)
-		t.expectEqual(x, route[1][1])
-		t.expectEqual(y, route[1][2])
-		t.expectEqual(z, route[1][3])
-		local x2 = MapRules.alongLoop(route, total)
-		t.expect(math.abs(x2 - route[1][1]) < 0.01, "the loop closes")
-		local wobble = Map.Hills.caveBats.wobble
-		local distance = 0
-		while distance < total do
-			local px, py, pz = MapRules.alongLoop(route, distance)
-			local ground = MapRules.hillsHeight(Map, HillsShape, px, pz)
-			if MapRules.inTunnel(Map, HillsShape, px, pz) and ground > 0 then
-				-- Bats keep to the middle of the arch.
-				local roof = if MapRules.inCave(HillsShape, px, pz)
-					then Map.Hills.caveClearance
-					else Map.Hills.tunnelClearance
-				t.expect(
-					py + wobble < roof - 1,
-					`bat under the tunnel roof at {math.floor(px)}, {math.floor(pz)}`
-				)
-			else
-				t.expect(
-					py - wobble > ground + 1,
-					`bat over the rock at {math.floor(px)}, {math.floor(pz)} ({py} over {ground})`
-				)
-			end
-			distance += 2
+	t.test("cave lanterns: two on each long wall, at the wall, facing in", function()
+		local grid = MapRules.hillsGrid(Map, HillsShape)
+		local spots = MapRules.caveLanternSpots(Map, HillsShape, grid)
+		t.expectEqual(#spots, 2 * Map.Hills.caveLanternsPerWall)
+		local cell = Map.Hills.terrainCell
+		for _, spot in spots do
+			local x, z, nx, nz = spot[1], spot[2], spot[3], spot[4]
+			-- Its spot (just in from the wall) is under the cave's rock.
+			local ix, iz = x + nx * 0.1, z + nz * 0.1
+			local under = grid[math.floor(-iz / cell) + 1][math.floor(ix / cell) + 1]
+			t.expect(under[1] > 0, "lantern is under the cave rock")
+			t.expect(
+				MapRules.distanceToCells(Map, grid, x, z, 4, MapRules.isWallCell, true) < 0.5,
+				"lantern is at the wall"
+			)
+			-- A lantern's light hangs inside the cave, not in the rock.
+			local hx, hz = x + nx * 2, z + nz * 2
+			local entry = grid[math.floor(-hz / cell) + 1][math.floor(hx / cell) + 1]
+			t.expect(not MapRules.isWallCell(entry), "lantern hangs in the open")
 		end
+		-- Two walls: the spots on each side face opposite ways.
+		t.expect(spots[1][3] * spots[3][3] + spots[1][4] * spots[3][4] < 0, "opposite walls")
 	end)
 
 	t.test("land creatures may go on the First Rise, not in tunnels", function()
@@ -368,6 +359,8 @@ return function(t)
 		t.expect(not MapRules.creatureAllowed("Land", "Tunnel"), "land not in tunnels")
 		t.expect(not MapRules.creatureAllowed("Land", "ThirdRise"), "nothing on the Third Rise")
 		t.expect(not MapRules.creatureAllowed("FirstRise", "Land"), "chameleons stay up")
+		t.expect(MapRules.creatureAllowed("Tunnel", "Land"), "bats wander out of the tunnels")
+		t.expect(not MapRules.spawnAllowed("Tunnel", "Land"), "but spawn in them")
 		t.expectEqual(MapRules.creatureArea(Map, "bat", true), "Tunnel")
 		t.expectEqual(MapRules.creatureArea(Map, "snake", true), "FirstRise")
 		t.expectEqual(MapRules.creatureArea(Map, "bat", false), "Land")
@@ -380,7 +373,7 @@ return function(t)
 			for _ = 1, 20 do
 				local x, z = MapRules.randomPointInArea(Map, "Hills", home, random, HillsShape)
 				local area = MapRules.areaAt(Map, x, z, HillsShape)
-				t.expect(MapRules.creatureAllowed(home, area), `{home} creature in {area}`)
+				t.expect(MapRules.spawnAllowed(home, area), `{home} creature spawns in {area}`)
 				t.expectEqual(MapRules.territoryAt(Map, x, z), "Hills")
 			end
 		end

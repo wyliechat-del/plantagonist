@@ -185,21 +185,21 @@ Walk out of the field to the top right (the Hills).
    slope, a ledge and an upper slope, turned a little from each other,
    with Second Rise boulders along the sides.
 
-## 2k. New in build 11: more Hills fixes
+## 2k. Build 11 (replaced by build 12)
 
-1. Cacti stand on the surface (found with a ray), and each one on the
-   ground has a patch of sand round its foot (6 to 12 studs across).
-2. Second Rise boulders on both ramps too, leaving a clear path up the
-   middle.
-3. The bottom left hill's slopes are broken into turned pieces, with
-   boulders on and round it and a few cacti.
-4. The sand at the foot of the cliffs is twice as wide (4 to 16).
-5. The cave has 8 lanterns, placed on the actual rock face so none sit
-   inside the wall. Tunnel lanterns are placed the same way.
-6. Bites, melee and shots don't go through rock: walls, cliffs, tunnel
-   roofs and boulders block them.
-7. A stream of 8 bats flies out of the right tunnel, loops over the hills
-   and back into the cave through the left tunnel.
+Build 11 tried ray-placed lanterns and cacti, ramp boulders, a dressed
+bottom left hill, wider cliff sand, attacks blocked by rock, and flying
+bats. The flying bats are gone in build 12; the cave lanterns are fixed;
+cacti come next.
+
+## 2l. New in build 12: the cave
+
+1. Four miner's lanterns in the cave, two on each long wall, clear of the
+   rock face. The Output window says "Hills: 4 cave lanterns placed".
+2. The decorative flying bats are gone.
+3. Bat creatures still spawn in the tunnels and cave, but now wander
+   slowly (40% of normal creature speed) and can leave the tunnels onto
+   the Hills ground and the First Rise.
 
 ## 3. Things Claude couldn't check without Studio
 

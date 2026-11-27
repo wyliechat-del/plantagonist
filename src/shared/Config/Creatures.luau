@@ -14,6 +14,11 @@ Creatures.spawnEverySeconds = 2
 -- Movement in studs per second. Catching creatures shouldn't be the
 -- challenge, so they are much slower than every plant (a Rex runs at 6).
 Creatures.wanderSpeed = 2
+-- Creatures that wander slower than `wanderSpeed`: share of it, by id.
+-- Bats drift slowly out of the cave they spawn in.
+Creatures.wanderSpeedShare = table.freeze({
+	bat = 0.4,
+})
 -- A creature only dodges at the last moment: when a plant comes within
 -- `dodgeDistance` studs it runs at `dodgeSpeed` for `dodgeSeconds`,
 -- then can't dodge again for `dodgeCooldown` seconds.

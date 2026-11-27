@@ -522,9 +522,12 @@ Map.Hills = table.freeze({
 	shortCactusHeight = table.freeze({ 6, 8 }),
 	tallCactusHeight = table.freeze({ 11, 15 }),
 	cactusColour = table.freeze({ 70, 130, 70 }),
-	-- Miner's lanterns on the walls: `caveLanterns` round the cave, and
-	-- one every `tunnelLanternSpacing` studs in the tunnels.
-	caveLanterns = 8,
+	-- Miner's lanterns on the walls: in the cave, `caveLanternsPerWall` on
+	-- each of its two long walls (spread along the cave's length); in the
+	-- tunnels, one every `tunnelLanternSpacing` studs. `lanternWallGap`
+	-- keeps a lantern clear of the rock face (terrain bulges a little).
+	caveLanternsPerWall = 2,
+	lanternWallGap = 1,
 	caveLanternHeight = 6,
 	tunnelLanternSpacing = 24,
 	tunnelLanternHeight = 5,
@@ -547,30 +550,6 @@ Map.Hills = table.freeze({
 	cliffGrassColour = table.freeze({ 110, 150, 70 }),
 	pillarHeight = 52,
 	pillarSize = 14,
-	-- Bats flying out of the cave (looks only, each player's own screen):
-	-- they loop out of the right tunnel, over the hills and back in the
-	-- left one. Points are { x, height, z }.
-	caveBats = table.freeze({
-		count = 8,
-		speed = 24,
-		wobble = 1.2,
-		flapsPerSecond = 6,
-		wingSpan = 2.4,
-		colour = table.freeze({ 45, 35, 50 }),
-		route = table.freeze({
-			table.freeze({ 116, 7, -269 }),
-			table.freeze({ 150, 6, -255 }),
-			table.freeze({ 172, 6, -251 }),
-			table.freeze({ 195, 14, -245 }),
-			table.freeze({ 210, 34, -275 }),
-			table.freeze({ 180, 42, -320 }),
-			table.freeze({ 120, 42, -335 }),
-			table.freeze({ 60, 34, -320 }),
-			table.freeze({ 40, 16, -295 }),
-			table.freeze({ 62, 7, -286 }),
-			table.freeze({ 84, 6, -283 }),
-		}),
-	}),
 })
 
 -- Forest: trees and hollow logs that only levels 1 and 2 fit through.

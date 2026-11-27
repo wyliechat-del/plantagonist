@@ -1914,7 +1914,8 @@ local function wallLantern(
 	model.Parent = parent
 	local out = Vector3.new(nx, 0, nz)
 	local wallPoint = Vector3.new(x, y, z)
-	local hang = wallPoint + out * (size * 0.5 + 0.6)
+	local reach = size * 0.5 + 0.6 + hills.lanternWallGap
+	local hang = wallPoint + out * reach
 	local function piece(
 		name: string,
 		sizeOf: Vector3,
@@ -1934,12 +1935,11 @@ local function wallLantern(
 			Parent = model,
 		})
 	end
-	local bracketMiddle = wallPoint
-		+ out * ((size * 0.5 + 0.6) / 2)
-		+ Vector3.new(0, size * 0.5 + 0.5, 0)
+	-- The bracket runs from a little inside the rock out over the lantern.
+	local bracketMiddle = wallPoint + out * ((reach - 1) / 2) + Vector3.new(0, size * 0.5 + 0.5, 0)
 	piece(
 		"Bracket",
-		Vector3.new(0.2, 0.2, size * 0.5 + 0.7),
+		Vector3.new(0.2, 0.2, reach + 1),
 		CFrame.lookAt(bracketMiddle, bracketMiddle + out),
 		frameColour,
 		Enum.Material.Metal
@@ -1989,23 +1989,14 @@ local function hillsLanterns(parent: Instance)
 			workspace:Raycast(Vector3.new(x, y, z), Vector3.new(dx, 0, dz) * reach, surfaceParams)
 		return if result then result.Position else nil
 	end
-	-- The cave: lanterns spread round its walls.
+	-- The cave: lanterns on its two long walls, placed from the map data
+	-- (where the solid rock cells start).
 	local caveY = GROUND + hills.caveLanternHeight
-	for _, room in HillsShape.caveRooms do
-		local cx, cz = 0, 0
-		for _, corner in room do
-			cx += corner[1] / #room
-			cz += corner[2] / #room
-		end
-		for n = 1, hills.caveLanterns do
-			local angle = (n - 0.5) / hills.caveLanterns * math.pi * 2
-			local dx, dz = math.cos(angle), math.sin(angle)
-			local wall = findWall(cx, caveY, cz, dx, dz, 50)
-			if wall then
-				wallLantern(parent, wall.X, wall.Z, -dx, -dz, caveY)
-			end
-		end
+	local spots = MapRules.caveLanternSpots(Map, HillsShape, MapRules.hillsGrid(Map, HillsShape))
+	for _, spot in spots do
+		wallLantern(parent, spot[1], spot[2], spot[3], spot[4], caveY)
 	end
+	print(`Hills: {#spots} cave lanterns placed`)
 	-- Tunnels under rock: one every so often on the nearest wall.
 	local spacing = hills.tunnelLanternSpacing
 	local tunnelY = GROUND + hills.tunnelLanternHeight

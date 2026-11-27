@@ -438,41 +438,62 @@ function MapRules.cliffSandWidth(map: any, x: number, z: number): number
 	return config.cliffSandMinWidth + (config.cliffSandMaxWidth - config.cliffSandMinWidth) * share
 end
 
--- Length of a closed loop through 3D points ({ x, y, z }).
-function MapRules.loopLength(points: { { number } }): number
-	local total = 0
-	for index, a in points do
-		local b = points[index % #points + 1]
-		total += math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2 + (b[3] - a[3]) ^ 2)
-	end
-	return total
-end
-
--- The point `distance` studs round a closed loop of 3D points, and the
--- direction of travel there (a unit vector).
-function MapRules.alongLoop(
-	points: { { number } },
-	distance: number
-): (number, number, number, number, number, number)
-	local total = MapRules.loopLength(points)
-	distance = distance % total
-	for index, a in points do
-		local b = points[index % #points + 1]
-		local dx, dy, dz = b[1] - a[1], b[2] - a[2], b[3] - a[3]
-		local length = math.sqrt(dx * dx + dy * dy + dz * dz)
-		if distance <= length or index == #points then
-			local share = if length > 0 then math.min(distance / length, 1) else 0
-			return a[1] + dx * share,
-				a[2] + dy * share,
-				a[3] + dz * share,
-				dx / length,
-				dy / length,
-				dz / length
+-- Where the cave lanterns go: `caveLanternsPerWall` on each of the
+-- cave's two long walls, spread along its length. Each spot is the face of
+-- the wall (the edge of the first solid terrain cell, from `grid`) and the
+-- direction facing into the cave: { x, z, nx, nz }.
+function MapRules.caveLanternSpots(map: any, hills: any, grid: { { { number } } }): { { number } }
+	local config = map.Hills
+	local cell = config.terrainCell
+	local count = #grid
+	local spots = {}
+	local function wallAt(x: number, z: number): boolean
+		local i, j = math.floor(x / cell) + 1, math.floor(-z / cell) + 1
+		if i < 1 or j < 1 or i > count or j > count then
+			return true
 		end
-		distance -= length
+		return MapRules.isWallCell(grid[j][i])
 	end
-	local first = points[1]
-	return first[1], first[2], first[3], 1, 0, 0
+	for _, room in hills.caveRooms do
+		-- Middle and long direction of the cave (from its corners).
+		local cx, cz = 0, 0
+		for _, corner in room do
+			cx += corner[1] / #room
+			cz += corner[2] / #room
+		end
+		local sxx, sxz, szz = 0, 0, 0
+		for _, corner in room do
+			local dx, dz = corner[1] - cx, corner[2] - cz
+			sxx += dx * dx
+			sxz += dx * dz
+			szz += dz * dz
+		end
+		local angle = 0.5 * math.atan2(2 * sxz, sxx - szz)
+		local ax, az = math.cos(angle), math.sin(angle)
+		local low, high = math.huge, -math.huge
+		for _, corner in room do
+			local along = (corner[1] - cx) * ax + (corner[2] - cz) * az
+			low, high = math.min(low, along), math.max(high, along)
+		end
+		local perWall = config.caveLanternsPerWall
+		for _, side in { -1, 1 } do
+			-- Across the cave: (-az, ax) one way, (az, -ax) the other.
+			local px, pz = -az * side, ax * side
+			for n = 1, perWall do
+				local along = low + (high - low) * n / (perWall + 1)
+				local x, z = cx + ax * along, cz + az * along
+				local travelled = 0
+				while travelled < 60 and not wallAt(x + px * 0.25, z + pz * 0.25) do
+					x, z = x + px * 0.25, z + pz * 0.25
+					travelled += 0.25
+				end
+				if travelled < 60 then
+					table.insert(spots, { x, z, -px, -pz })
+				end
+			end
+		end
+	end
+	return spots
 end
 
 -- Which area a point is in, for creatures: "Water", "Marsh", "Tunnel",
@@ -501,10 +522,20 @@ function MapRules.areaAt(map: any, x: number, z: number, hills: any?): string
 	return "Land"
 end
 
--- May a creature that belongs in `home` (from `creatureArea`) be in
--- `area`? Land creatures may also go on the First Rise.
-function MapRules.creatureAllowed(home: string, area: string): boolean
+-- May a creature spawn in `area` when it belongs in `home` (from
+-- `creatureArea`)? Land creatures may also spawn on the First Rise.
+function MapRules.spawnAllowed(home: string, area: string): boolean
 	return area == home or (home == "Land" and area == "FirstRise")
+end
+
+-- May a creature that belongs in `home` wander into `area`? As for
+-- spawning, except tunnel creatures (bats) may wander out of the tunnels
+-- onto the land and the First Rise.
+function MapRules.creatureAllowed(home: string, area: string): boolean
+	if home == "Tunnel" and (area == "Land" or area == "FirstRise") then
+		return true
+	end
+	return MapRules.spawnAllowed(home, area)
 end
 
 function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
@@ -629,8 +660,8 @@ function MapRules.creatureArea(map: any, id: string, native: boolean): string
 	return "Land"
 end
 
--- A random point in a territory where a creature from `home` may be (see
--- `creatureAllowed`). Falls back to any point in the territory if none is
+-- A random point in a territory where a creature from `home` may spawn
+-- (see `spawnAllowed`). Falls back to any point in the territory if none is
 -- found.
 function MapRules.randomPointInArea(
 	map: any,
@@ -641,7 +672,7 @@ function MapRules.randomPointInArea(
 ): (number, number)
 	local x, z = MapRules.randomPointIn(map, territory, random)
 	for _ = 1, map.areaPointTries do
-		if MapRules.creatureAllowed(home, MapRules.areaAt(map, x, z, hills)) then
+		if MapRules.spawnAllowed(home, MapRules.areaAt(map, x, z, hills)) then
 			return x, z
 		end
 		x, z = MapRules.randomPointIn(map, territory, random)
