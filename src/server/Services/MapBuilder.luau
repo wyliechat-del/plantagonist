@@ -1535,7 +1535,7 @@ local function hillsGround(terrain: Terrain, grid: { { { number } } })
 					local px, pz = x + dx, z + dz
 					if
 						MapRules.inTunnel(Map, HillsShape, px, pz)
-						or (MapRules.ridgeOffset(HillsShape, px, pz))
+						or MapRules.onFirstHill(Map, HillsShape, px, pz)
 					then
 						return true
 					end
@@ -1563,18 +1563,48 @@ local function hillsGround(terrain: Terrain, grid: { { { number } } })
 			)
 		end
 	end
+	-- Cells under the bottom left hill's ramps, so they get sand round
+	-- them like the foot of a cliff.
+	local hillRamps: { { { number } } } = {}
+	for j = 1, count do
+		hillRamps[j] = {}
+		for i = 1, count do
+			local x, z = middle(i, j)
+			local onRamp = false
+			for _, section in MapRules.rampSections(Map, HillsShape) do
+				if section.firstHill == 1 then
+					local rx, rz = x - section.x, z - section.z
+					local along = rx * section.ax + rz * section.az
+					local across = -rx * section.az + rz * section.ax
+					if
+						math.abs(along) <= section.length / 2
+						and math.abs(across) <= section.width / 2
+					then
+						onRamp = true
+					end
+				end
+			end
+			hillRamps[j][i] = { if onRamp then 1 else 0 }
+		end
+	end
+	local function isHillRamp(entry: { number }): boolean
+		return entry[1] > 0
+	end
 	rowRuns(count, function(i, j)
 		local x, z = middle(i, j)
 		if
 			hasRock(grid[j][i])
 			or MapRules.inField(Map, x, z)
 			or MapRules.rampAt(Map, HillsShape, x, z) ~= nil
-			or (MapRules.ridgeOffset(HillsShape, x, z))
+			or MapRules.onFirstHill(Map, HillsShape, x, z)
 		then
 			return nil
 		end
 		local reach = hills.cliffSandMaxWidth + 1
-		local distance = MapRules.distanceToCells(Map, grid, x, z, reach, hasRock, false)
+		local distance = math.min(
+			MapRules.distanceToCells(Map, grid, x, z, reach, hasRock, false),
+			MapRules.distanceToCells(Map, hillRamps, x, z, reach, isHillRamp, false)
+		)
 		return if distance <= MapRules.cliffSandWidth(Map, x, z) then Enum.Material.Sand else nil
 	end, fillRun)
 end
@@ -1707,69 +1737,74 @@ local function hillsSlabs(parent: Instance)
 		return not inHillsQuarter(x, z)
 			or MapRules.inTunnel(Map, HillsShape, x, z)
 			or MapRules.rampAt(Map, HillsShape, x, z) ~= nil
-			or (MapRules.ridgeOffset(HillsShape, x, z))
 	end
+	-- Each rise's outlines, and the bottom left hill (a First Rise hill).
+	local edges: { { layer: number, outline: { { number } } } } = {}
 	for layer, outlines in HillsShape.rises do
 		for _, outline in outlines do
-			for k = 1, #outline do
-				local a, b = outline[k], outline[k % #outline + 1]
-				local ex, ez = b[1] - a[1], b[2] - a[2]
-				local length = math.sqrt(ex * ex + ez * ez)
-				local count = math.floor(length / hills.slabSpacing)
-				if count > 0 then
-					ex, ez = ex / length, ez / length
-					for n = 0, count - 1 do
-						local share = (n + 0.5) / count
-						local x, z = a[1] + ex * length * share, a[2] + ez * length * share
-						-- Outward is the side that isn't this rise.
-						local ox, oz = -ez, ex
-						if MapRules.inPolygon(outline, x + ox * 2, z + oz * 2) then
-							ox, oz = -ox, -oz
-						end
-						local width = Util.roll(hills.slabMinWidth, hills.slabMaxWidth)
-						local thickness = Util.roll(hills.slabMinThickness, hills.slabMaxThickness)
-						local half = width / 2
-						if
-							not blocked(x, z)
-							and not blocked(x + ex * half, z + ez * half)
-							and not blocked(x - ex * half, z - ez * half)
-							and not blocked(x + ox * 4, z + oz * 4)
-						then
-							local base = if layer > 1
-								then MapRules.riseHeight(Map, layer - 1, x, z)
-								else 0
-							local slabTop = MapRules.riseHeight(Map, layer, x, z)
-								- Util.roll(0.2, 1)
-							local bottom = base - 1
-							local height = slabTop - bottom
-							local centre = Vector3.new(
-								x + ox * thickness * 0.25,
-								GROUND + bottom + height / 2,
-								z + oz * thickness * 0.25
+			table.insert(edges, { layer = layer, outline = outline })
+		end
+	end
+	table.insert(edges, { layer = 1, outline = hills.firstHill.outline })
+	for _, edge in edges do
+		local layer, outline = edge.layer, edge.outline
+		for k = 1, #outline do
+			local a, b = outline[k], outline[k % #outline + 1]
+			local ex, ez = b[1] - a[1], b[2] - a[2]
+			local length = math.sqrt(ex * ex + ez * ez)
+			local count = math.floor(length / hills.slabSpacing)
+			if count > 0 then
+				ex, ez = ex / length, ez / length
+				for n = 0, count - 1 do
+					local share = (n + 0.5) / count
+					local x, z = a[1] + ex * length * share, a[2] + ez * length * share
+					-- Outward is the side that isn't this rise.
+					local ox, oz = -ez, ex
+					if MapRules.inPolygon(outline, x + ox * 2, z + oz * 2) then
+						ox, oz = -ox, -oz
+					end
+					local width = Util.roll(hills.slabMinWidth, hills.slabMaxWidth)
+					local thickness = Util.roll(hills.slabMinThickness, hills.slabMaxThickness)
+					local half = width / 2
+					if
+						not blocked(x, z)
+						and not blocked(x + ex * half, z + ez * half)
+						and not blocked(x - ex * half, z - ez * half)
+						and not blocked(x + ox * 4, z + oz * 4)
+					then
+						local base = if layer > 1
+							then MapRules.riseHeight(Map, layer - 1, x, z)
+							else 0
+						local slabTop = MapRules.riseHeight(Map, layer, x, z) - Util.roll(0.2, 1)
+						local bottom = base - 1
+						local height = slabTop - bottom
+						local centre = Vector3.new(
+							x + ox * thickness * 0.25,
+							GROUND + bottom + height / 2,
+							z + oz * thickness * 0.25
+						)
+						local frame = CFrame.lookAt(centre, centre + Vector3.new(ox, 0, oz))
+							* CFrame.Angles(
+								0,
+								math.rad(Util.roll(-1, 1) * hills.slabMaxTurnDegrees),
+								0
 							)
-							local frame = CFrame.lookAt(centre, centre + Vector3.new(ox, 0, oz))
-								* CFrame.Angles(
-									0,
-									math.rad(Util.roll(-1, 1) * hills.slabMaxTurnDegrees),
-									0
-								)
-								* CFrame.Angles(
-									math.rad(Util.roll(-1, 1) * hills.slabMaxTiltDegrees),
-									0,
-									0
-								)
-							Util.part({
-								Name = "CliffSlab",
-								Size = Vector3.new(width, height, thickness),
-								CFrame = frame,
-								Color = variedColour(
-									hills.riseColours[layer],
-									hills.slabColourVariation
-								),
-								Material = Enum.Material.Slate,
-								Parent = parent,
-							})
-						end
+							* CFrame.Angles(
+								math.rad(Util.roll(-1, 1) * hills.slabMaxTiltDegrees),
+								0,
+								0
+							)
+						Util.part({
+							Name = "CliffSlab",
+							Size = Vector3.new(width, height, thickness),
+							CFrame = frame,
+							Color = variedColour(
+								hills.riseColours[layer],
+								hills.slabColourVariation
+							),
+							Material = Enum.Material.Slate,
+							Parent = parent,
+						})
 					end
 				end
 			end
@@ -1838,6 +1873,35 @@ local function hillsRamps(parent: Instance)
 			wedge.Material = Enum.Material.Sandstone
 			wedge.Parent = parent
 		end
+		-- The bottom left hill's ramps: ragged broken pieces sticking out
+		-- of the low end.
+		if section.firstHill == 1 and section.low == 0 then
+			local toe = hills.firstHill
+			local foot = centre - uphill * (section.length / 2)
+			local acrossVector = Vector3.new(-section.az, 0, section.ax)
+			for n = 1, toe.toePieces do
+				local share = (n - 0.5) / toe.toePieces - 0.5
+				local length = Util.roll(toe.toeLength[1], toe.toeLength[2])
+				local turn = math.rad(Util.roll(-1, 1) * toe.toeTurnDegrees)
+				local outward = CFrame.Angles(0, turn, 0):VectorToWorldSpace(-uphill)
+				local start = foot + acrossVector * section.width * share
+				local middle = start
+					+ outward * (length / 2 - 0.5)
+					+ Vector3.new(0, toe.toeHeight / 2, 0)
+				local piece = Instance.new("WedgePart")
+				piece.Name = "RampToe"
+				piece.Anchored = true
+				piece.Size = Vector3.new(
+					section.width / toe.toePieces * Util.roll(0.7, 1.2),
+					toe.toeHeight,
+					length
+				)
+				piece.CFrame = CFrame.lookAt(middle, middle + outward)
+				piece.Color = variedColour(hills.riseColours[1], 6)
+				piece.Material = Enum.Material.Sandstone
+				piece.Parent = parent
+			end
+		end
 		-- The last piece of each ramp: a landing past the top covers any
 		-- gap to the rise.
 		if index % 3 == 0 then
@@ -1851,8 +1915,9 @@ local function hillsRamps(parent: Instance)
 	end
 end
 
--- The bottom left hill: slopes up both sides to a flat top, with an
--- arched tunnel along it under the top.
+-- The tunnel through the bottom left hill: side walls and a flat roof
+-- with an arched underside, as parts. The rest of the hill is terrain
+-- rock (hillsRock), meeting the outside of the walls.
 local function hillsRidge(parent: Instance)
 	local hills = Map.Hills
 	local ridge = HillsShape.ridge
@@ -1861,8 +1926,9 @@ local function hillsRidge(parent: Instance)
 	local along = Vector3.new(ridge.dx, 0, ridge.dz)
 	-- Local X runs across the hill, Z along it.
 	local frame = CFrame.lookAt(centre, centre + along)
-	local height, clearance = hills.ridgeHeight, hills.tunnelClearance
-	local flat, tunnel = hills.ridgeFlatTop, hills.ridgeTunnelWidth
+	local height, clearance = hills.riseHeights[1], hills.tunnelClearance
+	local tunnel, wall = hills.ridgeTunnelWidth, hills.ridgeWallWidth
+	local band = MapRules.ridgeBandHalf(Map) * 2
 	local function block(name: string, size: Vector3, offset: Vector3)
 		Util.part({
 			Name = name,
@@ -1875,7 +1941,7 @@ local function hillsRidge(parent: Instance)
 	end
 	block(
 		"HillTop",
-		Vector3.new(flat, height - clearance, ridge.length),
+		Vector3.new(band, height - clearance, ridge.length),
 		Vector3.new(0, clearance + (height - clearance) / 2, 0)
 	)
 	-- The arch: strips along the tunnel, lower near the walls.
@@ -1895,37 +1961,12 @@ local function hillsRidge(parent: Instance)
 		end
 		across += strip
 	end
-	local wall = (flat - tunnel) / 2
-	local run = ridge.width / 2 - flat / 2
 	for _, side in { -1, 1 } do
 		block(
 			"TunnelWall",
 			Vector3.new(wall, clearance, ridge.length),
 			Vector3.new(side * (tunnel / 2 + wall / 2), clearance / 2, 0)
 		)
-		-- Each slope in pieces along the hill, turned and stretched a
-		-- little so it looks like broken rock.
-		local pieces = hills.ridgePieces
-		local pieceLength = ridge.length / pieces
-		for n = 1, pieces do
-			local offset = (n - 0.5) * pieceLength - ridge.length / 2
-			local pieceRun = run + Util.roll(-1, 1) * hills.ridgeRunVariation
-			local slopeCentre = (frame * CFrame.new(
-				side * (flat / 2 - 0.5 + pieceRun / 2),
-				height / 2,
-				offset
-			)).Position
-			local outward = frame.RightVector * side
-			local slope = Instance.new("WedgePart")
-			slope.Name = "HillSlope"
-			slope.Anchored = true
-			slope.Size = Vector3.new(pieceLength + 1, height, pieceRun + 0.5)
-			slope.CFrame = CFrame.lookAt(slopeCentre, slopeCentre + outward)
-				* CFrame.Angles(0, math.rad(Util.roll(-1, 1) * hills.ridgeTurnDegrees), 0)
-			slope.Color = variedColour(hills.riseColours[1], 6)
-			slope.Material = Enum.Material.Sandstone
-			slope.Parent = parent
-		end
 	end
 end
 
@@ -2241,7 +2282,7 @@ local cactusLowest, cactusHighest = math.huge, -math.huge
 local function placeCactus(parent: Instance, x: number, z: number)
 	local hills = Map.Hills
 	local cell = hills.terrainCell
-	if not MapRules.ridgeOffset(HillsShape, x, z) then
+	if not MapRules.onFirstHill(Map, HillsShape, x, z) then
 		-- Sand in whole terrain cells round the foot (a terrain cell only
 		-- changes material when a fill covers it fully).
 		local radius = Util.roll(hills.cactusSandMin, hills.cactusSandMax) / 2
@@ -2320,7 +2361,7 @@ local function hillsCacti(parent: Instance)
 			if
 				MapRules.hillsHeight(Map, HillsShape, px, pz) > 0
 				or MapRules.inTunnel(Map, HillsShape, px, pz)
-				or (MapRules.ridgeOffset(HillsShape, px, pz))
+				or MapRules.onFirstHill(Map, HillsShape, px, pz)
 			then
 				open = false
 			end
@@ -2333,7 +2374,7 @@ local function hillsCacti(parent: Instance)
 end
 
 -- Second Rise boulders round and on the ramps (keeping a clear path up
--- the middle), and on and round the bottom left hill (no cacti there).
+-- the middle), and in clusters on top of the bottom left hill.
 local function hillsBoulders(rock: Instance)
 	local hills = Map.Hills
 	local sections = MapRules.rampSections(Map, HillsShape)
@@ -2371,20 +2412,25 @@ local function hillsBoulders(rock: Instance)
 			)
 		end
 	end
-	local ridge = HillsShape.ridge
-	local acrossX, acrossZ = -ridge.dz, ridge.dx
-	local function onRidge(along: number, across: number): (number, number)
-		return ridge.x + ridge.dx * along + acrossX * across,
-			ridge.z + ridge.dz * along + acrossZ * across
-	end
-	for _ = 1, hills.ridgeBoulders do
-		local side = if Util.random() < 0.5 then -1 else 1
-		-- On the slopes and round the foot of the hill.
-		local x, z = onRidge(
-			Util.roll(-0.48, 0.48) * ridge.length,
-			side * Util.roll(hills.ridgeFlatTop / 2 + 1, ridge.width / 2 + 3)
-		)
-		boulder(rock, x, z, hills.boulderMaxSize)
+	-- Clusters of boulders on the bottom left hill's rock patches.
+	for _, patch in hills.firstHill.rockPatches do
+		local area, minX, maxX, minZ, maxZ = 0, math.huge, -math.huge, math.huge, -math.huge
+		for k, a in patch do
+			local b = patch[k % #patch + 1]
+			area += a[1] * b[2] - b[1] * a[2]
+			minX, maxX = math.min(minX, a[1]), math.max(maxX, a[1])
+			minZ, maxZ = math.min(minZ, a[2]), math.max(maxZ, a[2])
+		end
+		local count = math.max(1, math.floor(math.abs(area) / 2 / hills.firstHill.patchBoulderArea))
+		local placed, tries = 0, 0
+		while placed < count and tries < count * 20 do
+			tries += 1
+			local x, z = Util.roll(minX, maxX), Util.roll(minZ, maxZ)
+			if MapRules.inPolygon(patch, x, z) then
+				boulder(rock, x, z, hills.boulderMaxSize)
+				placed += 1
+			end
+		end
 	end
 end
 

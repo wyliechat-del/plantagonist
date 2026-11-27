@@ -240,6 +240,22 @@ cacti come next.
 3. No cacti on the bottom left hill.
 4. The flag says Build 12E.
 
+## 2q. New in build 13: the first (bottom left) hill
+
+From Wylie's drawing of 2026-11-27.
+
+1. The hill has the uneven outline from the drawing, with steep First Rise
+   rock sides and leaning slabs like the other rises, 12 studs high.
+2. The tunnel along it is as before (same walls, arched roof, lanterns).
+3. Two ramps, one down each long side as drawn, in pieces (slope, ledge,
+   slope) in the same stone colour as the other ramps, with boulders like
+   the other ramps. Each has ragged broken pieces at its low end. The
+   right ramp meets the foot of the big ramp next to it.
+4. Sand round the foot of the hill and round its ramps.
+5. Four clusters of rough Second Rise boulders on top, where the dark
+   patches are in the drawing. No boulders on the old slopes, no cacti.
+6. The flag says Build 13.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

@@ -494,17 +494,97 @@ Map.Hills = table.freeze({
 	surfaceBoulderMaxSize = 4,
 	boulderMinSize = 2,
 	boulderMaxSize = 6,
-	-- The bottom left hill: a ramp up and down across it, with a tunnel
-	-- along it under a flat top.
-	ridgeHeight = 12,
-	ridgeFlatTop = 16,
+	-- The bottom left hill: a First Rise hill (riseHeights[1] high) with
+	-- steep rock sides and a tunnel along its length (HillsShape.ridge).
+	-- The tunnel is built of parts: side walls `ridgeWallWidth` thick and a
+	-- roof over them; the rest of the hill is terrain rock.
 	ridgeTunnelWidth = 12,
-	-- Its slopes are broken into pieces along its length, each turned and
-	-- stretched a little, with boulders and a few cacti on it.
-	ridgePieces = 3,
-	ridgeTurnDegrees = 3,
-	ridgeRunVariation = 1.5,
-	ridgeBoulders = 14,
+	ridgeWallWidth = 6,
+	-- Its outline, ramps and boulder patches, from Wylie's drawing
+	-- (2026-11-27, about 13 pixels a stud, with the tunnel ends on the
+	-- ends of HillsShape.ridge). The ramps are moved out from the drawing
+	-- so their tops meet the outside of the tunnel walls. Ramps are built
+	-- like the others (see rampExtend), with ragged pieces at the low end.
+	firstHill = table.freeze({
+		outline = table.freeze({
+			table.freeze({ 83.6, -140.5 }),
+			table.freeze({ 98.1, -134.4 }),
+			table.freeze({ 122.6, -120.7 }),
+			table.freeze({ 127.6, -99.6 }),
+			table.freeze({ 120.7, -94.2 }),
+			table.freeze({ 135.9, -75.2 }),
+			table.freeze({ 118.0, -60.5 }),
+			table.freeze({ 102.7, -58.1 }),
+			table.freeze({ 100.4, -72.8 }),
+			table.freeze({ 80.5, -78.6 }),
+			table.freeze({ 77.2, -98.9 }),
+			table.freeze({ 82.0, -104.2 }),
+			table.freeze({ 64.8, -125.7 }),
+		}),
+		-- Each ramp's top edge (on the hill) and bottom edge (as drawn).
+		ramps = table.freeze({
+			table.freeze({
+				high = table.freeze({
+					table.freeze({ 64.8, -125.7 }),
+					table.freeze({ 82.0, -104.2 }),
+				}),
+				low = table.freeze({
+					table.freeze({ 36.2, -115.3 }),
+					table.freeze({ 58.2, -88.6 }),
+				}),
+			}),
+			table.freeze({
+				high = table.freeze({
+					table.freeze({ 120.7, -94.2 }),
+					table.freeze({ 135.9, -75.2 }),
+				}),
+				low = table.freeze({
+					table.freeze({ 140.6, -110.0 }),
+					table.freeze({ 162.8, -86.5 }),
+				}),
+			}),
+		}),
+		-- Patches on top covered with Second Rise boulders, one boulder
+		-- for every `patchBoulderArea` square studs.
+		rockPatches = table.freeze({
+			table.freeze({
+				table.freeze({ 79.0, -134.9 }),
+				table.freeze({ 92.8, -133.2 }),
+				table.freeze({ 103.1, -126.6 }),
+				table.freeze({ 82.4, -123.2 }),
+			}),
+			table.freeze({
+				table.freeze({ 108.7, -113.4 }),
+				table.freeze({ 117.6, -115.8 }),
+				table.freeze({ 124.3, -102.6 }),
+				table.freeze({ 116.1, -98.8 }),
+				table.freeze({ 107.3, -101.3 }),
+			}),
+			table.freeze({
+				table.freeze({ 83.9, -98.8 }),
+				table.freeze({ 97.7, -95.7 }),
+				table.freeze({ 99.1, -80.3 }),
+				table.freeze({ 82.9, -82.0 }),
+			}),
+			table.freeze({
+				table.freeze({ 107.3, -69.1 }),
+				table.freeze({ 114.2, -70.2 }),
+				table.freeze({ 117.1, -62.7 }),
+				table.freeze({ 104.8, -60.7 }),
+			}),
+		}),
+		patchBoulderArea = 10,
+		-- How much further out than drawn its ramps run (less than the
+		-- others: the right one meets the foot of the next ramp).
+		rampExtend = 6,
+		-- Ragged low end of each ramp: broken flat pieces sticking out of
+		-- it, `toeLength` studs long, `toeHeight` high, turned up to
+		-- `toeTurnDegrees`.
+		toePieces = 6,
+		toeLength = table.freeze({ 3, 8 }),
+		toeHeight = 0.8,
+		toeTurnDegrees = 25,
+	}),
 	-- Cacti (decor; you walk through them). If ServerStorage has a folder
 	-- `Cacti` holding models named Ball, Short and Tall, those are used.
 	cacti = 40,

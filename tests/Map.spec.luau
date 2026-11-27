@@ -223,11 +223,23 @@ return function(t)
 		t.expect(hills.caveRockBottom > hills.caveClearance, "rock above the cave arch")
 		t.expect(hills.caveRockTop > hills.caveRockBottom, "the cave is covered")
 		t.expect(hills.riseHeights[1] >= hills.tunnelRockBottom, "First Rise covers a tunnel")
-		t.expect(
-			hills.ridgeHeight > hills.tunnelClearance + 1,
-			"bottom left hill covers its tunnel"
-		)
-		t.expect(hills.ridgeFlatTop > hills.ridgeTunnelWidth, "flat top covers the tunnel")
+		-- Bottom left hill: no terrain cell reaches into its tunnel, and the
+		-- tunnel walls reach the nearest terrain cell.
+		local ridge = HillsShape.ridge
+		local cellReach = hills.terrainCell / 2 * (math.abs(ridge.dx) + math.abs(ridge.dz))
+		t.expect(hills.ridgeWallWidth >= 2 * cellReach, "tunnel walls meet the hill's rock")
+		for j, row in MapRules.hillsGrid(Map, HillsShape) do
+			for i, entry in row do
+				local x, z = (i - 0.5) * hills.terrainCell, -(j - 0.5) * hills.terrainCell
+				local _, along, across = MapRules.ridgeOffset(HillsShape, x, z)
+				if entry[2] > 0 and math.abs(along) <= ridge.length / 2 then
+					t.expect(
+						math.abs(across) - cellReach >= hills.ridgeTunnelWidth / 2,
+						"no rock in the bottom left hill's tunnel"
+					)
+				end
+			end
+		end
 		local grid = MapRules.hillsGrid(Map, HillsShape)
 		for j, row in grid do
 			for i, entry in row do
@@ -267,34 +279,64 @@ return function(t)
 		t.expectEqual(bottom, Map.Hills.caveRockBottom)
 		t.expect(top >= Map.Hills.caveRockTop, "cave roof is covered")
 		local ridge = HillsShape.ridge
+		local rise = Map.Hills.riseHeights[1]
 		t.expectEqual(MapRules.areaAt(Map, ridge.x, ridge.z, HillsShape), "Tunnel")
-		t.expectEqual(
-			MapRules.hillsHeight(Map, HillsShape, ridge.x, ridge.z),
-			Map.Hills.ridgeHeight
+		t.expectEqual(MapRules.hillsHeight(Map, HillsShape, ridge.x, ridge.z), rise)
+		-- Off the tunnel, the hill is First Rise rock.
+		local patch = Map.Hills.firstHill.rockPatches[3]
+		local px, pz = (patch[1][1] + patch[3][1]) / 2, (patch[1][2] + patch[3][2]) / 2
+		t.expect(MapRules.onFirstHill(Map, HillsShape, px, pz), "patch is on the hill")
+		local _, top, layer = MapRules.hillsRock(Map, HillsShape, px, pz)
+		t.expectEqual(top, rise)
+		t.expectEqual(layer, 1)
+		t.expectEqual(MapRules.hillsHeight(Map, HillsShape, px, pz), rise)
+		t.expect(
+			not MapRules.onFirstHill(Map, HillsShape, ridge.x - 40, ridge.z + 40),
+			"off the hill"
 		)
-		t.expectEqual(MapRules.ridgeHeight(Map, HillsShape, ridge.width / 2), 0)
 		t.expectEqual(MapRules.areaAt(Map, 150, -250), "Land")
 	end)
 
 	t.test("ramps climb from the ground to the First Rise in pieces", function()
 		local rise = Map.Hills.riseHeights[1]
 		local sections = MapRules.rampSections(Map, HillsShape)
-		t.expectEqual(#sections, #HillsShape.ramps * 3)
-		for index, ramp in HillsShape.ramps do
+		local ramps, extends = table.clone(HillsShape.ramps), {}
+		for _ in HillsShape.ramps do
+			table.insert(extends, Map.Hills.rampExtend)
+		end
+		for _, ramp in Map.Hills.firstHill.ramps do
+			table.insert(ramps, ramp)
+			table.insert(extends, Map.Hills.firstHill.rampExtend)
+		end
+		t.expectEqual(#sections, #ramps * 3)
+		for index, ramp in ramps do
 			local hx = (ramp.high[1][1] + ramp.high[2][1]) / 2
 			local hz = (ramp.high[1][2] + ramp.high[2][2]) / 2
 			local lx = (ramp.low[1][1] + ramp.low[2][1]) / 2
 			local lz = (ramp.low[1][2] + ramp.low[2][2]) / 2
 			local length = math.sqrt((hx - lx) ^ 2 + (hz - lz) ^ 2)
 			local ux, uz = (hx - lx) / length, (hz - lz) / length
-			local total = length + Map.Hills.rampExtend
+			local total = length + extends[index]
+			-- Height of this ramp's own pieces (ramps may meet at the foot).
 			local function at(share)
-				return MapRules.hillsHeight(
-					Map,
-					HillsShape,
-					hx - ux * total * (1 - share),
-					hz - uz * total * (1 - share)
-				)
+				local x, z = hx - ux * total * (1 - share), hz - uz * total * (1 - share)
+				local best = 0
+				for _, section in sections do
+					if section.ramp == index then
+						local rx, rz = x - section.x, z - section.z
+						local along = rx * section.ax + rz * section.az
+						local across = -rx * section.az + rz * section.ax
+						if
+							math.abs(along) <= section.length / 2
+							and math.abs(across) <= section.width / 2
+						then
+							local height = section.low
+								+ (section.high - section.low) * (along / section.length + 0.5)
+							best = math.max(best, height)
+						end
+					end
+				end
+				return best
 			end
 			t.expect(at(0.01) < 0.5, `ramp {index} starts at the ground`)
 			t.expect(math.abs(at(0.99) - rise) < 0.6, `ramp {index} ends at the First Rise`)
@@ -310,9 +352,13 @@ return function(t)
 				t.expect(slope < 30, "ramp slope under 30 degrees")
 			end
 			t.expectEqual(
-				MapRules.hillsLayer(HillsShape, hx + ux * 4, hz + uz * 4),
-				1,
+				MapRules.hillsHeight(Map, HillsShape, hx + ux * 4, hz + uz * 4),
+				rise,
 				"the First Rise starts past the top"
+			)
+			t.expect(
+				not MapRules.inField(Map, hx - ux * total, hz - uz * total),
+				`ramp {index} stays out of the safe field`
 			)
 		end
 	end)

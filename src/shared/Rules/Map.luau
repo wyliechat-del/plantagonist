@@ -191,9 +191,27 @@ function MapRules.ridgeOffset(hills: any, x: number, z: number): (boolean, numbe
 	return inside, along, across
 end
 
+-- Half the width of the bottom left hill's tunnel with its side walls
+-- (the parts down the middle of the hill).
+function MapRules.ridgeBandHalf(map: any): number
+	return map.Hills.ridgeTunnelWidth / 2 + map.Hills.ridgeWallWidth
+end
+
+-- Is a point on the bottom left hill: inside its outline, or on its
+-- tunnel and walls?
+function MapRules.onFirstHill(map: any, hills: any, x: number, z: number): boolean
+	if MapRules.inPolygon(map.Hills.firstHill.outline, x, z) then
+		return true
+	end
+	local _, along, across = MapRules.ridgeOffset(hills, x, z)
+	return math.abs(along) <= hills.ridge.length / 2
+		and math.abs(across) <= MapRules.ridgeBandHalf(map)
+end
+
 -- The pieces of each ramp up to the First Rise: a lower slope, a flat
 -- ledge and an upper slope, each turned a little from the others. The
--- ramp runs `rampExtend` studs further out into the ground than drawn.
+-- ramp runs `rampExtend` studs further out into the ground than drawn
+-- (`firstHill.rampExtend` for the bottom left hill's ramps).
 -- Each piece: middle (x, z), uphill direction (ax, az), length, width,
 -- and its height at the low and high ends.
 local sectionCache: { [any]: any } = setmetatable({}, { __mode = "k" }) :: any
@@ -208,7 +226,15 @@ function MapRules.rampSections(map: any, hills: any): { { [string]: number } }
 	local ledge = config.rampLedgeHeight
 	local split = config.rampSplit
 	local sections = {}
+	local ramps = {}
 	for _, ramp in hills.ramps do
+		table.insert(ramps, { ramp = ramp, firstHill = 0, extend = config.rampExtend })
+	end
+	for _, ramp in config.firstHill.ramps do
+		table.insert(ramps, { ramp = ramp, firstHill = 1, extend = config.firstHill.rampExtend })
+	end
+	for index, entry in ramps do
+		local ramp = entry.ramp
 		local h1, h2 = ramp.high[1], ramp.high[2]
 		local l1, l2 = ramp.low[1], ramp.low[2]
 		local hx, hz = (h1[1] + h2[1]) / 2, (h1[2] + h2[2]) / 2
@@ -216,7 +242,7 @@ function MapRules.rampSections(map: any, hills: any): { { [string]: number } }
 		local drawn = math.sqrt((hx - lx) ^ 2 + (hz - lz) ^ 2)
 		local ux, uz = (hx - lx) / drawn, (hz - lz) / drawn
 		local width = math.sqrt((h2[1] - h1[1]) ^ 2 + (h2[2] - h1[2]) ^ 2)
-		local total = drawn + config.rampExtend
+		local total = drawn + entry.extend
 		local startX, startZ = hx - ux * total, hz - uz * total
 		local pieces = {
 			{
@@ -255,6 +281,8 @@ function MapRules.rampSections(map: any, hills: any): { { [string]: number } }
 				width = width * piece.scale,
 				low = piece.low,
 				high = piece.high,
+				ramp = index,
+				firstHill = entry.firstHill,
 			})
 		end
 	end
@@ -306,16 +334,31 @@ end
 -- The terrain rock at a point on a rise: from `bottom` to `top` above the
 -- ground, and the rise. Over a tunnel or the cave the rock starts above
 -- the arched roof (bottom > 0), and may be empty when the roof parts reach
--- the top. Ramps and the bottom left hill are parts, so no rock there.
+-- the top. Ramps are parts, so no rock there. The bottom left hill is
+-- First Rise rock, except near its tunnel, which is parts: no terrain cell
+-- (`terrainCell` square, middle at x, z) reaches into the tunnel, and the
+-- walls cover up to the nearest rock.
 function MapRules.hillsRock(map: any, hills: any, x: number, z: number): (number, number, number)
-	if MapRules.rampAt(map, hills, x, z) ~= nil or MapRules.ridgeOffset(hills, x, z) then
+	if MapRules.rampAt(map, hills, x, z) ~= nil then
 		return 0, 0, 0
+	end
+	local config = map.Hills
+	local ridge = hills.ridge
+	local _, along, across = MapRules.ridgeOffset(hills, x, z)
+	local cellReach = config.terrainCell / 2 * (math.abs(ridge.dx) + math.abs(ridge.dz))
+	if
+		math.abs(along) <= ridge.length / 2 + cellReach
+		and math.abs(across) < MapRules.ridgeBandHalf(map) - cellReach
+	then
+		return 0, 0, 0
+	end
+	if MapRules.inPolygon(config.firstHill.outline, x, z) then
+		return 0, config.riseHeights[1], 1
 	end
 	local layer = MapRules.hillsLayer(hills, x, z)
 	if layer == 0 then
 		return 0, 0, 0
 	end
-	local config = map.Hills
 	local top = MapRules.riseHeight(map, layer, x, z)
 	if MapRules.inCave(hills, x, z) then
 		return config.caveRockBottom, math.max(top, config.caveRockTop), layer
@@ -402,28 +445,14 @@ function MapRules.archHeight(
 	return wall + (clearance - wall) * math.sqrt(1 - (1 - share) ^ 2)
 end
 
--- Height of the bottom left hill's surface `across` studs from its middle
--- line: flat over the tunnel, sloping down to the ground at both sides.
-function MapRules.ridgeHeight(map: any, hills: any, across: number): number
-	local config = map.Hills
-	local flat = config.ridgeFlatTop / 2
-	local half = hills.ridge.width / 2
-	local distance = math.abs(across)
-	if distance <= flat then
-		return config.ridgeHeight
-	end
-	return math.max(0, config.ridgeHeight * (1 - (distance - flat) / (half - flat)))
-end
-
 -- Height of the walkable surface above the ground at a point.
 function MapRules.hillsHeight(map: any, hills: any, x: number, z: number): number
 	local ramp = MapRules.rampAt(map, hills, x, z)
 	if ramp then
 		return ramp
 	end
-	local onRidge, _, across = MapRules.ridgeOffset(hills, x, z)
-	if onRidge then
-		return MapRules.ridgeHeight(map, hills, across)
+	if MapRules.onFirstHill(map, hills, x, z) then
+		return map.Hills.riseHeights[1]
 	end
 	local _, top = MapRules.hillsRock(map, hills, x, z)
 	return top
@@ -510,7 +539,9 @@ function MapRules.areaAt(map: any, x: number, z: number, hills: any?): string
 		if MapRules.inTunnel(map, hills, x, z) then
 			return "Tunnel"
 		end
-		if MapRules.rampAt(map, hills, x, z) == nil and not MapRules.ridgeOffset(hills, x, z) then
+		if
+			MapRules.rampAt(map, hills, x, z) == nil and not MapRules.onFirstHill(map, hills, x, z)
+		then
 			local layer = MapRules.hillsLayer(hills, x, z)
 			if layer == 1 then
 				return "FirstRise"
