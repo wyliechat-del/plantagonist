@@ -569,7 +569,7 @@ local function buildRopeBridge(parent: Instance)
 	local pivotHeight = bridge.endHeight + bridge.swayPivotHeight
 	local pivot = CFrame.lookAt(at(0, pivotHeight), at(0, pivotHeight) + along)
 	model:SetAttribute("SwayPivot", pivot)
-	model:SetAttribute("SwayDegrees", bridge.swayDegrees)
+	model:SetAttribute("SwayDegrees", MapRules.ropeBridgeSwayDegrees(Map))
 	model:SetAttribute("SwaySeconds", bridge.swaySeconds)
 
 	local plankColour = Util.colour(bridge.plankColour)
@@ -589,6 +589,7 @@ local function buildRopeBridge(parent: Instance)
 		})
 		plank:SetAttribute("RaisedMaxLevel", 6)
 		plank:SetAttribute("Sway", true)
+		plank:SetAttribute("SwayBase", plank.CFrame)
 	end
 	-- Ramps up from each bank.
 	for _, direction in { -1, 1 } do
@@ -641,6 +642,7 @@ local function buildRopeBridge(parent: Instance)
 			Parent = model,
 		})
 		part:SetAttribute("Sway", true)
+		part:SetAttribute("SwayBase", part.CFrame)
 	end
 	local pieces = 10
 	for _, side in { -1, 1 } do

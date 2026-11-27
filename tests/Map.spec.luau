@@ -218,8 +218,9 @@ return function(t)
 		local quarter = MapRules.ropeBridgeSwayShare(Map, half / 2)
 		t.expect(quarter > 0.5 and quarter < 1, "a smooth curve between")
 		local bridge = Map.RopeBridge
-		local middle = bridge.swayPivotHeight * math.tan(math.rad(bridge.swayDegrees))
-		t.expect(middle > 1.5 and middle < 2.5, "the middle swings about 2 studs")
+		local middle = bridge.swayPivotHeight
+			* math.tan(math.rad(MapRules.ropeBridgeSwayDegrees(Map)))
+		t.expect(math.abs(middle - bridge.swayStuds) < 1e-6, "the middle swings swayStuds")
 	end)
 
 	t.test("water lilies grow beside their pads, not on them", function()

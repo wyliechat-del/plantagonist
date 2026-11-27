@@ -370,6 +370,14 @@ From Wylie's drawing of 2026-11-27.
 3. Two players see it in the same place.
 4. The flag says Build 15C.
 
+## 2ze. New in build 15D: rope bridge swing fixed and bigger
+
+1. The rope bridge actually swings now (in 15C the client looked for its
+   parts once, before they had arrived, and never looked again).
+2. It swings from a line 20 studs above the deck, the middle moving about
+   6 studs each way, once every 3 seconds. The ends stay at the posts.
+3. The flag says Build 15D.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

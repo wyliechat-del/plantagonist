@@ -73,41 +73,44 @@ local swayParts: { { part: BasePart, base: CFrame, share: number } } = {}
 local swayPivot: CFrame? = nil
 local swayDegrees, swaySeconds = 0, 1
 
+-- Finds the rope bridge's swinging parts. Run again every second: with
+-- streaming, or while the map is still arriving, the parts turn up a few at
+-- a time. Each part's resting place comes from its `SwayBase` attribute,
+-- so finding it again mid swing is safe.
 local function findRopeBridge()
 	local map = workspace:FindFirstChild("Map")
 	local river = map and map:FindFirstChild("River")
 	local bridge = river and river:FindFirstChild("RopeBridge")
 	if bridge == nil then
+		swayPivot = nil
+		swayParts = {}
 		return
 	end
 	local pivot = bridge:GetAttribute("SwayPivot")
 	if typeof(pivot) ~= "CFrame" then
 		return
 	end
-	swayPivot = pivot
 	swayDegrees = bridge:GetAttribute("SwayDegrees") or 0
 	swaySeconds = bridge:GetAttribute("SwaySeconds") or 1
-	swayParts = {}
+	local parts = {}
 	for _, part in bridge:GetDescendants() do
-		if part:IsA("BasePart") and part:GetAttribute("Sway") == true then
+		local base = part:GetAttribute("SwayBase")
+		if part:IsA("BasePart") and typeof(base) == "CFrame" then
 			-- How far along the bridge from its middle the part is.
-			local offset = (part.Position - pivot.Position):Dot(pivot.LookVector)
-			table.insert(swayParts, {
+			local offset = (base.Position - pivot.Position):Dot(pivot.LookVector)
+			table.insert(parts, {
 				part = part,
-				base = part.CFrame,
+				base = base,
 				share = MapRules.ropeBridgeSwayShare(Map, offset),
 			})
 		end
 	end
+	swayParts = parts
+	swayPivot = pivot
 end
 
 local function stepSway(now: number)
 	if swayPivot == nil or #swayParts == 0 then
-		return
-	end
-	if swayParts[1].part.Parent == nil then
-		-- The map was rebuilt.
-		swayPivot = nil
 		return
 	end
 	local pivot = swayPivot :: CFrame
@@ -119,6 +122,10 @@ local function stepSway(now: number)
 	local turnRate = amplitude * rate * math.cos(now * rate)
 	for _, entry in swayParts do
 		local part = entry.part
+		if part.Parent == nil then
+			-- Streamed out or rebuilt; the next search tidies the list.
+			continue
+		end
 		local swing = pivot * CFrame.Angles(0, 0, angle * entry.share) * pivot:Inverse()
 		local spin = pivot.ZVector * turnRate * entry.share
 		part.CFrame = swing * entry.base
@@ -258,9 +265,7 @@ function World.start()
 	-- if it's rebuilt).
 	task.spawn(function()
 		while true do
-			if swayPivot == nil then
-				findRopeBridge()
-			end
+			findRopeBridge()
 			if grassModel == nil then
 				findGrass()
 			end

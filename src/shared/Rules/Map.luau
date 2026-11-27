@@ -853,6 +853,13 @@ function MapRules.ropeBridgeSwayShare(map: any, offset: number): number
 	return math.cos(share * math.pi / 2)
 end
 
+-- The rope bridge's swing each way at the middle, in degrees, so the deck
+-- there moves `swayStuds` sideways.
+function MapRules.ropeBridgeSwayDegrees(map: any): number
+	local bridge = map.RopeBridge
+	return math.deg(math.atan(bridge.swayStuds / bridge.swayPivotHeight))
+end
+
 -- Upward speed that lifts a frog hop `height` studs under `gravity`
 -- (studs per second squared).
 function MapRules.hopLaunchSpeed(gravity: number, height: number): number
