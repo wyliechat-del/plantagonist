@@ -264,6 +264,14 @@ From Wylie's drawing of 2026-11-27.
 2. No boulders in or at the edge of the river.
 3. The flag says Build 13B.
 
+## 2s. New in build 13C: chunky boulders on the first hill
+
+1. The boulder clusters on the first hill stand up as chunky rough blocks
+   like the boulders on the other ramps, not flat shapes in the rock.
+2. Output prints "Hills: N of M boulders found the ground lower than the
+   map height (by up to X studs)"; send that line to Claude.
+3. The flag says Build 13C.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
