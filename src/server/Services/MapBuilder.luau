@@ -1109,6 +1109,52 @@ end
 
 -- Marsh mud: strips that follow the outline, so the marsh has the right
 -- shape without one part per stud.
+-- One reed standing at (x, z), sometimes with a cattail near its top.
+local function reed(parent: Instance, x: number, z: number)
+	local marsh = Map.Marsh
+	local height = 3.5 + Util.random() * 3
+	local lean = CFrame.Angles(
+		math.rad((Util.random() * 2 - 1) * 8),
+		0,
+		math.rad((Util.random() * 2 - 1) * 8)
+	)
+	local base = CFrame.new(x, GROUND, z) * lean
+	Util.part({
+		Name = "Reed",
+		Size = Vector3.new(0.25, height, 0.25),
+		CFrame = base * CFrame.new(0, height / 2, 0),
+		Color = Util.colour(marsh.reedColour),
+		Material = Enum.Material.Grass,
+		CanCollide = false,
+		CanQuery = false,
+		Parent = parent,
+	})
+	if Util.random() < 0.5 then
+		Util.part({
+			Name = "Cattail",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(1.3, 0.55, 0.55),
+			CFrame = base * CFrame.new(0, height - 0.8, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Util.colour(marsh.cattailColour),
+			Material = Enum.Material.Fabric,
+			CanCollide = false,
+			CanQuery = false,
+			Parent = parent,
+		})
+	end
+end
+
+-- A clump of 4 to 7 reeds round (x, z), or `count` reeds if it isn't 0.
+local function reedClump(parent: Instance, x: number, z: number, count: number)
+	if count == 1 then
+		reed(parent, x, z)
+		return
+	end
+	for _ = 1, if count > 0 then count else Util.roll(4, 7) do
+		reed(parent, x + (Util.random() * 2 - 1) * 1.5, z + (Util.random() * 2 - 1) * 1.5)
+	end
+end
+
 local function buildMarsh(parent: Instance)
 	local marsh = Map.Marsh
 	local model = Instance.new("Model")
@@ -1146,8 +1192,6 @@ local function buildMarsh(parent: Instance)
 		z += row
 	end
 	-- Reed clumps with cattails, away from the lily pads.
-	local reed = Util.colour(marsh.reedColour)
-	local cattail = Util.colour(marsh.cattailColour)
 	local placed, tries = 0, 0
 	while placed < marsh.reedClumps and tries < marsh.reedClumps * 20 do
 		tries += 1
@@ -1161,42 +1205,7 @@ local function buildMarsh(parent: Instance)
 		end
 		if clear then
 			placed += 1
-			for _ = 1, Util.roll(4, 7) do
-				local rx = cx + (Util.random() * 2 - 1) * 1.5
-				local rz = cz + (Util.random() * 2 - 1) * 1.5
-				local height = 3.5 + Util.random() * 3
-				local lean = CFrame.Angles(
-					math.rad((Util.random() * 2 - 1) * 8),
-					0,
-					math.rad((Util.random() * 2 - 1) * 8)
-				)
-				local base = CFrame.new(rx, GROUND, rz) * lean
-				Util.part({
-					Name = "Reed",
-					Size = Vector3.new(0.25, height, 0.25),
-					CFrame = base * CFrame.new(0, height / 2, 0),
-					Color = reed,
-					Material = Enum.Material.Grass,
-					CanCollide = false,
-					CanQuery = false,
-					Parent = model,
-				})
-				if Util.random() < 0.5 then
-					Util.part({
-						Name = "Cattail",
-						Shape = Enum.PartType.Cylinder,
-						Size = Vector3.new(1.3, 0.55, 0.55),
-						CFrame = base
-							* CFrame.new(0, height - 0.8, 0)
-							* CFrame.Angles(0, 0, math.rad(90)),
-						Color = cattail,
-						Material = Enum.Material.Fabric,
-						CanCollide = false,
-						CanQuery = false,
-						Parent = model,
-					})
-				end
-			end
+			reedClump(model, cx, cz, 0)
 		end
 	end
 end
@@ -1457,6 +1466,99 @@ local function riverGround()
 	end
 end
 
+-- Reed clumps and single reeds along both river banks.
+local function buildRiverReeds(parent: Instance)
+	local model = Instance.new("Model")
+	model.Name = "RiverReeds"
+	model.Parent = parent
+	for _, spot in MapRules.riverReedSpots(Map) do
+		reedClump(model, spot[1], spot[2], spot[3])
+	end
+end
+
+-- One gaslight with its base at (x, z): a black iron post with a fluted
+-- base and a crossbar, and a glass lantern with a glowing flame inside.
+local function pathLight(parent: Instance, x: number, z: number)
+	local lights = Map.PathLights
+	local iron = Util.colour(lights.ironColour)
+	local model = Instance.new("Model")
+	model.Name = "PathLight"
+	model.Parent = parent
+	local function piece(name: string, size: Vector3, y: number, props: { [string]: any }?)
+		local part = Util.part({
+			Name = name,
+			Size = size,
+			CFrame = CFrame.new(x, GROUND + y, z),
+			Color = iron,
+			Material = Enum.Material.Metal,
+			Parent = model,
+		})
+		for key, value in props or {} do
+			(part :: any)[key] = value
+		end
+		return part
+	end
+	local function upright(name: string, diameter: number, height: number, y: number)
+		local part = piece(name, Vector3.new(height, diameter, diameter), y + height / 2)
+		part.Shape = Enum.PartType.Cylinder
+		part.CFrame = CFrame.new(x, GROUND + y + height / 2, z) * CFrame.Angles(0, 0, math.rad(90))
+		return part
+	end
+	local base, post = lights.baseDiameter, lights.postDiameter
+	upright("Foot", base * 1.15, 0.4, 0)
+	upright("Base", base, lights.baseHeight, 0.4)
+	upright("BaseRing", base * 1.1, 0.3, 0.4 + lights.baseHeight)
+	local postBottom = 0.7 + lights.baseHeight
+	upright("Post", post, lights.lanternBottom - postBottom, postBottom)
+	upright("Collar", post * 1.5, 0.3, lights.crossbarHeight - 0.8)
+	piece("Crossbar", Vector3.new(lights.crossbarLength, 0.2, 0.2), lights.crossbarHeight)
+	-- Lantern: a tray, glass sides with black corner posts, and a roof.
+	local size, tall, bottom = lights.lanternSize, lights.lanternHeight, lights.lanternBottom
+	piece("LanternTray", Vector3.new(size * 0.8, 0.25, size * 0.8), bottom + 0.125)
+	piece("Glass", Vector3.new(size, tall, size), bottom + 0.25 + tall / 2, {
+		Color = Util.colour(lights.glassColour),
+		Material = Enum.Material.Glass,
+		Transparency = lights.glassTransparency,
+		CanCollide = false,
+	})
+	for _, corner in { { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } } do
+		local part = piece("LanternFrame", Vector3.new(0.12, tall, 0.12), bottom + 0.25 + tall / 2)
+		part.CFrame = CFrame.new(
+			x + corner[1] * size / 2,
+			GROUND + bottom + 0.25 + tall / 2,
+			z + corner[2] * size / 2
+		)
+	end
+	local flame = piece("Flame", Vector3.new(0.5, 0.7, 0.5), bottom + 0.25 + tall * 0.45, {
+		Color = Util.colour(lights.flameColour),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CastShadow = false,
+	})
+	local light = Instance.new("PointLight")
+	light.Color = Util.colour(lights.flameColour)
+	light.Brightness = lights.lightBrightness
+	light.Range = lights.lightRange
+	light.Shadows = false
+	light.Parent = flame
+	local roofY = bottom + 0.25 + tall
+	piece("Roof", Vector3.new(size * 1.3, 0.25, size * 1.3), roofY + 0.125)
+	piece("RoofTop", Vector3.new(size * 0.8, 0.35, size * 0.8), roofY + 0.425)
+	local finial = lights.height - (roofY + 0.6)
+	upright("FinialStem", 0.2, finial * 0.6, roofY + 0.6)
+	local ball = piece("Finial", Vector3.new(0.4, 0.4, 0.4), lights.height - 0.2)
+	ball.Shape = Enum.PartType.Ball
+end
+
+local function buildPathLights(parent: Instance)
+	local model = Instance.new("Model")
+	model.Name = "PathLights"
+	model.Parent = parent
+	for _, spot in MapRules.pathLightSpots(Map) do
+		pathLight(model, spot[1], spot[2])
+	end
+end
+
 local function buildRiverQuarter()
 	local wet = Instance.new("Folder")
 	wet.Name = "River"
@@ -1472,6 +1574,8 @@ local function buildRiverQuarter()
 	buildLilyPads(wet)
 	buildMarsh(decor)
 	buildPath(decor)
+	buildPathLights(decor)
+	buildRiverReeds(decor)
 	buildGate(decor)
 	buildStoneWall(decor)
 	buildHidingGrass(decor)

@@ -340,6 +340,18 @@ From Wylie's drawing of 2026-11-27.
    side with the most room, not on top of the pad.
 3. The flag says Build 14E.
 
+## 2zb. New in build 15A: river reeds, taller grass, path lights
+
+1. Reed clumps (with cattails) stand along both river banks about every
+   25 studs, with a couple of single reeds between, clear of the bridges,
+   the ford and the path.
+2. The tall hiding grass is 9.5 studs (was 7).
+3. Six black iron gaslights stand along the grass side of the path, evenly
+   spaced from the gates to the moon bridge, one gap in from each end. Each
+   is about as tall as the gate pillars, with a glass lantern and a warm
+   glow.
+4. The flag says Build 15A.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

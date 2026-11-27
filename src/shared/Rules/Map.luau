@@ -680,6 +680,132 @@ function MapRules.lilyFlowerSpot(
 	return bestX, bestZ
 end
 
+-- Where the reeds go along the river banks: a list of { x, z, count },
+-- count 0 for a clump (the builder picks its size) and 1 for a single
+-- reed. The same every time.
+function MapRules.riverReedSpots(map: any): { { number } }
+	local reeds = map.RiverReeds
+	local river = map.River
+	local line = river.centreLine
+	local seed = reeds.layoutSeed
+	local function random(): number
+		seed = (seed * 16807) % 2147483647
+		return seed / 2147483647
+	end
+	local limit = map.halfSize - map.edgeMargin
+	local crossings = {
+		{ map.MoonBridge.x, map.MoonBridge.z, map.MoonBridge.width / 2 },
+		{ map.RopeBridge.x, map.RopeBridge.z, map.RopeBridge.width / 2 },
+		{ map.Ford.x, map.Ford.z, map.Ford.rows * map.Ford.spacing },
+	}
+	local function clear(x: number, z: number): boolean
+		if math.abs(x) > limit or math.abs(z) > limit then
+			return false
+		end
+		-- The far banks are the Hills' and the Forest's edges.
+		if MapRules.territoryAt(map, x, z) == "Field" then
+			return false
+		end
+		local pathDistance = MapRules.closestOnLine(map.Path.centreLine, x, z)
+		if pathDistance <= map.Path.width / 2 + reeds.crossingClear then
+			return false
+		end
+		for _, crossing in crossings do
+			-- Distance along the river from the crossing's middle line.
+			local _, dx, dz = MapRules.closestOnLine(line, crossing[1], crossing[2])
+			local along = math.abs((x - crossing[1]) * dx + (z - crossing[2]) * dz)
+			local across = math.abs((x - crossing[1]) * dz - (z - crossing[2]) * dx)
+			if along <= crossing[3] + reeds.crossingClear and across <= river.width then
+				return false
+			end
+		end
+		return true
+	end
+	local spots = {}
+	local function place(distance: number, side: number, count: number)
+		-- Walk `distance` along the line to find the point and direction.
+		local left = distance
+		for i = 1, #line - 1 do
+			local ax, az = line[i][1], line[i][2]
+			local sx, sz = line[i + 1][1] - ax, line[i + 1][2] - az
+			local length = math.sqrt(sx * sx + sz * sz)
+			if left <= length then
+				local dx, dz = sx / length, sz / length
+				local out = river.width / 2
+					+ reeds.bankOffset[1]
+					+ random() * (reeds.bankOffset[2] - reeds.bankOffset[1])
+				local x = ax + dx * left - dz * side * out
+				local z = az + dz * left + dx * side * out
+				-- At a bend the far side of the line may be closer.
+				local nearest = MapRules.closestOnLine(line, x, z)
+				if nearest > river.width / 2 and clear(x, z) then
+					table.insert(spots, { x, z, count })
+				end
+				return
+			end
+			left -= length
+		end
+	end
+	local total = 0
+	for i = 1, #line - 1 do
+		total += math.sqrt((line[i + 1][1] - line[i][1]) ^ 2 + (line[i + 1][2] - line[i][2]) ^ 2)
+	end
+	for _, side in { -1, 1 } do
+		local distance = reeds.clumpSpacing / 2
+		while distance < total do
+			place(distance + (random() * 2 - 1) * reeds.clumpJitter, side, 0)
+			for _ = 1, reeds.singlesBetween do
+				place(distance + random() * reeds.clumpSpacing, side, 1)
+			end
+			distance += reeds.clumpSpacing
+		end
+	end
+	return spots
+end
+
+-- Where the path lights stand: `count` spots evenly spaced along the path
+-- with one gap in from each end, on the side away from the marsh. Returns
+-- a list of { x, z }.
+function MapRules.pathLightSpots(map: any): { { number } }
+	local lights = map.PathLights
+	local line = map.Path.centreLine
+	local total = 0
+	for i = 1, #line - 1 do
+		total += math.sqrt((line[i + 1][1] - line[i][1]) ^ 2 + (line[i + 1][2] - line[i][2]) ^ 2)
+	end
+	local out = map.Path.width / 2 + lights.edgeOffset
+	local marsh = table.clone(map.Marsh.outline)
+	table.insert(marsh, map.Marsh.outline[1])
+	local spots = {}
+	for n = 1, lights.count do
+		local left = total * n / (lights.count + 1)
+		for i = 1, #line - 1 do
+			local ax, az = line[i][1], line[i][2]
+			local sx, sz = line[i + 1][1] - ax, line[i + 1][2] - az
+			local length = math.sqrt(sx * sx + sz * sz)
+			if left <= length then
+				local dx, dz = sx / length, sz / length
+				local px, pz = ax + dx * left, az + dz * left
+				local best, bestScore = nil, -math.huge
+				for _, side in { -1, 1 } do
+					local x, z = px - dz * side * out, pz + dx * side * out
+					local score = MapRules.closestOnLine(marsh, x, z)
+					if MapRules.inPolygon(map.Marsh.outline, x, z) then
+						score = -score
+					end
+					if score > bestScore then
+						best, bestScore = { x, z }, score
+					end
+				end
+				table.insert(spots, best)
+				break
+			end
+			left -= length
+		end
+	end
+	return spots
+end
+
 -- How far a grass blade at (x, z) leans at time `now` (radians): a
 -- gentle sway that moves across the grass like wind.
 function MapRules.grassWave(map: any, now: number, x: number, z: number): number

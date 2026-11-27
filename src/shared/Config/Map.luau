@@ -266,6 +266,32 @@ Map.Path = table.freeze({
 
 -- Decorative iron gate in the top wall at the end of the path. It does not
 -- open. Black iron between cream pillars, with lamps on top.
+-- Gaslights along the grass side of the path, from the gates to the moon
+-- bridge, one gap in from each end (build 15A). Black iron post with a
+-- glass lantern, about as tall as the gate pillars, with a warm glow.
+Map.PathLights = table.freeze({
+	count = 6,
+	-- Studs from the path's edge to the post.
+	edgeOffset = 2,
+	baseDiameter = 1.6,
+	baseHeight = 1.6,
+	postDiameter = 0.6,
+	-- Height of the crossbar and of the lantern's bottom.
+	crossbarHeight = 10,
+	crossbarLength = 2.6,
+	lanternBottom = 10.8,
+	lanternSize = 1.5,
+	lanternHeight = 2,
+	-- Total height to the top of the finial (gate pillars are 14).
+	height = 14.5,
+	ironColour = table.freeze({ 25, 25, 25 }),
+	glassColour = table.freeze({ 255, 225, 170 }),
+	glassTransparency = 0.45,
+	flameColour = table.freeze({ 255, 200, 110 }),
+	lightBrightness = 1.2,
+	lightRange = 20,
+})
+
 Map.Gate = table.freeze({
 	x = -228,
 	-- Total width, and the small side gate's share of it.
@@ -346,6 +372,21 @@ Map.Marsh = table.freeze({
 	cattailColour = table.freeze({ 100, 65, 40 }),
 })
 
+-- Reeds along both river banks (build 15A): marsh style clumps every
+-- `clumpSpacing` studs along each bank, with single reeds between, kept
+-- clear of the bridges, the ford and the path. Looks only.
+Map.RiverReeds = table.freeze({
+	clumpSpacing = 25,
+	-- How far a clump may slide along the bank either way.
+	clumpJitter = 5,
+	singlesBetween = 2,
+	-- Studs out from the water's edge, nearest and furthest.
+	bankOffset = table.freeze({ 0.5, 3 }),
+	-- Studs kept clear round the bridges' and the ford's ends, and the path.
+	crossingClear = 8,
+	layoutSeed = 11,
+})
+
 -- Lily pads on the marsh. Landing on one springs a plant up for a frog hop:
 -- up to `hopHeight` studs, steering at `hopSpeed` studs per second for
 -- `hopSeconds`. The map has `extraPadsPer` more pads round each guide
@@ -410,7 +451,7 @@ Map.HidingGrass = table.freeze({
 	}),
 	hideMaxLevel = 3,
 	revealSeconds = 3,
-	height = 7,
+	height = 9.5,
 	-- How see-through your own plant looks to you while hidden.
 	ownTransparency = 0.5,
 	-- How often each client checks who is hiding (seconds).

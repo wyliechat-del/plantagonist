@@ -158,6 +158,58 @@ return function(t)
 		t.expect(not MapRules.keepGrassGroundOff(Map, -400, -20), "grass elsewhere")
 	end)
 
+	t.test("river reeds: on both banks, out of the water, off the crossings", function()
+		local spots = MapRules.riverReedSpots(Map)
+		local clumps, singles = 0, 0
+		local sides = {}
+		for _, spot in spots do
+			local x, z = spot[1], spot[2]
+			t.expect(not MapRules.inRiver(Map, x, z), "not in the water")
+			t.expect(not MapRules.onPath(Map, x, z), "not on the path")
+			t.expect(MapRules.territoryAt(Map, x, z) ~= "Field", "not in the safe field")
+			if MapRules.territoryAt(Map, x, z) == "Hills" then
+				t.expectEqual(MapRules.hillsHeight(Map, HillsShape, x, z), 0, "on flat ground")
+			end
+			if spot[3] == 0 then
+				clumps += 1
+			else
+				singles += 1
+			end
+			-- The last stretch runs straight along z = -21.
+			if x < -275 then
+				sides[if z > -21 then 1 else 2] = true
+			end
+		end
+		t.expect(clumps >= 10 and singles >= 10, "clumps with singles between")
+		t.expect(sides[1] and sides[2], "both banks")
+		local bridge = Map.MoonBridge
+		for _, spot in spots do
+			local near = (spot[1] - bridge.x) ^ 2 + (spot[2] - bridge.z) ^ 2
+				< (bridge.width / 2) ^ 2
+			t.expect(not near, "clear of the moon bridge")
+		end
+	end)
+
+	t.test("path lights: evenly spaced beside the path, on the grass side", function()
+		local spots = MapRules.pathLightSpots(Map)
+		t.expectEqual(#spots, Map.PathLights.count)
+		for _, spot in spots do
+			local distance = MapRules.closestOnLine(Map.Path.centreLine, spot[1], spot[2])
+			t.expect(distance > Map.Path.width / 2, "off the path")
+			t.expect(
+				not MapRules.inPolygon(Map.Marsh.outline, spot[1], spot[2]),
+				"not in the marsh"
+			)
+		end
+		local first, last = spots[1], spots[#spots]
+		local gate = Map.Path.centreLine[#Map.Path.centreLine]
+		local away = function(a, b)
+			return math.sqrt((a[1] - b[1]) ^ 2 + (a[2] - b[2]) ^ 2)
+		end
+		t.expect(away(first, Map.Path.centreLine[1]) > 20, "one gap in from the bridge end")
+		t.expect(away(last, gate) > 20, "one gap in from the gates")
+	end)
+
 	t.test("water lilies grow beside their pads, not on them", function()
 		local layout = MapRules.lilyPadLayout(Map)
 		local pads = Map.LilyPads
