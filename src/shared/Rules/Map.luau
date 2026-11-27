@@ -615,9 +615,11 @@ function MapRules.creatureAllowed(home: string, area: string): boolean
 end
 
 function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
-	for _, circle in map.HidingGrass.circles do
-		if (x - circle.x) ^ 2 + (z - circle.z) ^ 2 <= circle.radius ^ 2 then
-			return true
+	for _, list in { map.HidingGrass.circles, map.Grassland.grassCircles } do
+		for _, circle in list do
+			if (x - circle.x) ^ 2 + (z - circle.z) ^ 2 <= circle.radius ^ 2 then
+				return true
+			end
 		end
 	end
 	return false

@@ -235,6 +235,20 @@ return function(t)
 		end
 	end)
 
+	t.test("grassland grass circles hide plants and stay clear of the cow fields", function()
+		for _, circle in Map.Grassland.grassCircles do
+			t.expect(MapRules.inHidingGrass(Map, circle.x, circle.z), "hides in the middle")
+			t.expectEqual(MapRules.territoryAt(Map, circle.x, circle.z), "Grassland")
+			for _, field in Map.Grassland.cowFields do
+				local half = field.size / 2
+				local nearX = math.clamp(circle.x, field.x - half, field.x + half)
+				local nearZ = math.clamp(circle.z, field.z - half, field.z + half)
+				local gap = math.sqrt((circle.x - nearX) ^ 2 + (circle.z - nearZ) ^ 2)
+				t.expect(gap > circle.radius, "clear of a cow field")
+			end
+		end
+	end)
+
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()
 		local circle = Map.HidingGrass.circles[1]
 		t.expect(MapRules.hiddenInGrass(Map, 3, circle.x, circle.z, 10, 0))

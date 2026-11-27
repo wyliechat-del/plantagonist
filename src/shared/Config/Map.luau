@@ -200,8 +200,8 @@ Map.RopeBridge = table.freeze({
 	-- a cradle hanging from a line `swayPivotHeight` studs above the deck
 	-- ends, the middle moving `swayStuds` each way, once every
 	-- `swaySeconds`. The ends stay tied to the posts, so the swing fades to
-	-- nothing towards them and the deck bends (builds 15C, 15D).
-	swayStuds = 6,
+	-- nothing towards them and the deck bends (builds 15C, 15D, 16A).
+	swayStuds = 5,
 	swaySeconds = 3,
 	swayPivotHeight = 20,
 	plankColour = table.freeze({ 140, 105, 70 }),
@@ -758,11 +758,24 @@ Map.Forest = table.freeze({
 	logClearance = 7,
 })
 
--- Grassland: tall grass to hide in, and cow fields.
+-- Grassland: tall grass to hide in, and cow fields (laid out from Wylie's
+-- revised map, build 16A).
 Map.Grassland = table.freeze({
-	grassPatches = 14,
+	-- Hiding grass circles. To save parts each is a see-through grass fill a
+	-- third of the blade height (`fillShare`), with `ringRows` rows of
+	-- waving blades (Map.HidingGrass) round the edge. Plants hide in them
+	-- like in the River quarter's patches.
+	grassCircles = table.freeze({
+		table.freeze({ x = 146, z = 70, radius = 43 }),
+		table.freeze({ x = 219, z = 177, radius = 43 }),
+		table.freeze({ x = 92, z = 284, radius = 43 }),
+	}),
+	fillShare = 1 / 3,
+	fillColour = table.freeze({ 150, 200, 80 }),
+	fillTransparency = 0.35,
+	ringRows = 3,
 	cowFields = table.freeze({
-		table.freeze({ x = 180, z = 180, size = 90 }),
+		table.freeze({ x = 96, z = 180, size = 90 }),
 		table.freeze({ x = 280, z = 90, size = 60 }),
 	}),
 })

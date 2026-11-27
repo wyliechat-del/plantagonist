@@ -378,6 +378,17 @@ From Wylie's drawing of 2026-11-27.
    6 studs each way, once every 3 seconds. The ends stay at the posts.
 3. The flag says Build 15D.
 
+## 2zf. New in build 16A: Grassland laid out from the revised map
+
+1. The 14 grass boxes are gone. Three hiding grass circles stand where the
+   revised map shows them: a see-through grass fill about 3 studs tall,
+   with three rows of waving blades round the edge. A level 1 to 3 plant
+   inside one is hidden, like in the River quarter's grass.
+2. The top right cow field is unchanged. The other has moved left, near
+   the safe field, with its cows.
+3. The rope bridge swings 5 studs each way at the middle (was 6).
+4. The flag says Build 16A.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

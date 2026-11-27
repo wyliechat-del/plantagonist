@@ -144,14 +144,32 @@ local grassModel: Instance? = nil
 
 local function findGrass()
 	local map = workspace:FindFirstChild("Map")
-	local model = map and map:FindFirstChild("HidingGrass", true)
+	if map == nil then
+		return
+	end
+	-- Each quarter's hiding grass blades are in a model named HidingGrass.
+	local models = {}
+	for _, folder in map:GetChildren() do
+		for _, child in folder:GetChildren() do
+			if child.Name == "HidingGrass" and child:IsA("Model") then
+				table.insert(models, child)
+			end
+		end
+	end
+	local model = models[1]
 	if model == nil then
 		return
 	end
 	-- Vector3 is a value type, so blades sharing a base match by position.
 	local byBase: { [Vector3]: Blade } = {}
 	blades = {}
-	for _, piece in model:GetChildren() do
+	local pieces = {}
+	for _, each in models do
+		for _, piece in each:GetChildren() do
+			table.insert(pieces, piece)
+		end
+	end
+	for _, piece in pieces do
 		local base = piece:GetAttribute("BladeBase")
 		if piece:IsA("BasePart") and typeof(base) == "CFrame" then
 			local blade = byBase[base.Position]

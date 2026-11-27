@@ -60,3 +60,7 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 - `Util.roll` returns whole numbers only, so `Util.roll(0.55, 0.9)` gives
   0 or 1. Boulders came out as flat sheets (builds 9 to 13C) from that.
   Use `Util.between` for any range that isn't whole numbers.
+- A client script that looks for server-built map parts once can run
+  before they arrive (the rope bridge stood still in build 15C). Look again
+  every second, and keep each part's rest pose in an attribute (like
+  `SwayBase`) so a second look mid move is safe.

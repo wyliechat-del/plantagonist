@@ -2795,19 +2795,43 @@ local function buildGrassland()
 	local grass = Instance.new("Folder")
 	grass.Name = "Grassland"
 	grass.Parent = folder
-	for _ = 1, Map.Grassland.grassPatches do
-		local x, z = MapRules.randomPointIn(Map, "Grassland", Util.random)
+	-- Hiding grass circles: a low see-through grass fill with a ring of
+	-- waving blades round the edge.
+	local land = Map.Grassland
+	local hiding = Map.HidingGrass
+	local blades = Instance.new("Model")
+	blades.Name = "HidingGrass"
+	blades.Parent = grass
+	local fillHeight = hiding.height * land.fillShare
+	for _, circle in land.grassCircles do
 		Util.part({
 			Name = "TallGrass",
-			Size = Vector3.new(16, 6, 16),
-			Position = Vector3.new(x, GROUND + 3, z),
-			Color = Color3.fromRGB(150, 200, 80),
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(fillHeight, circle.radius * 2, circle.radius * 2),
+			CFrame = CFrame.new(circle.x, GROUND + fillHeight / 2, circle.z)
+				* CFrame.Angles(0, 0, math.rad(90)),
+			Color = Util.colour(land.fillColour),
 			Material = Enum.Material.Grass,
-			Transparency = 0.35,
+			Transparency = land.fillTransparency,
 			CanCollide = false,
 			CanQuery = false,
 			Parent = grass,
 		})
+		local spacing = hiding.bladeSpacing
+		local spread = hiding.bladeSpread
+		for row = 0, land.ringRows - 1 do
+			local ringRadius = circle.radius - spread - row * spacing * 0.87
+			local count = math.floor(2 * math.pi * ringRadius / spacing)
+			local shift = if row % 2 == 0 then 0 else 0.5
+			for i = 0, count - 1 do
+				local angle = (i + shift) / count * 2 * math.pi
+				grassBlade(
+					blades,
+					circle.x + math.cos(angle) * ringRadius + Util.between(-spread, spread),
+					circle.z + math.sin(angle) * ringRadius + Util.between(-spread, spread)
+				)
+			end
+		end
 	end
 	for _, field in Map.Grassland.cowFields do
 		local half = field.size / 2
