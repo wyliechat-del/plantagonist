@@ -196,10 +196,15 @@ Map.RopeBridge = table.freeze({
 	ropeHeight = 3.5,
 	ropeThickness = 0.35,
 	rampLength = 5,
-	-- Sway: the deck swings like a cradle hanging from the tops of the posts,
-	-- this many degrees each way, once every `swaySeconds`.
-	swayDegrees = 3,
-	swaySeconds = 4,
+	-- Sway (looks only): the deck, ropes and hangers swing side to side like
+	-- a cradle hanging from a line `swayPivotHeight` studs above the deck
+	-- ends, this many degrees each way at the middle, once every
+	-- `swaySeconds`. The ends stay tied to the posts, so the swing fades to
+	-- nothing towards them and the deck bends (build 15C; was 3 degrees from
+	-- the post tops, too small to see).
+	swayDegrees = 4,
+	swaySeconds = 3,
+	swayPivotHeight = 30,
 	plankColour = table.freeze({ 140, 105, 70 }),
 	postColour = table.freeze({ 115, 85, 55 }),
 	ropeColour = table.freeze({ 175, 150, 105 }),

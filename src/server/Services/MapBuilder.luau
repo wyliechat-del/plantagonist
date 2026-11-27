@@ -565,8 +565,9 @@ local function buildRopeBridge(parent: Instance)
 	local function at(offset: number, height: number): Vector3
 		return centre + along * offset + Vector3.yAxis * height
 	end
-	-- The deck hangs from the tops of the posts and swings like a cradle.
-	local pivot = CFrame.lookAt(at(0, bridge.postHeight), at(0, bridge.postHeight) + along)
+	-- The deck swings like a cradle from a line high above it.
+	local pivotHeight = bridge.endHeight + bridge.swayPivotHeight
+	local pivot = CFrame.lookAt(at(0, pivotHeight), at(0, pivotHeight) + along)
 	model:SetAttribute("SwayPivot", pivot)
 	model:SetAttribute("SwayDegrees", bridge.swayDegrees)
 	model:SetAttribute("SwaySeconds", bridge.swaySeconds)

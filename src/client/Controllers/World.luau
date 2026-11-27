@@ -3,7 +3,8 @@
 	- Swimming is off, so plants wade through the shallow river.
 	- Lily pads: landing on one springs your plant into a frog hop you can
 	  steer (your own client moves your character).
-	- The rope bridge swings like a cradle from its post tops (looks only).
+	- The rope bridge swings like a cradle from a line high above it, most
+	  in the middle (looks only).
 	- The hiding grass blades wave a little (looks only).
 	- Plants hiding in grass (server sets `InGrass` on their model) vanish
 	  for everyone else; their name tag stays. Your own looks see-through.
@@ -68,7 +69,7 @@ end
 
 -- Rope bridge sway -------------------------------------------------------
 
-local swayParts: { { part: BasePart, base: CFrame } } = {}
+local swayParts: { { part: BasePart, base: CFrame, share: number } } = {}
 local swayPivot: CFrame? = nil
 local swayDegrees, swaySeconds = 0, 1
 
@@ -89,7 +90,13 @@ local function findRopeBridge()
 	swayParts = {}
 	for _, part in bridge:GetDescendants() do
 		if part:IsA("BasePart") and part:GetAttribute("Sway") == true then
-			table.insert(swayParts, { part = part, base = part.CFrame })
+			-- How far along the bridge from its middle the part is.
+			local offset = (part.Position - pivot.Position):Dot(pivot.LookVector)
+			table.insert(swayParts, {
+				part = part,
+				base = part.CFrame,
+				share = MapRules.ropeBridgeSwayShare(Map, offset),
+			})
 		end
 	end
 end
@@ -104,14 +111,16 @@ local function stepSway(now: number)
 		return
 	end
 	local pivot = swayPivot :: CFrame
-	-- Swing like a cradle about a line along the bridge at the post tops.
+	-- Swing like a cradle about a line along the bridge high above it; each
+	-- piece swings by its share, most in the middle, none at the posts.
 	local rate = math.pi * 2 / swaySeconds
 	local amplitude = math.rad(swayDegrees)
 	local angle = amplitude * math.sin(now * rate)
-	local spin = pivot.ZVector * amplitude * rate * math.cos(now * rate)
-	local swing = pivot * CFrame.Angles(0, 0, angle) * pivot:Inverse()
+	local turnRate = amplitude * rate * math.cos(now * rate)
 	for _, entry in swayParts do
 		local part = entry.part
+		local swing = pivot * CFrame.Angles(0, 0, angle * entry.share) * pivot:Inverse()
+		local spin = pivot.ZVector * turnRate * entry.share
 		part.CFrame = swing * entry.base
 		-- Give the anchored parts the speed they move at, so a plant standing
 		-- on the deck rides along smoothly instead of being jolted each frame.
@@ -262,7 +271,8 @@ function World.start()
 	local grassTimer = 0
 	-- The bridge moves before each physics step, so plants on it move with it.
 	RunService.PreSimulation:Connect(function()
-		stepSway(os.clock())
+		-- Server time, so every player sees the bridge in the same place.
+		stepSway(workspace:GetServerTimeNow())
 	end)
 
 	local waveTimer = 0

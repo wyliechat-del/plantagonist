@@ -360,6 +360,16 @@ From Wylie's drawing of 2026-11-27.
    on top, with no cap over it.
 3. The flag says Build 15B.
 
+## 2zd. New in build 15C: swinging rope bridge
+
+1. The rope bridge deck, ropes and hangers swing side to side from a line
+   30 studs above, about 2 studs each way at the middle, once every
+   3 seconds. The ends stay at the posts, so the deck bends. The posts and
+   ramps stay still.
+2. A plant standing on it rides along and is not thrown off.
+3. Two players see it in the same place.
+4. The flag says Build 15C.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

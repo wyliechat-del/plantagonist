@@ -210,6 +210,18 @@ return function(t)
 		t.expect(away(last, gate) > 20, "one gap in from the gates")
 	end)
 
+	t.test("rope bridge sway: most in the middle, none at the posts", function()
+		local half = Map.RopeBridge.length / 2
+		t.expect(math.abs(MapRules.ropeBridgeSwayShare(Map, 0) - 1) < 1e-9, "full at the middle")
+		t.expect(MapRules.ropeBridgeSwayShare(Map, half) < 1e-9, "none at one end")
+		t.expect(MapRules.ropeBridgeSwayShare(Map, -half) < 1e-9, "none at the other")
+		local quarter = MapRules.ropeBridgeSwayShare(Map, half / 2)
+		t.expect(quarter > 0.5 and quarter < 1, "a smooth curve between")
+		local bridge = Map.RopeBridge
+		local middle = bridge.swayPivotHeight * math.tan(math.rad(bridge.swayDegrees))
+		t.expect(middle > 1.5 and middle < 2.5, "the middle swings about 2 studs")
+	end)
+
 	t.test("water lilies grow beside their pads, not on them", function()
 		local layout = MapRules.lilyPadLayout(Map)
 		local pads = Map.LilyPads

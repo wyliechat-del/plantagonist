@@ -845,6 +845,14 @@ function MapRules.ropeBridgeHeight(map: any, offset: number): number
 	return bridge.endHeight - bridge.sag * (1 - share * share)
 end
 
+-- How much of the full sway a rope bridge piece `offset` studs along the
+-- bridge from its middle gets: 1 at the middle, 0 at the ends (tied to the
+-- posts), on a smooth curve.
+function MapRules.ropeBridgeSwayShare(map: any, offset: number): number
+	local share = math.clamp(offset / (map.RopeBridge.length / 2), -1, 1)
+	return math.cos(share * math.pi / 2)
+end
+
 -- Upward speed that lifts a frog hop `height` studs under `gravity`
 -- (studs per second squared).
 function MapRules.hopLaunchSpeed(gravity: number, height: number): number
