@@ -2082,15 +2082,18 @@ local function ellipsoid(
 	return part
 end
 
--- A barrel cactus: a squat ball of ribs with a pale top and pale spines.
+-- A barrel cactus: a round ball of ribs with a pale top and pale spines.
+-- It stands on `base`: the body's widest part is well above the ground,
+-- and only its rounded bottom dips just under it.
 local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 	local hills = Map.Hills
 	local radius = Util.roll(hills.ballCactusSize[1], hills.ballCactusSize[2]) / 2
+	local middle = radius * 0.9
 	ellipsoid(
 		model,
 		"Body",
-		Vector3.new(radius * 1.9, radius * 1.5, radius * 1.9),
-		base * CFrame.new(0, radius * 0.75, 0),
+		Vector3.new(radius * 1.9, radius * 2, radius * 1.9),
+		base * CFrame.new(0, middle, 0),
 		colour
 	)
 	local spineColour = Util.colour(hills.spineColour)
@@ -2098,20 +2101,18 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 	for n = 1, ribs do
 		local angle = n / ribs * math.pi * 2
 		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		local ribCentre = (
-			base * CFrame.new(out * radius * 0.62 + Vector3.new(0, radius * 0.75, 0))
-		).Position
+		local ribCentre = (base * CFrame.new(out * radius * 0.62 + Vector3.new(0, middle, 0))).Position
 		local outward = base:VectorToWorldSpace(out)
 		ellipsoid(
 			model,
 			"Rib",
-			Vector3.new(radius * 0.42, radius * 1.45, radius * 0.75),
+			Vector3.new(radius * 0.42, radius * 1.85, radius * 0.75),
 			CFrame.lookAt(ribCentre, ribCentre + outward),
 			if n % 2 == 0 then colour else colour:Lerp(Color3.new(0, 0, 0), 0.12)
 		)
 		for k = 1, hills.barrelSpinesPerRib do
-			local up = radius * (0.35 + 0.55 * (k - 0.5) / hills.barrelSpinesPerRib)
-			local root = ribCentre + outward * radius * 0.33 + Vector3.new(0, up - radius * 0.75, 0)
+			local up = radius * (0.4 + 1.0 * (k - 0.5) / hills.barrelSpinesPerRib)
+			local root = ribCentre + outward * radius * 0.33 + Vector3.new(0, up - middle, 0)
 			local length = radius * 0.45
 			local direction = (outward + Vector3.new(0, 0.5, 0)).Unit
 			Util.part({
@@ -2130,7 +2131,7 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		model,
 		"Top",
 		Vector3.new(radius * 1.1, radius * 0.35, radius * 1.1),
-		base * CFrame.new(0, radius * 1.42, 0),
+		base * CFrame.new(0, radius * 1.85, 0),
 		Util.colour(hills.barrelTopColour)
 	)
 end
@@ -2247,12 +2248,14 @@ local function placeCactus(parent: Instance, x: number, z: number)
 			end
 		end
 	end
-	-- Stand on the surface, set in a little so it looks planted.
-	local y = surfaceY(x, z) - hills.cactusSink
-	cactusLowest, cactusHighest = math.min(cactusLowest, y), math.max(cactusHighest, y)
+	-- Stand on the surface. Tall and short cacti are set in a little so
+	-- they look planted; barrel cacti sit on top.
 	cactusCount += 1
+	local kind = cactusKinds[(cactusCount - 1) % #cactusKinds + 1]
+	local y = surfaceY(x, z) - (if kind == "Ball" then hills.barrelSink else hills.cactusSink)
+	cactusLowest, cactusHighest = math.min(cactusLowest, y), math.max(cactusHighest, y)
 	local base = CFrame.new(x, y, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
-	cactus(parent, cactusKinds[(cactusCount - 1) % #cactusKinds + 1], base)
+	cactus(parent, kind, base)
 end
 
 local function hillsCacti(parent: Instance)

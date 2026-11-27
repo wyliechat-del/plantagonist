@@ -213,6 +213,14 @@ cacti come next.
    across (in 4 stud terrain squares).
 4. The flag says Build 12B.
 
+## 2n. New in build 12C: barrel cacti sit on the ground
+
+1. The round barrel cacti are rounder and sit on top of the ground (and
+   sand): you see the whole ribbed ball, with only its rounded bottom
+   touching the ground.
+2. Tall and short cacti are unchanged.
+3. The flag says Build 12C.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
