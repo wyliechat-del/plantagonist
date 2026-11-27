@@ -462,8 +462,8 @@ Map.Hills = table.freeze({
 	terrainCell = 4,
 	-- Terrain materials and colours: ground, then each rise. The ground
 	-- is brown rock a little darker than the sand (was grey slate,
-	-- 112, 112, 108, until build 13E).
-	groundColour = table.freeze({ 186, 158, 118 }),
+	-- 112, 112, 108, until build 13E; 186, 158, 118 in 13E).
+	groundColour = table.freeze({ 150, 120, 86 }),
 	riseColours = table.freeze({
 		table.freeze({ 184, 150, 104 }),
 		table.freeze({ 140, 104, 70 }),

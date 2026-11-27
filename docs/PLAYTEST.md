@@ -292,6 +292,11 @@ From Wylie's drawing of 2026-11-27.
    `groundColour` in Config/Map; say if you want another shade).
 4. The flag says Build 13E.
 
+## 2v. New in build 13F: darker ground
+
+1. The Hills ground is a darker brown (150, 120, 86) so the sand stands
+   out more. The flag says Build 13F.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
