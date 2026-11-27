@@ -623,6 +623,23 @@ function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
 	return false
 end
 
+-- Whether terrain grass stays off (x, z): in or near the river, or in or
+-- near a hiding grass patch, so it doesn't cover either.
+function MapRules.keepGrassGroundOff(map: any, x: number, z: number): boolean
+	local river = map.River
+	local distance = MapRules.closestOnLine(river.centreLine, x, z)
+	if distance <= river.width / 2 + river.groundRiverMargin then
+		return true
+	end
+	local reach = river.groundHidingGrassMargin
+	for _, circle in map.HidingGrass.circles do
+		if (x - circle.x) ^ 2 + (z - circle.z) ^ 2 <= (circle.radius + reach) ^ 2 then
+			return true
+		end
+	end
+	return false
+end
+
 -- How far a grass blade at (x, z) leans at time `now` (radians): a
 -- gentle sway that moves across the grass like wind.
 function MapRules.grassWave(map: any, now: number, x: number, z: number): number

@@ -146,6 +146,16 @@ return function(t)
 		)
 	end)
 
+	t.test("terrain grass stays off the river and the hiding grass", function()
+		local river = Map.River
+		local point = river.centreLine[3]
+		t.expect(MapRules.keepGrassGroundOff(Map, point[1], point[2]), "off the river")
+		local patch = Map.HidingGrass.circles[1]
+		local reach = patch.radius + river.groundHidingGrassMargin - 0.5
+		t.expect(MapRules.keepGrassGroundOff(Map, patch.x + reach, patch.z), "round a patch")
+		t.expect(not MapRules.keepGrassGroundOff(Map, -400, -20), "grass elsewhere")
+	end)
+
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()
 		local circle = Map.HidingGrass.circles[1]
 		t.expect(MapRules.hiddenInGrass(Map, 3, circle.x, circle.z, 10, 0))

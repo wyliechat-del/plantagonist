@@ -1439,6 +1439,7 @@ local function riverGround()
 			local grassy = i <= count
 				and x * x + z * z > fieldClear * fieldClear
 				and not MapRules.onPath(Map, x, z)
+				and not MapRules.keepGrassGroundOff(Map, x, z)
 			if grassy and start == nil then
 				start = i
 			elseif not grassy and start ~= nil then

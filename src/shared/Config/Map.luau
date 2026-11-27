@@ -109,6 +109,11 @@ Map.River = table.freeze({
 	-- safe field. Was teal tiles (the quarter's part) until build 14C.
 	groundMaterial = "LeafyGrass",
 	groundColour = table.freeze({ 108, 158, 66 }),
+	-- Studs of plain ground kept clear of terrain grass round the river
+	-- edge and round each hiding grass patch, so the terrain's own blades
+	-- don't grow through the water or hide the tall grass (build 14D).
+	groundRiverMargin = 4,
+	groundHidingGrassMargin = 4,
 	-- Centre line, from the top edge to the left edge.
 	centreLine = points({
 		{ -21, -356 },

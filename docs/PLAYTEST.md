@@ -324,6 +324,14 @@ From Wylie's drawing of 2026-11-27.
    and a ring next to the safe field keep the plain green ground.
 2. The flag says Build 14C.
 
+## 2z. New in build 14D: terrain grass off the river and hiding grass
+
+1. The river is one long stream again, not pools in a grass field: the
+   terrain grass stops 4 studs from the water's edge.
+2. The tall hiding grass patches stand on plain green ground with a
+   4 stud ring round them, so the terrain blades don't cover them.
+3. The flag says Build 14D.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
