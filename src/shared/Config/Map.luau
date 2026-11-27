@@ -494,11 +494,6 @@ Map.Hills = table.freeze({
 	surfaceBoulderMaxSize = 4,
 	boulderMinSize = 2,
 	boulderMaxSize = 6,
-	-- How far a boulder on terrain is lifted above where the ray finds
-	-- the terrain. In Studio the terrain shows about 2 studs higher than
-	-- the ray finds it (see barrelLift), which left boulders as thin
-	-- slivers (build 13).
-	boulderTerrainLift = 2,
 	-- The bottom left hill: a First Rise hill (riseHeights[1] high) with
 	-- steep rock sides and a tunnel along its length (HillsShape.ridge).
 	-- The tunnel is built of parts: side walls `ridgeWallWidth` thick and a

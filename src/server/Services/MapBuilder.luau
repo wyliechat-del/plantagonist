@@ -1813,8 +1813,6 @@ local function hillsSlabs(parent: Instance)
 end
 
 -- A boulder of Second Rise rock sitting on whatever is under it.
--- How many boulders found the ground lower than the map says (printed).
-local boulderCount, boulderLow, boulderGap = 0, 0, 0
 local function boulder(parent: Instance, x: number, z: number, maxSize: number)
 	local hills = Map.Hills
 	local size = Util.roll(hills.boulderMinSize, maxSize)
@@ -1825,24 +1823,9 @@ local function boulder(parent: Instance, x: number, z: number, maxSize: number)
 			return
 		end
 	end
-	local dimensions = Vector3.new(size, size * Util.roll(0.55, 0.9), size * Util.roll(0.7, 1.2))
-	-- Stand on the higher of the ray hit and the map's height there. On
-	-- terrain, lift by `boulderTerrainLift`: in Studio the terrain shows
-	-- higher than the ray finds it (as with the barrel cacti), and on the
-	-- first hill the boulders came out flat, buried in the rock (13B).
-	local hit =
-		workspace:Raycast(Vector3.new(x, GROUND + 200, z), Vector3.new(0, -400, 0), surfaceParams)
-	local rayY = if hit then hit.Position.Y else GROUND
-	local mapY = GROUND + MapRules.hillsHeight(Map, HillsShape, x, z)
-	boulderCount += 1
-	if mapY > rayY + 0.5 then
-		boulderLow += 1
-		boulderGap = math.max(boulderGap, mapY - rayY)
-	end
-	local base = rayY
-	if (hit and hit.Instance:IsA("Terrain")) or mapY > rayY + 0.5 then
-		base = math.max(rayY, mapY) + hills.boulderTerrainLift
-	end
+	local dimensions =
+		Vector3.new(size, size * Util.between(0.55, 0.9), size * Util.between(0.7, 1.2))
+	local base = surfaceY(x, z)
 	Util.part({
 		Name = "Boulder",
 		Size = dimensions,
@@ -2431,8 +2414,8 @@ local function hillsBoulders(rock: Instance)
 		for _ = 1, hills.rampSurfaceBoulders do
 			local side = if Util.random() < 0.5 then -1 else 1
 			place(
-				Util.roll(0.1, 0.9) * total,
-				side * width * Util.roll(0.15, 0.42),
+				Util.between(0.1, 0.9) * total,
+				side * width * Util.between(0.15, 0.42),
 				hills.surfaceBoulderMaxSize
 			)
 		end
@@ -2554,14 +2537,6 @@ local function buildHills()
 	hillsLanterns(decor)
 	hillsBoulders(hills)
 	hillsCacti(decor)
-	print(
-		string.format(
-			"Hills: %d of %d boulders found the ground lower than the map height (by up to %.1f studs)",
-			boulderLow,
-			boulderCount,
-			boulderGap
-		)
-	)
 	print(
 		string.format(
 			"Hills: %d cacti, feet from %.1f to %.1f studs high; %d surface rays missed",

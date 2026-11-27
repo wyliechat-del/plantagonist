@@ -21,6 +21,12 @@ function Util.roll(min: number, max: number): number
 	return random:NextInteger(min, max)
 end
 
+-- Any number in [min, max] (not just whole numbers; `roll` turns
+-- 0.55 to 0.9 into 0 or 1).
+function Util.between(min: number, max: number): number
+	return random:NextNumber(min, max)
+end
+
 function Util.pick<T>(list: { T }): T
 	return list[random:NextInteger(1, #list)]
 end

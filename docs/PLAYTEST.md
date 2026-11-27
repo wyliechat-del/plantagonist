@@ -272,6 +272,15 @@ From Wylie's drawing of 2026-11-27.
    map height (by up to X studs)"; send that line to Claude.
 3. The flag says Build 13C.
 
+## 2t. New in build 13D: boulders are chunky again
+
+1. Every Rise Two boulder is a chunky rough block (they were flat sheets:
+   their height came from a whole-number roll, so 0.55 to 0.9 gave 0).
+   They sit on the ground the ray finds, with no extra lift.
+2. Boulders on the ramps are spread along and across the ramp instead of
+   lining up at its ends and middle.
+3. The flag says Build 13D.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
