@@ -286,9 +286,9 @@ return function(t)
 		local patch = Map.Hills.firstHill.rockPatches[3]
 		local px, pz = (patch[1][1] + patch[3][1]) / 2, (patch[1][2] + patch[3][2]) / 2
 		t.expect(MapRules.onFirstHill(Map, HillsShape, px, pz), "patch is on the hill")
-		local _, top, layer = MapRules.hillsRock(Map, HillsShape, px, pz)
-		t.expectEqual(top, rise)
-		t.expectEqual(layer, 1)
+		local _, hillTop, hillLayer = MapRules.hillsRock(Map, HillsShape, px, pz)
+		t.expectEqual(hillTop, rise)
+		t.expectEqual(hillLayer, 1)
 		t.expectEqual(MapRules.hillsHeight(Map, HillsShape, px, pz), rise)
 		t.expect(
 			not MapRules.onFirstHill(Map, HillsShape, ridge.x - 40, ridge.z + 40),
