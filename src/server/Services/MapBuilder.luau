@@ -1420,6 +1420,40 @@ end
 
 -- The River quarter: river, crossings and marsh go in `River` (walkable, so
 -- the ground ray sees them); path, gate, grass and reeds go in `RiverDecor`.
+-- Grass terrain over the River quarter's ground, in rows of 4 stud cells
+-- (the terrain cell size). None next to the safe field (it has its own
+-- grass) or under the path (terrain grass blades would poke through).
+local function riverGround()
+	local river = Map.River
+	local terrain = workspace.Terrain
+	local material = (Enum.Material :: any)[river.groundMaterial]
+	terrain:SetMaterialColor(material, Util.colour(river.groundColour))
+	local cell = Map.Hills.terrainCell
+	local count = math.ceil(Map.halfSize / cell)
+	local fieldClear = Map.Field.radius + cell
+	for j = 1, count do
+		local z = -(j - 0.5) * cell
+		local start = nil
+		for i = 1, count + 1 do
+			local x = -(i - 0.5) * cell
+			local grassy = i <= count
+				and x * x + z * z > fieldClear * fieldClear
+				and not MapRules.onPath(Map, x, z)
+			if grassy and start == nil then
+				start = i
+			elseif not grassy and start ~= nil then
+				local x0, x1 = -(start - 1) * cell, -(i - 1) * cell
+				terrain:FillBlock(
+					CFrame.new((x0 + x1) / 2, GROUND - cell / 2, z),
+					Vector3.new(x0 - x1, cell, cell),
+					material
+				)
+				start = nil
+			end
+		end
+	end
+end
+
 local function buildRiverQuarter()
 	local wet = Instance.new("Folder")
 	wet.Name = "River"
@@ -1427,6 +1461,7 @@ local function buildRiverQuarter()
 	local decor = Instance.new("Folder")
 	decor.Name = "RiverDecor"
 	decor.Parent = folder
+	riverGround()
 	buildRiver(wet)
 	buildMoonBridge(wet)
 	buildRopeBridge(wet)

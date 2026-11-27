@@ -317,6 +317,13 @@ From Wylie's drawing of 2026-11-27.
 2. The gate path pavers are each a single stone (Limestone), not bricks.
 3. The flag says Build 14B.
 
+## 2y. New in build 14C: grassy River quarter ground
+
+1. The River quarter ground away from the marsh is terrain grass
+   (LeafyGrass, with short blades) in green, not teal tiles. The path
+   and a ring next to the safe field keep the plain green ground.
+2. The flag says Build 14C.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

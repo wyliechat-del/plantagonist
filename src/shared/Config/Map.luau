@@ -16,7 +16,7 @@ Map.wallHeight = 60
 Map.territories = table.freeze({
 	Grassland = table.freeze({ signX = 1, signZ = 1, colour = table.freeze({ 120, 190, 90 }) }),
 	Forest = table.freeze({ signX = -1, signZ = 1, colour = table.freeze({ 60, 120, 60 }) }),
-	River = table.freeze({ signX = -1, signZ = -1, colour = table.freeze({ 90, 150, 120 }) }),
+	River = table.freeze({ signX = -1, signZ = -1, colour = table.freeze({ 108, 158, 66 }) }),
 	Hills = table.freeze({ signX = 1, signZ = -1, colour = table.freeze({ 150, 140, 100 }) }),
 })
 
@@ -104,6 +104,11 @@ end
 -- River: winds from the top edge, along the Hills border, past the safe
 -- field and out of the left edge. Plants wade through it anywhere, slowly.
 Map.River = table.freeze({
+	-- The ground away from the marsh: terrain grass (LeafyGrass, with its
+	-- own blades) in this colour, except under the path and next to the
+	-- safe field. Was teal tiles (the quarter's part) until build 14C.
+	groundMaterial = "LeafyGrass",
+	groundColour = table.freeze({ 108, 158, 66 }),
 	-- Centre line, from the top edge to the left edge.
 	centreLine = points({
 		{ -21, -356 },
