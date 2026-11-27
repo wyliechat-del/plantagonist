@@ -230,6 +230,16 @@ cacti come next.
    Config/Map.
 3. The flag says Build 12D.
 
+## 2p. New in build 12E: barrels on top of the ground
+
+1. Barrel cacti (same design as 12D) sit fully on top of the ground, even
+   on slopes: each stands on the highest ground under its ball, lifted
+   `barrelLift` (2 studs). If they float, lower it in Config/Map.
+2. Output prints "Hills: first barrel ray hit ..." (what the ray stood the
+   barrel on); send that line to Claude if barrels still look wrong.
+3. No cacti on the bottom left hill.
+4. The flag says Build 12E.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

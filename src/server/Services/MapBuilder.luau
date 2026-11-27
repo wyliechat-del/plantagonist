@@ -2105,9 +2105,8 @@ end
 -- A barrel cactus: a round ball of ribs with a pale top and pale spines.
 -- It stands on `base`, a nearly round ball like a golden barrel cactus,
 -- widest half way up.
-local function barrelCactus(model: Model, base: CFrame, colour: Color3)
+local function barrelCactus(model: Model, base: CFrame, colour: Color3, radius: number)
 	local hills = Map.Hills
-	local radius = Util.roll(hills.ballCactusSize[1], hills.ballCactusSize[2]) / 2
 	local middle = radius * 0.95
 	ellipsoid(
 		model,
@@ -2192,7 +2191,7 @@ local function cylinderBetween(
 end
 
 -- One cactus: "Ball", "Short" (two arms) or "Tall" (three arms).
-local function cactus(parent: Instance, kind: string, base: CFrame)
+local function cactus(parent: Instance, kind: string, base: CFrame, radius: number)
 	local hills = Map.Hills
 	local custom = ServerStorage:FindFirstChild("Cacti")
 	local template = custom and custom:FindFirstChild(kind)
@@ -2210,7 +2209,7 @@ local function cactus(parent: Instance, kind: string, base: CFrame)
 		return (base * CFrame.new(x, y, z)).Position
 	end
 	if kind == "Ball" then
-		barrelCactus(model, base, colour)
+		barrelCactus(model, base, colour, radius)
 		return
 	end
 	local range = if kind == "Tall" then hills.tallCactusHeight else hills.shortCactusHeight
@@ -2269,14 +2268,43 @@ local function placeCactus(parent: Instance, x: number, z: number)
 		end
 	end
 	-- Stand on the surface. Tall and short cacti are set in a little so
-	-- they look planted; barrel cacti are lifted a little so the whole
-	-- ball shows above the ground.
+	-- they look planted. A barrel cactus sits on the highest ground under
+	-- its whole ball (rays round its edge as well as its middle), lifted
+	-- by `barrelLift`, so no part of it is buried.
 	cactusCount += 1
 	local kind = cactusKinds[(cactusCount - 1) % #cactusKinds + 1]
-	local y = surfaceY(x, z) - (if kind == "Ball" then -hills.barrelLift else hills.cactusSink)
+	local radius = Util.roll(hills.ballCactusSize[1], hills.ballCactusSize[2]) / 2
+	local y
+	if kind == "Ball" then
+		y = surfaceY(x, z)
+		for n = 1, 8 do
+			local angle = n / 8 * math.pi * 2
+			y = math.max(y, surfaceY(x + math.cos(angle) * radius, z + math.sin(angle) * radius))
+		end
+		if cactusCount == 1 then
+			-- What the ray stands barrels on, to check against the ground
+			-- seen in Studio.
+			local hit = workspace:Raycast(
+				Vector3.new(x, GROUND + 200, z),
+				Vector3.new(0, -400, 0),
+				surfaceParams
+			)
+			print(
+				string.format(
+					"Hills: first barrel ray hit %s (%s) at %.2f",
+					if hit then hit.Instance:GetFullName() else "nothing",
+					if hit then hit.Material.Name else "-",
+					if hit then hit.Position.Y else 0
+				)
+			)
+		end
+		y += hills.barrelLift
+	else
+		y = surfaceY(x, z) - hills.cactusSink
+	end
 	cactusLowest, cactusHighest = math.min(cactusLowest, y), math.max(cactusHighest, y)
 	local base = CFrame.new(x, y, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
-	cactus(parent, kind, base)
+	cactus(parent, kind, base, radius)
 end
 
 local function hillsCacti(parent: Instance)
@@ -2292,6 +2320,7 @@ local function hillsCacti(parent: Instance)
 			if
 				MapRules.hillsHeight(Map, HillsShape, px, pz) > 0
 				or MapRules.inTunnel(Map, HillsShape, px, pz)
+				or (MapRules.ridgeOffset(HillsShape, px, pz))
 			then
 				open = false
 			end
@@ -2304,9 +2333,8 @@ local function hillsCacti(parent: Instance)
 end
 
 -- Second Rise boulders round and on the ramps (keeping a clear path up
--- the middle), and on and round the bottom left hill, with a few cacti on
--- the hill.
-local function hillsBoulders(rock: Instance, decor: Instance)
+-- the middle), and on and round the bottom left hill (no cacti there).
+local function hillsBoulders(rock: Instance)
 	local hills = Map.Hills
 	local sections = MapRules.rampSections(Map, HillsShape)
 	for index = 3, #sections, 3 do
@@ -2357,12 +2385,6 @@ local function hillsBoulders(rock: Instance, decor: Instance)
 			side * Util.roll(hills.ridgeFlatTop / 2 + 1, ridge.width / 2 + 3)
 		)
 		boulder(rock, x, z, hills.boulderMaxSize)
-	end
-	for _ = 1, hills.ridgeCacti do
-		local side = if Util.random() < 0.5 then -1 else 1
-		local x, z =
-			onRidge(Util.roll(-0.4, 0.4) * ridge.length, side * Util.roll(0, ridge.width / 2 - 3))
-		placeCactus(decor, x, z)
 	end
 end
 
@@ -2459,7 +2481,7 @@ local function buildHills()
 	-- Things set on the built surface.
 	surfaceParams.FilterDescendantsInstances = { decor }
 	hillsLanterns(decor)
-	hillsBoulders(hills, decor)
+	hillsBoulders(hills)
 	hillsCacti(decor)
 	print(
 		string.format(

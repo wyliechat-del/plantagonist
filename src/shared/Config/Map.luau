@@ -505,7 +505,6 @@ Map.Hills = table.freeze({
 	ridgeTurnDegrees = 3,
 	ridgeRunVariation = 1.5,
 	ridgeBoulders = 14,
-	ridgeCacti = 4,
 	-- Cacti (decor; you walk through them). If ServerStorage has a folder
 	-- `Cacti` holding models named Ball, Short and Tall, those are used.
 	cacti = 40,
@@ -515,11 +514,11 @@ Map.Hills = table.freeze({
 	cactusSandMax = 12,
 	-- How far a cactus's foot sits below the surface, so it looks planted.
 	cactusSink = 0.3,
-	-- How far a barrel cactus's foot sits above the measured surface. In
-	-- Studio the ground showed about a stud higher than the ray found
-	-- (builds 12B and 12C), hiding the bottom of the ball. Lower this if
-	-- barrels float.
-	barrelLift = 0.8,
+	-- How far a barrel cactus's foot sits above the highest ground the ray
+	-- finds under it. In Studio the ground showed about 2 studs higher
+	-- than the ray found (builds 12B to 12D), hiding the bottom of the
+	-- ball. Lower this if barrels float.
+	barrelLift = 2,
 	-- Ball cacti are barrel cacti: a nearly round ribbed ball with a pale top.
 	ballCactusSize = table.freeze({ 3, 5 }),
 	barrelRibs = 12,
