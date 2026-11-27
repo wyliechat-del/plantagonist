@@ -185,6 +185,22 @@ Walk out of the field to the top right (the Hills).
    slope, a ledge and an upper slope, turned a little from each other,
    with Second Rise boulders along the sides.
 
+## 2k. New in build 11: more Hills fixes
+
+1. Cacti stand on the surface (found with a ray), and each one on the
+   ground has a patch of sand round its foot (6 to 12 studs across).
+2. Second Rise boulders on both ramps too, leaving a clear path up the
+   middle.
+3. The bottom left hill's slopes are broken into turned pieces, with
+   boulders on and round it and a few cacti.
+4. The sand at the foot of the cliffs is twice as wide (4 to 16).
+5. The cave has 8 lanterns, placed on the actual rock face so none sit
+   inside the wall. Tunnel lanterns are placed the same way.
+6. Bites, melee and shots don't go through rock: walls, cliffs, tunnel
+   roofs and boulders block them.
+7. A stream of 8 bats flies out of the right tunnel, loops over the hills
+   and back into the cave through the left tunnel.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

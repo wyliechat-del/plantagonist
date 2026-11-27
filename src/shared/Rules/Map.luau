@@ -438,6 +438,43 @@ function MapRules.cliffSandWidth(map: any, x: number, z: number): number
 	return config.cliffSandMinWidth + (config.cliffSandMaxWidth - config.cliffSandMinWidth) * share
 end
 
+-- Length of a closed loop through 3D points ({ x, y, z }).
+function MapRules.loopLength(points: { { number } }): number
+	local total = 0
+	for index, a in points do
+		local b = points[index % #points + 1]
+		total += math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2 + (b[3] - a[3]) ^ 2)
+	end
+	return total
+end
+
+-- The point `distance` studs round a closed loop of 3D points, and the
+-- direction of travel there (a unit vector).
+function MapRules.alongLoop(
+	points: { { number } },
+	distance: number
+): (number, number, number, number, number, number)
+	local total = MapRules.loopLength(points)
+	distance = distance % total
+	for index, a in points do
+		local b = points[index % #points + 1]
+		local dx, dy, dz = b[1] - a[1], b[2] - a[2], b[3] - a[3]
+		local length = math.sqrt(dx * dx + dy * dy + dz * dz)
+		if distance <= length or index == #points then
+			local share = if length > 0 then math.min(distance / length, 1) else 0
+			return a[1] + dx * share,
+				a[2] + dy * share,
+				a[3] + dz * share,
+				dx / length,
+				dy / length,
+				dz / length
+		end
+		distance -= length
+	end
+	local first = points[1]
+	return first[1], first[2], first[3], 1, 0, 0
+end
+
 -- Which area a point is in, for creatures: "Water", "Marsh", "Tunnel",
 -- "FirstRise", "ThirdRise" or "Land". Without `hills`, the Hills count as
 -- land.

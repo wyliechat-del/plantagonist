@@ -1458,6 +1458,19 @@ local function hasRock(entry: { number }): boolean
 	return entry[2] > 0
 end
 
+-- A ray onto the built Hills (terrain and rock parts), for setting things
+-- on the real surface. Set up by buildHills once the rock is built.
+local surfaceParams = RaycastParams.new()
+surfaceParams.FilterType = Enum.RaycastFilterType.Include
+surfaceParams.IgnoreWater = true
+
+-- Height of the surface at (x, z), from above.
+local function surfaceY(x: number, z: number): number
+	local result =
+		workspace:Raycast(Vector3.new(x, GROUND + 200, z), Vector3.new(0, -400, 0), surfaceParams)
+	return if result then result.Position.Y else GROUND
+end
+
 -- Calls `fill(i0, i1, j, value)` for each run of cells in a row that share
 -- the same non-nil `valueAt(i, j)` (compared with `key`).
 local function rowRuns(
@@ -1732,15 +1745,15 @@ local function hillsSlabs(parent: Instance)
 end
 
 -- A boulder of Second Rise rock sitting on whatever is under it.
-local function boulder(parent: Instance, x: number, z: number)
+local function boulder(parent: Instance, x: number, z: number, maxSize: number)
 	local hills = Map.Hills
-	local size = Util.roll(hills.boulderMinSize, hills.boulderMaxSize)
+	local size = Util.roll(hills.boulderMinSize, maxSize)
 	local dimensions = Vector3.new(size, size * Util.roll(0.55, 0.9), size * Util.roll(0.7, 1.2))
-	local base = MapRules.hillsHeight(Map, HillsShape, x, z)
+	local base = surfaceY(x, z)
 	Util.part({
 		Name = "Boulder",
 		Size = dimensions,
-		CFrame = CFrame.new(x, GROUND + base + dimensions.Y * 0.3, z) * CFrame.Angles(
+		CFrame = CFrame.new(x, base + dimensions.Y * 0.3, z) * CFrame.Angles(
 			math.rad(Util.roll(-15, 15)),
 			Util.random() * math.pi * 2,
 			math.rad(Util.roll(-15, 15))
@@ -1752,8 +1765,8 @@ local function boulder(parent: Instance, x: number, z: number)
 end
 
 -- Ramps up to the First Rise, in pieces turned a little from each other
--- (like fallen rock), with a landing at the top and Second Rise boulders
--- along the sides and edges.
+-- (like fallen rock), with a landing at the top. Boulders come later
+-- (hillsBoulders), once there is a surface to set them on.
 local function hillsRamps(parent: Instance)
 	local hills = Map.Hills
 	local colour = Util.colour(hills.riseColours[1])
@@ -1793,7 +1806,7 @@ local function hillsRamps(parent: Instance)
 			wedge.Parent = parent
 		end
 		-- The last piece of each ramp: a landing past the top covers any
-		-- gap to the rise, and boulders go round the whole ramp.
+		-- gap to the rise.
 		if index % 3 == 0 then
 			local top = centre + uphill * (section.length / 2 + hills.terrainCell / 2 - 0.5)
 			block(
@@ -1801,24 +1814,6 @@ local function hillsRamps(parent: Instance)
 				Vector3.new(section.width, section.high, hills.terrainCell),
 				CFrame.lookAt(top, top + uphill) * CFrame.new(0, section.high / 2, 0)
 			)
-			local first = sections[index - 2]
-			local startX = first.x - first.ax * first.length / 2
-			local startZ = first.z - first.az * first.length / 2
-			local endX, endZ = top.X, top.Z
-			local ax, az = endX - startX, endZ - startZ
-			local total = math.sqrt(ax * ax + az * az)
-			ax, az = ax / total, az / total
-			for _ = 1, hills.rampBoulders do
-				local along = Util.random() * total
-				local side = if Util.random() < 0.5 then -1 else 1
-				-- Most beside the ramp, some on its edge.
-				local out = section.width / 2 + Util.roll(-3, 4)
-				local x = startX + ax * along - az * out * side
-				local z = startZ + az * along + ax * out * side
-				if inHillsQuarter(x, z) and not MapRules.inTunnel(Map, HillsShape, x, z) then
-					boulder(parent, x, z)
-				end
-			end
 		end
 	end
 end
@@ -1875,16 +1870,29 @@ local function hillsRidge(parent: Instance)
 			Vector3.new(wall, clearance, ridge.length),
 			Vector3.new(side * (tunnel / 2 + wall / 2), clearance / 2, 0)
 		)
-		local slopeCentre = (frame * CFrame.new(side * (flat / 2 + run / 2), height / 2, 0)).Position
-		local outward = frame.RightVector * side
-		local slope = Instance.new("WedgePart")
-		slope.Name = "HillSlope"
-		slope.Anchored = true
-		slope.Size = Vector3.new(ridge.length, height, run)
-		slope.CFrame = CFrame.lookAt(slopeCentre, slopeCentre + outward)
-		slope.Color = colour
-		slope.Material = Enum.Material.Sandstone
-		slope.Parent = parent
+		-- Each slope in pieces along the hill, turned and stretched a
+		-- little so it looks like broken rock.
+		local pieces = hills.ridgePieces
+		local pieceLength = ridge.length / pieces
+		for n = 1, pieces do
+			local offset = (n - 0.5) * pieceLength - ridge.length / 2
+			local pieceRun = run + Util.roll(-1, 1) * hills.ridgeRunVariation
+			local slopeCentre = (frame * CFrame.new(
+				side * (flat / 2 - 0.5 + pieceRun / 2),
+				height / 2,
+				offset
+			)).Position
+			local outward = frame.RightVector * side
+			local slope = Instance.new("WedgePart")
+			slope.Name = "HillSlope"
+			slope.Anchored = true
+			slope.Size = Vector3.new(pieceLength + 1, height, pieceRun + 0.5)
+			slope.CFrame = CFrame.lookAt(slopeCentre, slopeCentre + outward)
+				* CFrame.Angles(0, math.rad(Util.roll(-1, 1) * hills.ridgeTurnDegrees), 0)
+			slope.Color = variedColour(hills.riseColours[1], 6)
+			slope.Material = Enum.Material.Sandstone
+			slope.Parent = parent
+		end
 	end
 end
 
@@ -1965,35 +1973,24 @@ local function wallLantern(
 	light.Parent = glass
 end
 
-local function hillsLanterns(parent: Instance, grid: { { { number } } })
+local function hillsLanterns(parent: Instance)
 	local hills = Map.Hills
-	local cell = hills.terrainCell
-	local function wallCellAt(x: number, z: number): boolean
-		local i, j = math.floor(x / cell) + 1, math.floor(-z / cell) + 1
-		local row = grid[j]
-		local entry = row and row[i]
-		return entry == nil or MapRules.isWallCell(entry)
-	end
-	-- Walk from (x, z) along (dx, dz) until the next step is in a wall; the
-	-- wall point, or nil if there's no wall within `reach`.
+	-- The nearest wall from (x, z) along (dx, dz) at height y: the point on
+	-- the rock's surface, or nil when there's none within `reach`.
 	local function findWall(
 		x: number,
+		y: number,
 		z: number,
 		dx: number,
 		dz: number,
 		reach: number
-	): (number?, number?)
-		local travelled = 0
-		while travelled < reach do
-			local nx, nz = x + dx * 0.5, z + dz * 0.5
-			if wallCellAt(nx, nz) then
-				return x, z
-			end
-			x, z, travelled = nx, nz, travelled + 0.5
-		end
-		return nil, nil
+	): Vector3?
+		local result =
+			workspace:Raycast(Vector3.new(x, y, z), Vector3.new(dx, 0, dz) * reach, surfaceParams)
+		return if result then result.Position else nil
 	end
 	-- The cave: lanterns spread round its walls.
+	local caveY = GROUND + hills.caveLanternHeight
 	for _, room in HillsShape.caveRooms do
 		local cx, cz = 0, 0
 		for _, corner in room do
@@ -2003,32 +2000,34 @@ local function hillsLanterns(parent: Instance, grid: { { { number } } })
 		for n = 1, hills.caveLanterns do
 			local angle = (n - 0.5) / hills.caveLanterns * math.pi * 2
 			local dx, dz = math.cos(angle), math.sin(angle)
-			local wx, wz = findWall(cx, cz, dx, dz, 40)
-			if wx and wz then
-				wallLantern(parent, wx, wz, -dx, -dz, GROUND + hills.caveLanternHeight)
+			local wall = findWall(cx, caveY, cz, dx, dz, 50)
+			if wall then
+				wallLantern(parent, wall.X, wall.Z, -dx, -dz, caveY)
 			end
 		end
 	end
 	-- Tunnels under rock: one every so often on the nearest wall.
 	local spacing = hills.tunnelLanternSpacing
+	local tunnelY = GROUND + hills.tunnelLanternHeight
 	local x = spacing / 2
 	while x < Map.halfSize do
 		local z = -spacing / 2
 		while z > -Map.halfSize do
 			local bottom = MapRules.hillsRock(Map, HillsShape, x, z)
 			if bottom == hills.tunnelRockBottom then
-				local best, bx, bz, bdx, bdz = math.huge, nil, nil, 0, 0
+				local best: Vector3?, bestDx, bestDz, bestDistance = nil, 0, 0, math.huge
 				for _, direction in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
-					local wx, wz = findWall(x, z, direction[1], direction[2], 10)
-					if wx and wz then
-						local distance = math.abs(wx - x) + math.abs(wz - z)
-						if distance < best then
-							best, bx, bz, bdx, bdz = distance, wx, wz, direction[1], direction[2]
+					local wall = findWall(x, tunnelY, z, direction[1], direction[2], 10)
+					if wall then
+						local distance = (wall - Vector3.new(x, tunnelY, z)).Magnitude
+						if distance < bestDistance then
+							best, bestDx, bestDz, bestDistance =
+								wall, direction[1], direction[2], distance
 						end
 					end
 				end
-				if bx and bz then
-					wallLantern(parent, bx, bz, -bdx, -bdz, GROUND + hills.tunnelLanternHeight)
+				if best then
+					wallLantern(parent, best.X, best.Z, -bestDx, -bestDz, tunnelY)
 				end
 			end
 			z -= spacing
@@ -2087,7 +2086,7 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		model,
 		"Body",
 		Vector3.new(radius * 1.9, radius * 1.5, radius * 1.9),
-		base * CFrame.new(0, radius * 0.6, 0),
+		base * CFrame.new(0, radius * 0.75, 0),
 		colour
 	)
 	local spineColour = Util.colour(hills.spineColour)
@@ -2096,7 +2095,7 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		local angle = n / ribs * math.pi * 2
 		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
 		local ribCentre = (
-			base * CFrame.new(out * radius * 0.62 + Vector3.new(0, radius * 0.65, 0))
+			base * CFrame.new(out * radius * 0.62 + Vector3.new(0, radius * 0.75, 0))
 		).Position
 		local outward = base:VectorToWorldSpace(out)
 		ellipsoid(
@@ -2108,7 +2107,7 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		)
 		for k = 1, hills.barrelSpinesPerRib do
 			local up = radius * (0.35 + 0.55 * (k - 0.5) / hills.barrelSpinesPerRib)
-			local root = ribCentre + outward * radius * 0.33 + Vector3.new(0, up - radius * 0.65, 0)
+			local root = ribCentre + outward * radius * 0.33 + Vector3.new(0, up - radius * 0.75, 0)
 			local length = radius * 0.45
 			local direction = (outward + Vector3.new(0, 0.5, 0)).Unit
 			Util.part({
@@ -2127,7 +2126,7 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		model,
 		"Top",
 		Vector3.new(radius * 1.1, radius * 0.35, radius * 1.1),
-		base * CFrame.new(0, radius * 1.32, 0),
+		base * CFrame.new(0, radius * 1.42, 0),
 		Util.colour(hills.barrelTopColour)
 	)
 end
@@ -2210,10 +2209,32 @@ local function cactus(parent: Instance, kind: string, base: CFrame)
 	end
 end
 
+-- One cactus of the next kind at (x, z), standing on the surface. On the
+-- ground it gets a patch of sand round its foot.
+local cactusKinds = { "Ball", "Short", "Tall" }
+local cactusCount = 0
+local function placeCactus(parent: Instance, x: number, z: number)
+	local hills = Map.Hills
+	local y = surfaceY(x, z)
+	if y <= GROUND + 0.5 then
+		local radius = Util.roll(hills.cactusSandMin, hills.cactusSandMax) / 2
+		workspace.Terrain:FillCylinder(
+			CFrame.new(x, GROUND - hills.terrainCell / 2, z),
+			hills.terrainCell,
+			radius,
+			Enum.Material.Sand
+		)
+		-- The sand can lift the surface a little; stand on it.
+		y = surfaceY(x, z)
+	end
+	cactusCount += 1
+	local base = CFrame.new(x, y, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
+	cactus(parent, cactusKinds[(cactusCount - 1) % #cactusKinds + 1], base)
+end
+
 local function hillsCacti(parent: Instance)
 	local hills = Map.Hills
 	local clear = hills.cactusClearance
-	local kinds = { "Ball", "Short", "Tall" }
 	local placed, tries = 0, 0
 	while placed < hills.cacti and tries < hills.cacti * 20 do
 		tries += 1
@@ -2229,10 +2250,72 @@ local function hillsCacti(parent: Instance)
 			end
 		end
 		if open then
-			local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
-			cactus(parent, kinds[placed % #kinds + 1], base)
+			placeCactus(parent, x, z)
 			placed += 1
 		end
+	end
+end
+
+-- Second Rise boulders round and on the ramps (keeping a clear path up
+-- the middle), and on and round the bottom left hill, with a few cacti on
+-- the hill.
+local function hillsBoulders(rock: Instance, decor: Instance)
+	local hills = Map.Hills
+	local sections = MapRules.rampSections(Map, HillsShape)
+	for index = 3, #sections, 3 do
+		local first, last = sections[index - 2], sections[index]
+		local startX = first.x - first.ax * first.length / 2
+		local startZ = first.z - first.az * first.length / 2
+		local endX = last.x + last.ax * last.length / 2
+		local endZ = last.z + last.az * last.length / 2
+		local ax, az = endX - startX, endZ - startZ
+		local total = math.sqrt(ax * ax + az * az)
+		ax, az = ax / total, az / total
+		local width = last.width
+		local function place(along: number, out: number, maxSize: number)
+			local x = startX + ax * along - az * out
+			local z = startZ + az * along + ax * out
+			if inHillsQuarter(x, z) and not MapRules.inTunnel(Map, HillsShape, x, z) then
+				boulder(rock, x, z, maxSize)
+			end
+		end
+		for _ = 1, hills.rampBoulders do
+			local side = if Util.random() < 0.5 then -1 else 1
+			place(
+				Util.random() * total,
+				side * (width / 2 + Util.roll(-3, 4)),
+				hills.boulderMaxSize
+			)
+		end
+		for _ = 1, hills.rampSurfaceBoulders do
+			local side = if Util.random() < 0.5 then -1 else 1
+			place(
+				Util.roll(0.1, 0.9) * total,
+				side * width * Util.roll(0.15, 0.42),
+				hills.surfaceBoulderMaxSize
+			)
+		end
+	end
+	local ridge = HillsShape.ridge
+	local acrossX, acrossZ = -ridge.dz, ridge.dx
+	local function onRidge(along: number, across: number): (number, number)
+		return ridge.x + ridge.dx * along + acrossX * across,
+			ridge.z + ridge.dz * along + acrossZ * across
+	end
+	for _ = 1, hills.ridgeBoulders do
+		local side = if Util.random() < 0.5 then -1 else 1
+		-- On the slopes and round the foot of the hill.
+		local x, z = onRidge(
+			Util.roll(-0.48, 0.48) * ridge.length,
+			side * Util.roll(hills.ridgeFlatTop / 2 + 1, ridge.width / 2 + 3)
+		)
+		boulder(rock, x, z, hills.boulderMaxSize)
+	end
+	for _ = 1, hills.ridgeCacti do
+		local side = if Util.random() < 0.5 then -1 else 1
+		local x, z =
+			onRidge(Util.roll(-0.4, 0.4) * ridge.length, side * Util.roll(0, ridge.width / 2 - 3))
+		placeCactus(decor, x, z)
 	end
 end
 
@@ -2326,7 +2409,10 @@ local function buildHills()
 	hillsRamps(hills)
 	hillsRidge(hills)
 	hillsCliffWall(hills)
-	hillsLanterns(decor, grid)
+	-- Things set on the built surface.
+	surfaceParams.FilterDescendantsInstances = { terrain, hills }
+	hillsLanterns(decor)
+	hillsBoulders(hills, decor)
 	hillsCacti(decor)
 end
 

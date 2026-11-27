@@ -330,6 +330,39 @@ return function(t)
 		t.expect(high - low > 4, "the width changes")
 	end)
 
+	t.test("cave bats fly the tunnels under the roof and clear the rock outside", function()
+		local route = Map.Hills.caveBats.route
+		local total = MapRules.loopLength(route)
+		local x, y, z = MapRules.alongLoop(route, 0)
+		t.expectEqual(x, route[1][1])
+		t.expectEqual(y, route[1][2])
+		t.expectEqual(z, route[1][3])
+		local x2 = MapRules.alongLoop(route, total)
+		t.expect(math.abs(x2 - route[1][1]) < 0.01, "the loop closes")
+		local wobble = Map.Hills.caveBats.wobble
+		local distance = 0
+		while distance < total do
+			local px, py, pz = MapRules.alongLoop(route, distance)
+			local ground = MapRules.hillsHeight(Map, HillsShape, px, pz)
+			if MapRules.inTunnel(Map, HillsShape, px, pz) and ground > 0 then
+				-- Bats keep to the middle of the arch.
+				local roof = if MapRules.inCave(HillsShape, px, pz)
+					then Map.Hills.caveClearance
+					else Map.Hills.tunnelClearance
+				t.expect(
+					py + wobble < roof - 1,
+					`bat under the tunnel roof at {math.floor(px)}, {math.floor(pz)}`
+				)
+			else
+				t.expect(
+					py - wobble > ground + 1,
+					`bat over the rock at {math.floor(px)}, {math.floor(pz)} ({py} over {ground})`
+				)
+			end
+			distance += 2
+		end
+	end)
+
 	t.test("land creatures may go on the First Rise, not in tunnels", function()
 		t.expect(MapRules.creatureAllowed("Land", "FirstRise"), "land on First Rise")
 		t.expect(not MapRules.creatureAllowed("Land", "Tunnel"), "land not in tunnels")

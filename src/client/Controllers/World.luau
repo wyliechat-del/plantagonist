@@ -6,6 +6,7 @@
 	- The rope bridge swings like a cradle from its post tops (looks only).
 	- Plants hiding in grass (server sets `InGrass` on their model) vanish
 	  for everyone else; their name tag stays. Your own looks see-through.
+	- Bats fly out of the Hills cave and back (looks only).
 ]]
 
 local Players = game:GetService("Players")
@@ -168,6 +169,66 @@ local function stepGrass()
 	end
 end
 
+-- Cave bats -------------------------------------------------------------
+
+type Bat = { body: BasePart, left: BasePart, right: BasePart, offset: number, side: number }
+local bats: { Bat } = {}
+
+local function makeBats()
+	local config = Map.Hills.caveBats
+	local folder = Instance.new("Folder")
+	folder.Name = "CaveBats"
+	folder.Parent = workspace
+	local colour = Color3.fromRGB(config.colour[1], config.colour[2], config.colour[3])
+	local function piece(name: string, size: Vector3, shape: Enum.PartType): BasePart
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Shape = shape
+		part.Size = size
+		part.Color = colour
+		part.Material = Enum.Material.SmoothPlastic
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.Parent = folder
+		return part
+	end
+	local length = MapRules.loopLength(config.route)
+	for index = 1, config.count do
+		local half = config.wingSpan / 2
+		table.insert(bats, {
+			body = piece("Bat", Vector3.new(0.8, 0.8, 0.8), Enum.PartType.Ball),
+			left = piece("Wing", Vector3.new(half, 0.1, 0.8), Enum.PartType.Block),
+			right = piece("Wing", Vector3.new(half, 0.1, 0.8), Enum.PartType.Block),
+			-- Spread along the loop, in a loose stream.
+			offset = (index - 1) / config.count * length,
+			side = index * 1.7,
+		})
+	end
+end
+
+local function stepBats(now: number)
+	local config = Map.Hills.caveBats
+	local half = config.wingSpan / 2
+	for _, bat in bats do
+		local x, y, z, dx, dy, dz =
+			MapRules.alongLoop(config.route, now * config.speed + bat.offset)
+		local ahead = Vector3.new(dx, dy, dz)
+		-- Weave a little side to side and up and down.
+		local across = Vector3.new(-dz, 0, dx)
+		local position = Vector3.new(x, y, z)
+			+ across * math.sin(now * 1.3 + bat.side) * config.wobble
+			+ Vector3.yAxis * math.sin(now * 1.9 + bat.side * 2) * config.wobble * 0.6
+		local frame = CFrame.lookAt(position, position + ahead)
+		local flap = math.sin(now * config.flapsPerSecond * math.pi * 2 + bat.side) * math.rad(35)
+		bat.body.CFrame = frame
+		bat.left.CFrame = frame * CFrame.Angles(0, 0, flap) * CFrame.new(-half / 2 - 0.3, 0, 0)
+		bat.right.CFrame = frame * CFrame.Angles(0, 0, -flap) * CFrame.new(half / 2 + 0.3, 0, 0)
+	end
+end
+
 -- Setup -------------------------------------------------------------------
 
 local function onCharacter(character: Model)
@@ -194,6 +255,8 @@ function World.start()
 		end
 	end)
 
+	makeBats()
+
 	local grassTimer = 0
 	-- The bridge moves before each physics step, so plants on it move with it.
 	RunService.PreSimulation:Connect(function()
@@ -203,6 +266,7 @@ function World.start()
 	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
 		stepHop(now)
+		stepBats(now)
 		grassTimer += dt
 		if grassTimer >= Map.HidingGrass.checkSeconds then
 			grassTimer = 0
