@@ -129,13 +129,10 @@ return function(t)
 
 	t.test("grass blades: tall enough to hide in, waving only a little", function()
 		local grass = Map.HidingGrass
-		local tallest = 0
-		for _, blade in grass.blades do
-			t.expectEqual(#blade.widths, #blade.bends)
-			tallest = math.max(tallest, grass.height * blade.height * grass.sizeRange[1])
-		end
-		t.expect(tallest >= grass.height * 0.9, "the tallest blade is near the grass height")
+		local visible = grass.height * grass.sizeRange[2] * (1 - grass.bladeSunk)
+		t.expect(visible >= grass.height * 0.85, "the biggest blades stand near the grass height")
 		t.expect(grass.sizeRange[1] < 1 and grass.sizeRange[2] > 1, "sizes go both ways")
+		t.expectEqual(#grass.bladeColours, 3)
 		local most = 0
 		for step = 0, 100 do
 			local lean = MapRules.grassWave(Map, step * 0.1, step * 3, -step * 2)

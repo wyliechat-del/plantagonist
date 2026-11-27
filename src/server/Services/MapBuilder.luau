@@ -785,7 +785,7 @@ local function buildPath(parent: Instance)
 				CFrame = CFrame.new(px, GROUND + path.paverThickness / 2, pz)
 					* CFrame.Angles(0, yaw, 0),
 				Color = Util.colour(Util.pick(path.colours)),
-				Material = Enum.Material.Pavement,
+				Material = (Enum.Material :: any)[path.paverMaterial],
 				Parent = model,
 			})
 		end
@@ -1349,44 +1349,29 @@ local function buildLilyPads(parent: Instance)
 	rimShape:Destroy()
 end
 
--- One grass blade standing at (x, z), turned any way and sized a little
--- up or down: thin pieces from the base up, each bent sideways from the
--- one below, the top one a point. Each piece keeps the blade's base in a
--- `BladeBase` attribute so clients can wave the blade about it.
-local function grassBlade(parent: Instance, blade: any, x: number, z: number)
+-- One grass blade standing at (x, z): a thin stretched ellipsoid, part
+-- sunk into the ground, turned any way, sized and coloured at random. It
+-- keeps its base in a `BladeBase` attribute so clients can wave it.
+local function grassBlade(parent: Instance, x: number, z: number)
 	local grass = Map.HidingGrass
-	local size = Util.between(grass.sizeRange[1], grass.sizeRange[2])
-	local height = grass.height * blade.height * size
-	local pieces = #blade.widths
-	local length = height / pieces
+	local length = grass.height * Util.between(grass.sizeRange[1], grass.sizeRange[2])
 	local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
-	local colour = Util.colour(blade.colour)
-	local cursor = base
-	for n = 1, pieces do
-		cursor = cursor * CFrame.Angles(math.rad(blade.bends[n]), 0, 0)
-		local width = height * blade.widths[n]
-		local piece: BasePart
-		if n == pieces then
-			-- A wedge's slope runs across its Y and Z, so it makes the point.
-			piece = Instance.new("WedgePart")
-		else
-			piece = Instance.new("Part")
-		end
-		piece.Name = "Blade"
-		piece.Anchored = true
-		piece.CanCollide = false
-		piece.CanQuery = false
-		piece.CanTouch = false
-		piece.CastShadow = false
-		piece.Material = Enum.Material.SmoothPlastic
-		piece.Color = colour
-		-- A little longer than its share, so the pieces meet with no gap.
-		piece.Size = Vector3.new(grass.bladeThickness, length * 1.1, width)
-		piece.CFrame = cursor * CFrame.new(0, length / 2, 0)
-		piece:SetAttribute("BladeBase", base)
-		piece.Parent = parent
-		cursor = cursor * CFrame.new(0, length, 0)
-	end
+	local blade = Instance.new("Part")
+	blade.Name = "Blade"
+	blade.Anchored = true
+	blade.CanCollide = false
+	blade.CanQuery = false
+	blade.CanTouch = false
+	blade.CastShadow = false
+	blade.Material = Enum.Material.SmoothPlastic
+	blade.Color = Util.colour(Util.pick(grass.bladeColours))
+	blade.Size = Vector3.new(grass.bladeThickness, length, length * grass.bladeWidth)
+	blade.CFrame = base * CFrame.new(0, length * (0.5 - grass.bladeSunk), 0)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = blade
+	blade:SetAttribute("BladeBase", base)
+	blade.Parent = parent
 end
 
 -- Hiding grass: a pale patch covered in single grass blades, tall enough
@@ -1410,7 +1395,7 @@ local function buildHidingGrass(parent: Instance)
 			CanQuery = false,
 			Parent = model,
 		})
-		local spacing = grass.clumpSpacing
+		local spacing = grass.bladeSpacing
 		local offset = -circle.radius
 		local rowIndex = 0
 		while offset <= circle.radius do
@@ -1418,15 +1403,12 @@ local function buildHidingGrass(parent: Instance)
 			local along = -circle.radius + shift
 			while along <= circle.radius do
 				if offset * offset + along * along <= (circle.radius - 2) ^ 2 then
-					for _, blade in grass.blades do
-						local spread = grass.clumpSpread
-						grassBlade(
-							model,
-							blade,
-							circle.x + along + Util.between(-spread, spread),
-							circle.z + offset + Util.between(-spread, spread)
-						)
-					end
+					local spread = grass.bladeSpread
+					grassBlade(
+						model,
+						circle.x + along + Util.between(-spread, spread),
+						circle.z + offset + Util.between(-spread, spread)
+					)
 				end
 				along += spacing
 			end

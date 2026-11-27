@@ -309,6 +309,14 @@ From Wylie's drawing of 2026-11-27.
    tell Claude (`clumpSpacing` in Config/Map thins it out).
 6. The flag says Build 14A.
 
+## 2x. New in build 14B: lighter grass, stone pavers
+
+1. The hiding grass is one blade shape (narrow, pointed, widest low
+   down), one part per blade (about 2,500 in all, down from 9,000),
+   sized 75% to 110%, in #8cc63f, #5d7c2c and #bbc441, swaying gently.
+2. The gate path pavers are each a single stone (Limestone), not bricks.
+3. The flag says Build 14B.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

@@ -243,6 +243,8 @@ Map.Path = table.freeze({
 	-- off the grid, so the path looks laid by hand.
 	paverTurnDegrees = 8,
 	paverJitter = 0.4,
+	-- One stone per paver (Pavement showed bricks until build 14B).
+	paverMaterial = "Limestone",
 	colours = table.freeze({
 		table.freeze({ 205, 195, 165 }),
 		table.freeze({ 190, 180, 150 }),
@@ -401,45 +403,31 @@ Map.HidingGrass = table.freeze({
 	checkSeconds = 0.2,
 	-- The pale patch under the grass.
 	colour = table.freeze({ 170, 200, 90 }),
-	-- The grass is single blades (from Wylie's drawing, 2026-11-27) in
-	-- clumps `clumpSpacing` apart, each blade up to `clumpSpread` from its
-	-- clump's middle, turned any way, and sized `sizeRange` times. A
-	-- blade is pieces from the base up: each piece's width (a share of
-	-- the blade's height) and how far it bends from the piece below
-	-- (degrees, sideways). Its height is `height` times its own `height`.
-	clumpSpacing = 3.5,
-	clumpSpread = 1.5,
-	sizeRange = table.freeze({ 0.9, 1.1 }),
-	bladeThickness = 0.15,
-	blades = table.freeze({
-		-- Tall, light green, curling over at the top.
-		table.freeze({
-			colour = table.freeze({ 140, 198, 63 }),
-			height = 1,
-			widths = table.freeze({ 0.13, 0.11, 0.09 }),
-			bends = table.freeze({ -5, 8, 12 }),
-		}),
-		-- Middle, dark green, a straight leaf widest in the middle.
-		table.freeze({
-			colour = table.freeze({ 96, 125, 46 }),
-			height = 0.81,
-			widths = table.freeze({ 0.08, 0.13, 0.09 }),
-			bends = table.freeze({ 0, 0, 3 }),
-		}),
-		-- Short, yellow green, an S curve.
-		table.freeze({
-			colour = table.freeze({ 187, 196, 66 }),
-			height = 0.65,
-			widths = table.freeze({ 0.09, 0.11, 0.08 }),
-			bends = table.freeze({ -12, 16, -10 }),
-		}),
+	-- The grass is single blades (Wylie's drawing, 2026-11-27): one
+	-- narrow pointed shape, widest a quarter of the way up. Each blade is
+	-- one part, a stretched ellipsoid set `bladeSunk` of its length into
+	-- the ground so the visible part is widest near the bottom. Blades
+	-- stand `bladeSpacing` apart (up to `bladeSpread` off the grid), turned
+	-- any way, sized `sizeRange` times, in one of `bladeColours`. A
+	-- blade's length is `height` times its size; its width is
+	-- `bladeWidth` of its length.
+	bladeSpacing = 2.2,
+	bladeSpread = 0.9,
+	sizeRange = table.freeze({ 0.75, 1.1 }),
+	bladeWidth = 0.12,
+	bladeThickness = 0.12,
+	bladeSunk = 0.2,
+	bladeColours = table.freeze({
+		table.freeze({ 140, 198, 63 }), -- #8cc63f
+		table.freeze({ 93, 124, 44 }), -- #5d7c2c
+		table.freeze({ 187, 196, 65 }), -- #bbc441
 	}),
 	-- Each blade waves (on each player's own screen): leans up to
 	-- `waveDegrees` and back every `waveSeconds`, the wave moving across
 	-- the grass (`waveSpread` of a turn per stud). Only blades within
 	-- `waveDistance` of the camera move, `waveRate` times a second.
-	waveDegrees = 3,
-	waveSeconds = 3,
+	waveDegrees = 2,
+	waveSeconds = 4,
 	waveSpread = 0.03,
 	waveDistance = 90,
 	waveRate = 30,
