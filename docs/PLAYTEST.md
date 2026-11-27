@@ -281,6 +281,17 @@ From Wylie's drawing of 2026-11-27.
    lining up at its ends and middle.
 3. The flag says Build 13D.
 
+## 2u. New in build 13E: short cacti, level 4 in tunnels, brown ground
+
+1. Short (two arm) cacti stand 2 studs higher, so their arms aren't near
+   the ground. Barrel and tall cacti are unchanged.
+2. Grow to level 4 (or more) inside a tunnel or the cave: you are put out
+   at the nearest way out, on open ground. Try it in the cave, a tunnel
+   and the bottom left hill's tunnel.
+3. The Hills ground is brown rock a little darker than the sand (colour
+   `groundColour` in Config/Map; say if you want another shade).
+4. The flag says Build 13E.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

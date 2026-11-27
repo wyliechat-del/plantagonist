@@ -2348,6 +2348,8 @@ local function placeCactus(parent: Instance, x: number, z: number)
 			)
 		end
 		y += hills.barrelLift
+	elseif kind == "Short" then
+		y = surfaceY(x, z) + hills.shortCactusLift
 	else
 		y = surfaceY(x, z) - hills.cactusSink
 	end
@@ -2653,6 +2655,16 @@ function MapBuilder.spawnPosition(): Vector3
 	local x = (Util.random() * 2 - 1) * inner
 	local z = (Util.random() * 2 - 1) * inner
 	return Vector3.new(x, GROUND + 4, z)
+end
+
+-- Where a plant at `position` gets out of a tunnel or the cave (on the
+-- ground there), or nil when it isn't in one.
+function MapBuilder.tunnelExit(position: Vector3): Vector3?
+	local x, z = MapRules.tunnelExit(Map, HillsShape, position.X, position.Z)
+	if x == nil or z == nil then
+		return nil
+	end
+	return Vector3.new(x, MapBuilder.groundY(x, z), z)
 end
 
 function MapBuilder.raycastParams(): RaycastParams

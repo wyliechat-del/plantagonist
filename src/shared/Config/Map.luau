@@ -442,6 +442,14 @@ Map.Hills = table.freeze({
 	-- Terrain rock over a tunnel starts here (a multiple of 4, the terrain
 	-- cell size); parts fill between the arch and the rock.
 	tunnelRockBottom = 12,
+	-- A plant that grows past this level in a tunnel or the cave is put
+	-- out at the nearest way out: the search walks the tunnel in steps of
+	-- `tunnelExitStep` studs (up to `tunnelExitReach` away), then puts
+	-- the plant `tunnelExitMargin` studs further out onto open ground.
+	tunnelMaxLevel = 3,
+	tunnelExitStep = 2,
+	tunnelExitReach = 300,
+	tunnelExitMargin = 6,
 	-- The cave in the middle of the big tunnel: a taller arch.
 	caveWallHeight = 9,
 	caveClearance = 14,
@@ -452,8 +460,10 @@ Map.Hills = table.freeze({
 	-- Arch roofs are built in squares this size. Terrain cells are 4.
 	archStep = 2,
 	terrainCell = 4,
-	-- Terrain materials and colours: ground, then each rise.
-	groundColour = table.freeze({ 112, 112, 108 }),
+	-- Terrain materials and colours: ground, then each rise. The ground
+	-- is brown rock a little darker than the sand (was grey slate,
+	-- 112, 112, 108, until build 13E).
+	groundColour = table.freeze({ 186, 158, 118 }),
 	riseColours = table.freeze({
 		table.freeze({ 184, 150, 104 }),
 		table.freeze({ 140, 104, 70 }),
@@ -606,6 +616,9 @@ Map.Hills = table.freeze({
 	barrelTopColour = table.freeze({ 225, 215, 120 }),
 	spineColour = table.freeze({ 240, 230, 170 }),
 	shortCactusHeight = table.freeze({ 6, 8 }),
+	-- Short cacti stand this far above the measured ground instead of
+	-- being set in (they looked sunk, like the barrels; see barrelLift).
+	shortCactusLift = 2,
 	tallCactusHeight = table.freeze({ 11, 15 }),
 	cactusColour = table.freeze({ 70, 130, 70 }),
 	-- Miner's lanterns on the walls: in the cave, `caveLanternsPerWall` on

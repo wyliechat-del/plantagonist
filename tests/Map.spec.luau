@@ -376,6 +376,29 @@ return function(t)
 		t.expect(high - low > 4, "the width changes")
 	end)
 
+	t.test("a plant too big for the tunnels gets out at the nearest way out", function()
+		local cave = HillsShape.caveRooms[1]
+		local cx, cz = 0, 0
+		for _, corner in cave do
+			cx += corner[1] / #cave
+			cz += corner[2] / #cave
+		end
+		local ridge = HillsShape.ridge
+		for _, start in { { cx, cz }, { 150, -250 }, { ridge.x, ridge.z } } do
+			local x, z = MapRules.tunnelExit(Map, HillsShape, start[1], start[2])
+			t.expect(x ~= nil and z ~= nil, `a way out from {start[1]}, {start[2]}`)
+			if x and z then
+				t.expect(not MapRules.inTunnel(Map, HillsShape, x, z), "out of the tunnel")
+				t.expectEqual(MapRules.hillsHeight(Map, HillsShape, x, z), 0)
+			end
+		end
+		-- The bottom left hill's tunnel: out of one of its two ends.
+		local x, z = MapRules.tunnelExit(Map, HillsShape, ridge.x, ridge.z)
+		local _, along = MapRules.ridgeOffset(HillsShape, x :: number, z :: number)
+		t.expect(math.abs(along) > ridge.length / 2, "out of an end, not through the wall")
+		t.expectEqual(MapRules.tunnelExit(Map, HillsShape, 200, -300), nil)
+	end)
+
 	t.test("cave lanterns: two on each long wall, at the wall, facing in", function()
 		local grid = MapRules.hillsGrid(Map, HillsShape)
 		local spots = MapRules.caveLanternSpots(Map, HillsShape, grid)

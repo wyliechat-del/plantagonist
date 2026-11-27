@@ -331,6 +331,51 @@ function MapRules.inTunnel(map: any, hills: any, x: number, z: number): boolean
 	return onRidge and math.abs(across) <= map.Hills.ridgeTunnelWidth / 2
 end
 
+-- Where a plant at (x, z) in a tunnel or the cave gets out: walks the
+-- tunnel outward in a grid of `tunnelExitStep` squares to the nearest
+-- open ground (not tunnel, no rock or ramp, not river), then goes
+-- `tunnelExitMargin` further the same way if that is open too. Returns
+-- nil when (x, z) isn't in a tunnel or no way out is found.
+function MapRules.tunnelExit(map: any, hills: any, x: number, z: number): (number?, number?)
+	if not MapRules.inTunnel(map, hills, x, z) then
+		return nil, nil
+	end
+	local config = map.Hills
+	local step = config.tunnelExitStep
+	local limit = math.ceil(config.tunnelExitReach / step)
+	local function open(px: number, pz: number): boolean
+		return not MapRules.inTunnel(map, hills, px, pz)
+			and MapRules.hillsHeight(map, hills, px, pz) == 0
+			and not MapRules.inRiver(map, px, pz)
+	end
+	local seen = { ["0,0"] = true }
+	local queue = { { 0, 0 } }
+	local head = 1
+	while head <= #queue do
+		local i, j = queue[head][1], queue[head][2]
+		head += 1
+		for _, d in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+			local ni, nj = i + d[1], j + d[2]
+			local key = `{ni},{nj}`
+			if not seen[key] and math.abs(ni) <= limit and math.abs(nj) <= limit then
+				seen[key] = true
+				local px, pz = x + ni * step, z + nj * step
+				if open(px, pz) then
+					local fx = px + d[1] * config.tunnelExitMargin
+					local fz = pz + d[2] * config.tunnelExitMargin
+					if open(fx, fz) then
+						return fx, fz
+					end
+					return px, pz
+				elseif MapRules.inTunnel(map, hills, px, pz) then
+					table.insert(queue, { ni, nj })
+				end
+			end
+		end
+	end
+	return nil, nil
+end
+
 -- The terrain rock at a point on a rise: from `bottom` to `top` above the
 -- ground, and the rise. Over a tunnel or the cave the rock starts above
 -- the arched roof (bottom > 0), and may be empty when the roof parts reach
