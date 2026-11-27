@@ -1525,15 +1525,35 @@ local function hillsGround(terrain: Terrain, grid: { { { number } } })
 		local x, z = middle(i, j)
 		return if MapRules.inField(Map, x, z) then nil else Enum.Material.Slate
 	end, fillRun)
+	-- Is any point within `reach` of (x, z) in a tunnel or on the bottom
+	-- left hill? (Neither is in the rock grid, so check them by shape.)
+	local function nearTunnel(x: number, z: number, reach: number): boolean
+		local step = cell / 2
+		for dx = -reach, reach, step do
+			for dz = -reach, reach, step do
+				if dx * dx + dz * dz <= reach * reach then
+					local px, pz = x + dx, z + dz
+					if
+						MapRules.inTunnel(Map, HillsShape, px, pz)
+						or (MapRules.ridgeOffset(HillsShape, px, pz))
+					then
+						return true
+					end
+				end
+			end
+		end
+		return false
+	end
 	for _ = 1, hills.grassPatches do
 		local x, z = MapRules.randomPointIn(Map, "Hills", Util.random)
 		local radius = Util.roll(hills.patchMinRadius, hills.patchMaxRadius)
-		-- Only on open ground: not under or next to rock (so no grass in
-		-- the cave or tunnels).
+		-- Only on open ground: not under or next to rock, and clear of the
+		-- cave, the tunnels and the bottom left hill.
 		local clear = radius + cell
 		if
 			MapRules.distanceFromCentre(x, z) > Map.Field.radius + radius
 			and MapRules.distanceToCells(Map, grid, x, z, clear, hasRock, false) >= clear
+			and not nearTunnel(x, z, clear)
 		then
 			terrain:FillCylinder(
 				CFrame.new(x, GROUND - cell / 2, z),
@@ -2083,16 +2103,16 @@ local function ellipsoid(
 end
 
 -- A barrel cactus: a round ball of ribs with a pale top and pale spines.
--- It stands on `base`: the body's widest part is well above the ground,
--- and only its rounded bottom dips just under it.
+-- It stands on `base`, a nearly round ball like a golden barrel cactus,
+-- widest half way up.
 local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 	local hills = Map.Hills
 	local radius = Util.roll(hills.ballCactusSize[1], hills.ballCactusSize[2]) / 2
-	local middle = radius * 0.9
+	local middle = radius * 0.95
 	ellipsoid(
 		model,
 		"Body",
-		Vector3.new(radius * 1.9, radius * 2, radius * 1.9),
+		Vector3.new(radius * 1.9, radius * 1.9, radius * 1.9),
 		base * CFrame.new(0, middle, 0),
 		colour
 	)
@@ -2106,12 +2126,12 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		ellipsoid(
 			model,
 			"Rib",
-			Vector3.new(radius * 0.42, radius * 1.85, radius * 0.75),
+			Vector3.new(radius * 0.42, radius * 1.8, radius * 0.75),
 			CFrame.lookAt(ribCentre, ribCentre + outward),
 			if n % 2 == 0 then colour else colour:Lerp(Color3.new(0, 0, 0), 0.12)
 		)
 		for k = 1, hills.barrelSpinesPerRib do
-			local up = radius * (0.4 + 1.0 * (k - 0.5) / hills.barrelSpinesPerRib)
+			local up = radius * (0.45 + 1.0 * (k - 0.5) / hills.barrelSpinesPerRib)
 			local root = ribCentre + outward * radius * 0.33 + Vector3.new(0, up - middle, 0)
 			local length = radius * 0.45
 			local direction = (outward + Vector3.new(0, 0.5, 0)).Unit
@@ -2131,7 +2151,7 @@ local function barrelCactus(model: Model, base: CFrame, colour: Color3)
 		model,
 		"Top",
 		Vector3.new(radius * 1.1, radius * 0.35, radius * 1.1),
-		base * CFrame.new(0, radius * 1.85, 0),
+		base * CFrame.new(0, radius * 1.8, 0),
 		Util.colour(hills.barrelTopColour)
 	)
 end
@@ -2249,10 +2269,11 @@ local function placeCactus(parent: Instance, x: number, z: number)
 		end
 	end
 	-- Stand on the surface. Tall and short cacti are set in a little so
-	-- they look planted; barrel cacti sit on top.
+	-- they look planted; barrel cacti are lifted a little so the whole
+	-- ball shows above the ground.
 	cactusCount += 1
 	local kind = cactusKinds[(cactusCount - 1) % #cactusKinds + 1]
-	local y = surfaceY(x, z) - (if kind == "Ball" then hills.barrelSink else hills.cactusSink)
+	local y = surfaceY(x, z) - (if kind == "Ball" then -hills.barrelLift else hills.cactusSink)
 	cactusLowest, cactusHighest = math.min(cactusLowest, y), math.max(cactusHighest, y)
 	local base = CFrame.new(x, y, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
 	cactus(parent, kind, base)

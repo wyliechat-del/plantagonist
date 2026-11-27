@@ -221,6 +221,15 @@ cacti come next.
 2. Tall and short cacti are unchanged.
 3. The flag says Build 12C.
 
+## 2o. New in build 12D: tunnel grass and round barrels
+
+1. No grass in any tunnel, the cave or on the bottom left hill (grass
+   patches keep clear of all of them).
+2. Barrel cacti are nearly round balls, widest half way up, with the whole
+   ball above the ground. If they float, lower `barrelLift` in
+   Config/Map.
+3. The flag says Build 12D.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
