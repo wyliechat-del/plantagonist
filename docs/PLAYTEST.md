@@ -352,6 +352,14 @@ From Wylie's drawing of 2026-11-27.
    glow.
 4. The flag says Build 15A.
 
+## 2zc. New in build 15B: moon bridge towers
+
+1. Four short grey stone towers stand at the moon bridge's ends, one either
+   side of the deck at each end, on the bank outside the side walls.
+2. Each has a lit gas lamp (the path light's lantern) on a short iron post
+   on top, with no cap over it.
+3. The flag says Build 15B.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

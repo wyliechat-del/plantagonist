@@ -1478,8 +1478,17 @@ end
 
 -- One gaslight with its base at (x, z): a black iron post with a fluted
 -- base and a crossbar, and a glass lantern with a glowing flame inside.
-local function pathLight(parent: Instance, x: number, z: number)
+-- With `postHeight` it is a lamp for a pillar top instead: just a short
+-- iron post and the lantern, standing on height `floor`.
+local function pathLight(
+	parent: Instance,
+	x: number,
+	z: number,
+	floor: number?,
+	postHeight: number?
+)
 	local lights = Map.PathLights
+	local y0 = GROUND + (floor or 0)
 	local iron = Util.colour(lights.ironColour)
 	local model = Instance.new("Model")
 	model.Name = "PathLight"
@@ -1488,7 +1497,7 @@ local function pathLight(parent: Instance, x: number, z: number)
 		local part = Util.part({
 			Name = name,
 			Size = size,
-			CFrame = CFrame.new(x, GROUND + y, z),
+			CFrame = CFrame.new(x, y0 + y, z),
 			Color = iron,
 			Material = Enum.Material.Metal,
 			Parent = model,
@@ -1501,19 +1510,26 @@ local function pathLight(parent: Instance, x: number, z: number)
 	local function upright(name: string, diameter: number, height: number, y: number)
 		local part = piece(name, Vector3.new(height, diameter, diameter), y + height / 2)
 		part.Shape = Enum.PartType.Cylinder
-		part.CFrame = CFrame.new(x, GROUND + y + height / 2, z) * CFrame.Angles(0, 0, math.rad(90))
+		part.CFrame = CFrame.new(x, y0 + y + height / 2, z) * CFrame.Angles(0, 0, math.rad(90))
 		return part
 	end
 	local base, post = lights.baseDiameter, lights.postDiameter
-	upright("Foot", base * 1.15, 0.4, 0)
-	upright("Base", base, lights.baseHeight, 0.4)
-	upright("BaseRing", base * 1.1, 0.3, 0.4 + lights.baseHeight)
-	local postBottom = 0.7 + lights.baseHeight
-	upright("Post", post, lights.lanternBottom - postBottom, postBottom)
-	upright("Collar", post * 1.5, 0.3, lights.crossbarHeight - 0.8)
-	piece("Crossbar", Vector3.new(lights.crossbarLength, 0.2, 0.2), lights.crossbarHeight)
+	local bottom = lights.lanternBottom
+	if postHeight then
+		bottom = postHeight
+		upright("Post", post, bottom, 0)
+	else
+		upright("Foot", base * 1.15, 0.4, 0)
+		upright("Base", base, lights.baseHeight, 0.4)
+		upright("BaseRing", base * 1.1, 0.3, 0.4 + lights.baseHeight)
+		local postBottom = 0.7 + lights.baseHeight
+		upright("Post", post, bottom - postBottom, postBottom)
+		upright("Collar", post * 1.5, 0.3, lights.crossbarHeight - 0.8)
+		piece("Crossbar", Vector3.new(lights.crossbarLength, 0.2, 0.2), lights.crossbarHeight)
+	end
+	local top = bottom + lights.height - lights.lanternBottom
 	-- Lantern: a tray, glass sides with black corner posts, and a roof.
-	local size, tall, bottom = lights.lanternSize, lights.lanternHeight, lights.lanternBottom
+	local size, tall = lights.lanternSize, lights.lanternHeight
 	piece("LanternTray", Vector3.new(size * 0.8, 0.25, size * 0.8), bottom + 0.125)
 	piece("Glass", Vector3.new(size, tall, size), bottom + 0.25 + tall / 2, {
 		Color = Util.colour(lights.glassColour),
@@ -1525,7 +1541,7 @@ local function pathLight(parent: Instance, x: number, z: number)
 		local part = piece("LanternFrame", Vector3.new(0.12, tall, 0.12), bottom + 0.25 + tall / 2)
 		part.CFrame = CFrame.new(
 			x + corner[1] * size / 2,
-			GROUND + bottom + 0.25 + tall / 2,
+			y0 + bottom + 0.25 + tall / 2,
 			z + corner[2] * size / 2
 		)
 	end
@@ -1544,10 +1560,39 @@ local function pathLight(parent: Instance, x: number, z: number)
 	local roofY = bottom + 0.25 + tall
 	piece("Roof", Vector3.new(size * 1.3, 0.25, size * 1.3), roofY + 0.125)
 	piece("RoofTop", Vector3.new(size * 0.8, 0.35, size * 0.8), roofY + 0.425)
-	local finial = lights.height - (roofY + 0.6)
+	local finial = top - (roofY + 0.6)
 	upright("FinialStem", 0.2, finial * 0.6, roofY + 0.6)
-	local ball = piece("Finial", Vector3.new(0.4, 0.4, 0.4), lights.height - 0.2)
+	local ball = piece("Finial", Vector3.new(0.4, 0.4, 0.4), top - 0.2)
 	ball.Shape = Enum.PartType.Ball
+end
+
+-- Four short stone towers at the moon bridge's ends, one either side of
+-- the deck, each with a gas lamp on top (build 15B).
+local function buildBridgeTowers(parent: Instance)
+	local bridge = Map.MoonBridge
+	local towers = bridge.towers
+	local model = Instance.new("Model")
+	model.Name = "BridgeTowers"
+	model.Parent = parent
+	local riverX, riverZ, ax, az = riverAxes(bridge.x, bridge.z)
+	local along = bridge.span / 2 - towers.size / 2
+	local across = bridge.width / 2 + towers.size / 2
+	for _, endSide in { -1, 1 } do
+		for _, side in { -1, 1 } do
+			local x = bridge.x + ax * along * endSide + riverX * across * side
+			local z = bridge.z + az * along * endSide + riverZ * across * side
+			local middle = Vector3.new(x, GROUND + towers.height / 2, z)
+			Util.part({
+				Name = "BridgeTower",
+				Size = Vector3.new(towers.size, towers.height, towers.size),
+				CFrame = CFrame.lookAt(middle, middle + Vector3.new(ax, 0, az)),
+				Color = Util.colour(bridge.parapetColour),
+				Material = Enum.Material.Slate,
+				Parent = model,
+			})
+			pathLight(model, x, z, towers.height, towers.lampPost)
+		end
+	end
 end
 
 local function buildPathLights(parent: Instance)
@@ -1569,6 +1614,7 @@ local function buildRiverQuarter()
 	riverGround()
 	buildRiver(wet)
 	buildMoonBridge(wet)
+	buildBridgeTowers(wet)
 	buildRopeBridge(wet)
 	buildFord(wet)
 	buildLilyPads(wet)

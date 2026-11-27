@@ -167,6 +167,14 @@ Map.MoonBridge = table.freeze({
 	headroom = 0.5,
 	colour = table.freeze({ 150, 150, 140 }),
 	parapetColour = table.freeze({ 130, 130, 122 }),
+	-- Short square towers in the parapet stone on the banks beside each end
+	-- of the deck, with a gas lamp (Map.PathLights' lantern) on a short post
+	-- on top, no cap (build 15B).
+	towers = table.freeze({
+		size = 3,
+		height = 6,
+		lampPost = 2,
+	}),
 })
 
 -- Rope bridge from the marsh to the Hills. It sways a little (client side,
