@@ -411,6 +411,9 @@ local function updateHighlight()
 	highlight.OutlineColor = colour
 	highlight.FillColor = colour
 	highlight.Adornee = target
+	-- With no target a Highlight outlines its parent (Workspace), which lit
+	-- up the river's terrain water and the ford rocks. Turn it off instead.
+	highlight.Enabled = target ~= nil
 end
 
 -- After rooting, the camera circles the new tree until the player respawns.
@@ -442,6 +445,7 @@ function Controls.start()
 		Name = "AimTarget",
 		FillTransparency = 0.7,
 		DepthMode = Enum.HighlightDepthMode.Occluded,
+		Enabled = false,
 		-- Only this client sees it.
 		Parent = workspace,
 	})

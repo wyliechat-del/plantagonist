@@ -51,3 +51,6 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 - Imported MeshPart textures don't show a PNG's see-through pixels (a sign
   showed as a box). Images that need transparency (signs, stained glass roof)
   are swapped for Decals at runtime; see `asDecal` in MapBuilder.
+- A Highlight with no Adornee outlines its parent. The aim Highlight is
+  parented to Workspace, so with no target it outlined the terrain water and
+  ford rocks. Keep it disabled when there is no target.
