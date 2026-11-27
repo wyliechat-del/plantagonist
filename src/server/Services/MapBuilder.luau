@@ -1458,17 +1458,24 @@ local function hasRock(entry: { number }): boolean
 	return entry[2] > 0
 end
 
--- A ray onto the built Hills (terrain and rock parts), for setting things
--- on the real surface. Set up by buildHills once the rock is built.
+-- A ray onto the built Hills, for setting things on the real surface. It
+-- hits everything except the Hills decor (set by buildHills). An Include
+-- list with the terrain in it missed the terrain in Studio (build 11), so
+-- this leaves things out instead.
 local surfaceParams = RaycastParams.new()
-surfaceParams.FilterType = Enum.RaycastFilterType.Include
+surfaceParams.FilterType = Enum.RaycastFilterType.Exclude
 surfaceParams.IgnoreWater = true
+local surfaceMisses = 0
 
 -- Height of the surface at (x, z), from above.
 local function surfaceY(x: number, z: number): number
 	local result =
 		workspace:Raycast(Vector3.new(x, GROUND + 200, z), Vector3.new(0, -400, 0), surfaceParams)
-	return if result then result.Position.Y else GROUND
+	if result == nil then
+		surfaceMisses += 1
+		return GROUND
+	end
+	return result.Position.Y
 end
 
 -- Calls `fill(i0, i1, j, value)` for each run of cells in a row that share
@@ -1521,7 +1528,13 @@ local function hillsGround(terrain: Terrain, grid: { { { number } } })
 	for _ = 1, hills.grassPatches do
 		local x, z = MapRules.randomPointIn(Map, "Hills", Util.random)
 		local radius = Util.roll(hills.patchMinRadius, hills.patchMaxRadius)
-		if MapRules.distanceFromCentre(x, z) > Map.Field.radius + radius then
+		-- Only on open ground: not under or next to rock (so no grass in
+		-- the cave or tunnels).
+		local clear = radius + cell
+		if
+			MapRules.distanceFromCentre(x, z) > Map.Field.radius + radius
+			and MapRules.distanceToCells(Map, grid, x, z, clear, hasRock, false) >= clear
+		then
 			terrain:FillCylinder(
 				CFrame.new(x, GROUND - cell / 2, z),
 				cell,
@@ -2204,20 +2217,39 @@ end
 -- ground it gets a patch of sand round its foot.
 local cactusKinds = { "Ball", "Short", "Tall" }
 local cactusCount = 0
+local cactusLowest, cactusHighest = math.huge, -math.huge
 local function placeCactus(parent: Instance, x: number, z: number)
 	local hills = Map.Hills
-	local y = surfaceY(x, z)
-	if y <= GROUND + 0.5 then
+	local cell = hills.terrainCell
+	if not MapRules.ridgeOffset(HillsShape, x, z) then
+		-- Sand in whole terrain cells round the foot (a terrain cell only
+		-- changes material when a fill covers it fully).
 		local radius = Util.roll(hills.cactusSandMin, hills.cactusSandMax) / 2
-		workspace.Terrain:FillCylinder(
-			CFrame.new(x, GROUND - hills.terrainCell / 2, z),
-			hills.terrainCell,
-			radius,
-			Enum.Material.Sand
-		)
-		-- The sand can lift the surface a little; stand on it.
-		y = surfaceY(x, z)
+		local reach = radius + cell / 2
+		local i0, i1 = math.floor((x - reach) / cell), math.floor((x + reach) / cell)
+		local j0, j1 = math.floor((-z - reach) / cell), math.floor((-z + reach) / cell)
+		for i = i0, i1 do
+			for j = j0, j1 do
+				local cx, cz = (i + 0.5) * cell, -(j + 0.5) * cell
+				local _, top = MapRules.hillsRock(Map, HillsShape, cx, cz)
+				if
+					(cx - x) ^ 2 + (cz - z) ^ 2 <= reach * reach
+					and top == 0
+					and inHillsQuarter(cx, cz)
+					and MapRules.rampAt(Map, HillsShape, cx, cz) == nil
+				then
+					workspace.Terrain:FillBlock(
+						CFrame.new(cx, GROUND - cell / 2, cz),
+						Vector3.new(cell, cell, cell),
+						Enum.Material.Sand
+					)
+				end
+			end
+		end
 	end
+	-- Stand on the surface, set in a little so it looks planted.
+	local y = surfaceY(x, z) - hills.cactusSink
+	cactusLowest, cactusHighest = math.min(cactusLowest, y), math.max(cactusHighest, y)
 	cactusCount += 1
 	local base = CFrame.new(x, y, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
 	cactus(parent, cactusKinds[(cactusCount - 1) % #cactusKinds + 1], base)
@@ -2401,10 +2433,19 @@ local function buildHills()
 	hillsRidge(hills)
 	hillsCliffWall(hills)
 	-- Things set on the built surface.
-	surfaceParams.FilterDescendantsInstances = { terrain, hills }
+	surfaceParams.FilterDescendantsInstances = { decor }
 	hillsLanterns(decor)
 	hillsBoulders(hills, decor)
 	hillsCacti(decor)
+	print(
+		string.format(
+			"Hills: %d cacti, feet from %.1f to %.1f studs high; %d surface rays missed",
+			cactusCount,
+			cactusLowest,
+			cactusHighest,
+			surfaceMisses
+		)
+	)
 end
 
 local function buildForest()

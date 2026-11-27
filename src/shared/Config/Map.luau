@@ -513,6 +513,8 @@ Map.Hills = table.freeze({
 	-- Sand round the foot of each cactus on the ground (studs across).
 	cactusSandMin = 6,
 	cactusSandMax = 12,
+	-- How far a cactus's foot sits below the surface, so it looks planted.
+	cactusSink = 0.3,
 	-- Ball cacti are barrel cacti: a squat ribbed ball with a pale top.
 	ballCactusSize = table.freeze({ 3, 5 }),
 	barrelRibs = 12,

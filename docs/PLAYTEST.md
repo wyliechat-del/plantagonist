@@ -201,6 +201,18 @@ cacti come next.
    slowly (40% of normal creature speed) and can leave the tunnels onto
    the Hills ground and the First Rise.
 
+## 2m. New in build 12B: cave grass and cacti
+
+1. No grass patches in the cave or tunnels (grass patches only go on open
+   ground, clear of rock).
+2. Cacti stand on the slate, set in 0.3 studs. Output says
+   "Hills: 40 cacti, feet from ... to ... studs high; 0 surface rays
+   missed". Feet on the ground should read about 0 (or a bit under); if
+   rays missed is above 0, tell Claude.
+3. Each cactus on the ground has sand round its foot, 6 to 12 studs
+   across (in 4 stud terrain squares).
+4. The flag says Build 12B.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:
