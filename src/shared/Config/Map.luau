@@ -114,6 +114,8 @@ Map.River = table.freeze({
 	-- don't grow through the water or hide the tall grass (build 14D).
 	groundRiverMargin = 4,
 	groundHidingGrassMargin = 4,
+	-- And round the marsh, which keeps its mud (build 14E).
+	groundMarshMargin = 4,
 	-- Centre line, from the top edge to the left edge.
 	centreLine = points({
 		{ -21, -356 },
@@ -385,9 +387,11 @@ Map.LilyPads = table.freeze({
 	extraMinDistance = 7,
 	extraMaxDistance = 13,
 	layoutSeed = 7,
-	-- White water lilies (decoration only), one per guide position, sitting
-	-- on pads.
+	-- White water lilies (decoration only), one per guide position, growing
+	-- on the water beside its pad, not on it (build 14E). The flower's middle
+	-- sits this far out from the pad's edge (its petals reach 1.5).
 	lilyFlowers = 22,
+	flowerOffset = 1.6,
 	petalColour = table.freeze({ 250, 250, 245 }),
 	petalTipColour = table.freeze({ 245, 215, 225 }),
 	flowerCentreColour = table.freeze({ 250, 205, 60 }),

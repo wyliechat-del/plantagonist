@@ -153,7 +153,21 @@ return function(t)
 		local patch = Map.HidingGrass.circles[1]
 		local reach = patch.radius + river.groundHidingGrassMargin - 0.5
 		t.expect(MapRules.keepGrassGroundOff(Map, patch.x + reach, patch.z), "round a patch")
+		local corner = Map.Marsh.outline[1]
+		t.expect(MapRules.keepGrassGroundOff(Map, corner[1] - 2, corner[2]), "off the marsh edge")
 		t.expect(not MapRules.keepGrassGroundOff(Map, -400, -20), "grass elsewhere")
+	end)
+
+	t.test("water lilies grow beside their pads, not on them", function()
+		local layout = MapRules.lilyPadLayout(Map)
+		local pads = Map.LilyPads
+		local radius = pads.size / 2
+		for index = 1, pads.lilyFlowers do
+			local x, z = MapRules.lilyFlowerSpot(Map, layout, index, radius)
+			local pad = layout[index]
+			local away = math.sqrt((x - pad[1]) ^ 2 + (z - pad[2]) ^ 2)
+			t.expect(math.abs(away - radius - pads.flowerOffset) < 1e-6, "beside its own pad")
+		end
 	end)
 
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()

@@ -332,6 +332,14 @@ From Wylie's drawing of 2026-11-27.
    4 stud ring round them, so the terrain blades don't cover them.
 3. The flag says Build 14D.
 
+## 2za. New in build 14E: marsh without terrain grass, lilies beside pads
+
+1. The marsh shows only its mud and cattails: the terrain grass stops
+   4 studs outside the marsh edge.
+2. Each white water lily grows on the water just beside its pad, on the
+   side with the most room, not on top of the pad.
+3. The flag says Build 14E.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

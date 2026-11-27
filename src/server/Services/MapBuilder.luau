@@ -1340,9 +1340,11 @@ local function buildLilyPads(parent: Instance)
 		pad:SetAttribute("RaisedMaxLevel", 6)
 		pad.Parent = model
 
-		-- White water lilies on the first pads (the guide positions).
+		-- White water lilies by the first pads (the guide positions), on the
+		-- water beside the pad.
 		if index <= pads.lilyFlowers then
-			waterLily(model, centre * CFrame.new(0, pads.thickness / 2, 0))
+			local x, z = MapRules.lilyFlowerSpot(Map, layout, index, pads.size / 2 * scale)
+			waterLily(model, CFrame.new(x, GROUND + 0.2, z))
 		end
 	end
 	padShape:Destroy()

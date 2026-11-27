@@ -631,6 +631,15 @@ function MapRules.keepGrassGroundOff(map: any, x: number, z: number): boolean
 	if distance <= river.width / 2 + river.groundRiverMargin then
 		return true
 	end
+	if MapRules.inPolygon(map.Marsh.outline, x, z) then
+		return true
+	end
+	local outline = map.Marsh.outline
+	local closed = table.clone(outline)
+	table.insert(closed, outline[1])
+	if MapRules.closestOnLine(closed, x, z) <= river.groundMarshMargin then
+		return true
+	end
 	local reach = river.groundHidingGrassMargin
 	for _, circle in map.HidingGrass.circles do
 		if (x - circle.x) ^ 2 + (z - circle.z) ^ 2 <= (circle.radius + reach) ^ 2 then
@@ -638,6 +647,37 @@ function MapRules.keepGrassGroundOff(map: any, x: number, z: number): boolean
 		end
 	end
 	return false
+end
+
+-- Where the water lily for pad `index` of `layout` grows: beside the pad
+-- (radius `padRadius`), out of eight directions the one furthest from the
+-- other pads, keeping to the marsh where it can.
+function MapRules.lilyFlowerSpot(
+	map: any,
+	layout: { { number } },
+	index: number,
+	padRadius: number
+): (number, number)
+	local pads = map.LilyPads
+	local pad = layout[index]
+	local reach = padRadius + pads.flowerOffset
+	local bestX, bestZ, bestScore = pad[1] + reach, pad[2], -math.huge
+	for step = 0, 7 do
+		local angle = step * math.pi / 4
+		local x = pad[1] + math.cos(angle) * reach
+		local z = pad[2] + math.sin(angle) * reach
+		local clearance = math.huge
+		for other, spot in layout do
+			if other ~= index then
+				clearance = math.min(clearance, math.sqrt((spot[1] - x) ^ 2 + (spot[2] - z) ^ 2))
+			end
+		end
+		local score = clearance + (MapRules.inMarsh(map, x, z) and 1000 or 0)
+		if score > bestScore then
+			bestX, bestZ, bestScore = x, z, score
+		end
+	end
+	return bestX, bestZ
 end
 
 -- How far a grass blade at (x, z) leans at time `now` (radians): a
