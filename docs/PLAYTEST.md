@@ -256,6 +256,14 @@ From Wylie's drawing of 2026-11-27.
    patches are in the drawing. No boulders on the old slopes, no cacti.
 6. The flag says Build 13.
 
+## 2r. New in build 13B: boulder heights
+
+1. Rise Two boulders on terrain (the hill top, the ground round the
+   ramps) sit on the ground, lifted `boulderTerrainLift` (2 studs) like
+   the barrel cacti, instead of showing as thin slivers.
+2. No boulders in or at the edge of the river.
+3. The flag says Build 13B.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

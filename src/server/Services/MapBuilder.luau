@@ -1816,8 +1816,25 @@ end
 local function boulder(parent: Instance, x: number, z: number, maxSize: number)
 	local hills = Map.Hills
 	local size = Util.roll(hills.boulderMinSize, maxSize)
+	-- None in or at the edge of the river (they looked like they floated
+	-- on the water).
+	for _, offset in { { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+		if MapRules.inRiver(Map, x + offset[1] * size, z + offset[2] * size) then
+			return
+		end
+	end
 	local dimensions = Vector3.new(size, size * Util.roll(0.55, 0.9), size * Util.roll(0.7, 1.2))
-	local base = surfaceY(x, z)
+	-- On terrain, lifted by `boulderTerrainLift`: in Studio the terrain
+	-- shows higher than the ray finds it (as with the barrel cacti).
+	local hit =
+		workspace:Raycast(Vector3.new(x, GROUND + 200, z), Vector3.new(0, -400, 0), surfaceParams)
+	local base = GROUND
+	if hit then
+		base = hit.Position.Y
+		if hit.Instance:IsA("Terrain") then
+			base += hills.boulderTerrainLift
+		end
+	end
 	Util.part({
 		Name = "Boulder",
 		Size = dimensions,
