@@ -150,9 +150,9 @@ Map.MoonBridge = table.freeze({
 	parapetHeight = 2.5,
 	parapetThickness = 1,
 	passUnderMaxLevel = 4,
-	-- Studs to spare above a level 4 plant's nominal height (its head ball
-	-- sticks up past it), checked a little off the middle too.
-	headroom = 3,
+	-- Studs to spare above a level 4 plant (Plants.heightAtScale1 times
+	-- its scale), checked a little off the middle too.
+	headroom = 0.5,
 	colour = table.freeze({ 150, 150, 140 }),
 	parapetColour = table.freeze({ 130, 130, 122 }),
 })
@@ -420,20 +420,38 @@ Map.CreatureAreas = table.freeze({
 -- into `Config/HillsShape.luau` (scripts/map/trace_hills.py); heights and
 -- looks are here.
 Map.Hills = table.freeze({
-	-- Height of each rise's flat top above the ground. First and Second
-	-- are one jump each (Plants.jumpHeight 7.2); the Third blocks walking
-	-- and bat flight (Plants.flyHeight 18).
-	riseHeights = table.freeze({ 6, 12, 24 }),
-	-- Tunnels at ground level fit levels 1 to 3 (see `Config/Plants.luau`
-	-- for plant sizes). Clearance plus roof should be a multiple of 4,
-	-- the size of a terrain cell, so the rock above sits on the roof.
-	tunnelClearance = 7,
-	roofThickness = 1,
-	-- Rock over a tunnel is at least this high, even under the First Rise.
-	tunnelRockTop = 12,
-	-- The cave in the middle of the big tunnel is taller.
-	caveClearance = 11,
-	caveRockTop = 16,
+	-- Height of each rise's flat top above the ground. The First Rise is
+	-- higher than a jump (reach it by a ramp or flying) so tunnels fit
+	-- under it; the Second is one jump more; the Third blocks walking and
+	-- bat flight (Plants.flyHeight 18 above the Second Rise is under it).
+	riseHeights = table.freeze({ 12, 18, 30 }),
+	-- The rise right of centre is a tall pillar with its own heights.
+	pillar = table.freeze({
+		x = 264,
+		z = -238,
+		radius = 30,
+		heights = table.freeze({ 12, 24, 48 }),
+	}),
+	-- Tunnels at ground level fit levels 1 to 3, not 4 (plant heights:
+	-- Plants.heightAtScale1 times the level's scale). The roof is an arch:
+	-- `tunnelWallHeight` at the walls, `tunnelClearance` in the middle,
+	-- reached `tunnelArchReach` studs from a wall.
+	tunnelWallHeight = 7,
+	tunnelClearance = 10,
+	tunnelArchReach = 6,
+	-- Terrain rock over a tunnel starts here (a multiple of 4, the terrain
+	-- cell size); parts fill between the arch and the rock.
+	tunnelRockBottom = 12,
+	-- The cave in the middle of the big tunnel: a taller arch.
+	caveWallHeight = 9,
+	caveClearance = 14,
+	caveArchReach = 10,
+	caveRockBottom = 16,
+	-- Rock over the cave is at least this high.
+	caveRockTop = 20,
+	-- Arch roofs are built in squares this size. Terrain cells are 4.
+	archStep = 2,
+	terrainCell = 4,
 	-- Terrain materials and colours: ground, then each rise.
 	groundColour = table.freeze({ 112, 112, 108 }),
 	riseColours = table.freeze({
@@ -441,14 +459,16 @@ Map.Hills = table.freeze({
 		table.freeze({ 140, 104, 70 }),
 		table.freeze({ 100, 74, 54 }),
 	}),
-	roofColour = table.freeze({ 80, 74, 66 }),
-	-- Patches of sand and grass on the slate ground.
-	sandPatches = 14,
+	-- Patches of grass on the slate ground.
 	grassPatches = 14,
 	patchMinRadius = 8,
 	patchMaxRadius = 20,
 	sandColour = table.freeze({ 212, 188, 138 }),
 	grassColour = table.freeze({ 122, 150, 78 }),
+	-- Sand round the foot of each cliff on the ground; the width wanders
+	-- between these.
+	cliffSandMinWidth = 2,
+	cliffSandMaxWidth = 8,
 	-- Leaning rock slabs along the cliff edges of each rise, so the edges
 	-- aren't straight walls.
 	slabSpacing = 5,
@@ -459,24 +479,42 @@ Map.Hills = table.freeze({
 	slabMaxTiltDegrees = 12,
 	slabMaxTurnDegrees = 14,
 	slabColourVariation = 12,
+	-- Ramps up to the First Rise: longer than drawn by `rampExtend` (out
+	-- into the ground), in two slopes turned a little from each other with
+	-- a ledge between at `rampLedgeHeight`. `rampSplit` is where along the
+	-- ramp the ledge starts and ends (share of the length).
+	rampExtend = 18,
+	rampLedgeHeight = 5,
+	rampSplit = table.freeze({ 0.45, 0.56 }),
+	rampTurnDegrees = 6,
+	-- Second Rise boulders round each ramp.
+	rampBoulders = 16,
+	boulderMinSize = 2,
+	boulderMaxSize = 6,
 	-- The bottom left hill: a ramp up and down across it, with a tunnel
 	-- along it under a flat top.
-	ridgeHeight = 11,
+	ridgeHeight = 12,
 	ridgeFlatTop = 16,
 	ridgeTunnelWidth = 12,
 	-- Cacti (decor; you walk through them). If ServerStorage has a folder
 	-- `Cacti` holding models named Ball, Short and Tall, those are used.
 	cacti = 40,
 	cactusClearance = 6,
-	ballCactusSize = table.freeze({ 2.5, 4 }),
+	-- Ball cacti are barrel cacti: a squat ribbed ball with a pale top.
+	ballCactusSize = table.freeze({ 3, 5 }),
+	barrelRibs = 12,
+	barrelSpinesPerRib = 2,
+	barrelTopColour = table.freeze({ 225, 215, 120 }),
+	spineColour = table.freeze({ 240, 230, 170 }),
 	shortCactusHeight = table.freeze({ 6, 8 }),
 	tallCactusHeight = table.freeze({ 11, 15 }),
 	cactusColour = table.freeze({ 70, 130, 70 }),
-	cactusFlowerColour = table.freeze({ 240, 110, 150 }),
-	-- Miner's lanterns hanging from the roof of the cave and tunnels.
-	caveLanternSpacing = 14,
+	-- Miner's lanterns on the walls: `caveLanterns` round the cave, and
+	-- one every `tunnelLanternSpacing` studs in the tunnels.
+	caveLanterns = 6,
+	caveLanternHeight = 6,
 	tunnelLanternSpacing = 24,
-	lanternChain = 1.2,
+	tunnelLanternHeight = 5,
 	lanternSize = 1.4,
 	lanternColour = table.freeze({ 255, 190, 90 }),
 	lanternFrameColour = table.freeze({ 60, 50, 40 }),
@@ -506,7 +544,7 @@ Map.Forest = table.freeze({
 		table.freeze({ x = -260, z = 260, length = 50 }),
 		table.freeze({ x = -240, z = 110, length = 36 }),
 	}),
-	logClearance = 4.5,
+	logClearance = 7,
 })
 
 -- Grassland: tall grass to hide in, and cow fields.

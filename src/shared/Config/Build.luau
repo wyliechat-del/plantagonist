@@ -5,7 +5,7 @@
 
 local Build = {}
 
-Build.number = 9
+Build.number = 10
 Build.date = "2026-11-27"
 
 -- Flag size in studs, and how far from the spawn pad it stands (plain

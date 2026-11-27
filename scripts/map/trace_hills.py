@@ -40,6 +40,7 @@ LEVEL = {"ground": 0, "rise1": 1, "rise2": 2, "rise3": 3, "tunnel": 9, "ramp": 8
 HILL_POINT = (100, -100)
 # Its outline, measured from the picture: middle, length, width and the
 # direction of its length (the tunnel runs along it).
+HILL_MARGIN = 6
 HILL = {"x": 100.4, "z": -100.4, "length": 84, "width": 46, "dx": 0.625, "dz": 0.7806}
 
 
@@ -108,6 +109,19 @@ def main():
     hill_id = components[hy, hx]
     hill_mask = components == hill_id
     hill_area = cv2.dilate(hill_mask.astype(np.uint8), np.ones((15, 15), np.uint8)).astype(bool)
+    # Also everything within HILL_MARGIN studs of the hill's rectangle, so no
+    # thin slivers of rise are left along its sides.
+    rect = np.zeros_like(hill_mask, dtype=np.uint8)
+    half_l = HILL["length"] / 2 + HILL_MARGIN
+    half_w = HILL["width"] / 2 + HILL_MARGIN
+    corners = []
+    for sa, sc in ((1, 1), (1, -1), (-1, -1), (-1, 1)):
+        a, c = sa * half_l, sc * half_w
+        x = HILL["x"] + a * HILL["dx"] - c * HILL["dz"]
+        z = HILL["z"] + a * HILL["dz"] + c * HILL["dx"]
+        corners.append([int(round(x / scale)), int(round((z + SIZE) / scale))])
+    cv2.fillPoly(rect, [np.array(corners, dtype=np.int32)], 1)
+    hill_area |= rect.astype(bool)
     rises = {}
     report = []
     for level in (1, 2, 3):

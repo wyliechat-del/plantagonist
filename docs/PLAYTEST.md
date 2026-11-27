@@ -167,6 +167,24 @@ Walk out of the field to the top right (the Hills).
 8. **Spawns**: bats (the Hills creature with the Fly move) appear in the
    tunnels, chameleons on the First Rise. Others don't go into tunnels.
 
+## 2j. New in build 10: Hills fixes
+
+1. The slate stops at the edge of the safe field; the field is grass again.
+2. Ball cacti are barrel cacti: ribbed, with a pale top and spines.
+3. **Tunnels** have arched roofs, 10 high in the middle and 7 at the
+   walls. Level 3 walks through; level 4 (about 12 tall) can't get in.
+4. **Rises**: First 12 (a stud over the tunnel roofs; use a ramp or fly
+   up), Second 18 (one jump from the First), Third 30. The pillar right
+   of centre is 12, 24 and 48.
+5. **Cave**: arched, 14 high, with 6 lanterns on its walls. Tunnels have a
+   wall lantern every 24 studs.
+6. **Bottom left hill** is 12 high with the arched tunnel through it.
+7. **Sand** round the foot of every cliff on the ground, wider in places.
+   The loose sand patches are gone (grass patches stay).
+8. **Ramps** are longer (out into the ground) and in three pieces: a lower
+   slope, a ledge and an upper slope, turned a little from each other,
+   with Second Rise boulders along the sides.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

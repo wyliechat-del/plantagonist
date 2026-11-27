@@ -6,6 +6,11 @@
 
 local Plants = {}
 
+-- Height of a plant (ground to the top of its head) at scale 1, measured
+-- from the placeholder look in PlantModel. Times the level's scale gives
+-- each level's height: level 3 is about 8.1, level 4 about 11.8.
+Plants.heightAtScale1 = 7.4
+
 -- Character scale per level (index = level). Level 3 must fit tunnels
 -- (`Config/Map.luau` Hills.tunnelClearance) and level 2 must fit hollow logs.
 Plants.scaleByLevel = table.freeze({ 0.6, 0.8, 1.1, 1.6, 2.1, 2.6 })
