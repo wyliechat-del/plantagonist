@@ -6,8 +6,8 @@
 
 local Plants = {}
 
--- Character scale per level (index = level). Level 3 must fit caves
--- (`Config/Map.luau` Caves.clearance) and level 2 must fit hollow logs.
+-- Character scale per level (index = level). Level 3 must fit tunnels
+-- (`Config/Map.luau` Hills.tunnelClearance) and level 2 must fit hollow logs.
 Plants.scaleByLevel = table.freeze({ 0.6, 0.8, 1.1, 1.6, 2.1, 2.6 })
 
 -- Placeholder colours, { red, green, blue } from 0 to 255.

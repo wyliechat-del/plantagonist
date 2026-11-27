@@ -144,6 +144,29 @@ quarter (top left from above) and check:
 6. **Rope bridge** swings like a cradle from the post tops. Standing on it
    should feel smooth, with no camera shake.
 
+## 2i. New in build 9: the Hills quarter
+
+Walk out of the field to the top right (the Hills).
+
+1. **Ground** is grey slate terrain with patches of sand and grass, and
+   about 40 cacti (ball, short with two arms, tall with three). You walk
+   through cacti.
+2. **First Rise** (light brown) is one jump up (6). **Second Rise** (medium
+   brown) is one more jump (12). **Third Rise** (dark brown, 24) can't be
+   jumped onto, and bat flight can't get over it from the ground.
+3. Cliff edges have leaning rock slabs, so they look broken up, not
+   straight.
+4. **Two ramps** (light brown) lead from the ground up to the First Rise.
+5. **Tunnels** at ground level: levels 1 to 3 walk through, level 4 can't
+   get in. The big tunnel has a **cave** in the middle with miner's
+   lanterns on chains. Walking on the rock above the tunnels works.
+6. **Bottom left hill**: walk up one side, over the top and down the other;
+   a tunnel runs through it lengthways.
+7. **Cliff wall** of grey rock with grass on top runs along the top and
+   right edges, from the river to a tall pillar where the Grassland starts.
+8. **Spawns**: bats (the Hills creature with the Fly move) appear in the
+   tunnels, chameleons on the First Rise. Others don't go into tunnels.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

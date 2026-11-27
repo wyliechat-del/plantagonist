@@ -54,3 +54,6 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 - A Highlight with no Adornee outlines its parent. The aim Highlight is
   parented to Workspace, so with no target it outlined the terrain water and
   ford rocks. Keep it disabled when there is no target.
+- Terrain keeps the fuller of two fills in a cell, not the sum. Two fills
+  that each half fill a 4 stud cell (0 to 6, then 6 to 12) leave it half
+  empty, a hole in the rock. Fill every piece of a column from its bottom.

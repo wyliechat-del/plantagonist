@@ -404,29 +404,98 @@ Map.HidingGrass = table.freeze({
 	colour = table.freeze({ 170, 200, 90 }),
 })
 
--- Creature spawns in the River quarter: native creatures listed here spawn
--- (and wander) only in that area; every other creature keeps out of the
--- water and the marsh.
+-- Creature spawns: native creatures listed here spawn (and wander) only in
+-- that area; every other creature keeps out of the water, the marsh, the
+-- tunnels and the Third Rise.
 Map.CreatureAreas = table.freeze({
 	blowfish = "Water",
 	toad = "Marsh",
+	bat = "Tunnel",
+	-- The chameleon's id is `snake` (Config/PowerUps).
+	snake = "FirstRise",
 })
 
--- Caves in the Hills: tunnels through hills whose ceiling only lets
--- levels 1 to 3 through (see `Config/Plants.luau` for plant heights).
-Map.Caves = table.freeze({
-	clearance = 7,
-	width = 12,
-	-- Each cave: centre X, centre Z, length along X, hill height.
-	list = table.freeze({
-		table.freeze({ x = 200, z = -150, length = 90, hillHeight = 30 }),
-		table.freeze({ x = 260, z = -280, length = 70, hillHeight = 24 }),
+-- Hills quarter, from Wylie's Hills map. The outlines of the rises,
+-- tunnels, ramps and the bottom left hill are traced from the picture
+-- into `Config/HillsShape.luau` (scripts/map/trace_hills.py); heights and
+-- looks are here.
+Map.Hills = table.freeze({
+	-- Height of each rise's flat top above the ground. First and Second
+	-- are one jump each (Plants.jumpHeight 7.2); the Third blocks walking
+	-- and bat flight (Plants.flyHeight 18).
+	riseHeights = table.freeze({ 6, 12, 24 }),
+	-- Tunnels at ground level fit levels 1 to 3 (see `Config/Plants.luau`
+	-- for plant sizes). Clearance plus roof should be a multiple of 4,
+	-- the size of a terrain cell, so the rock above sits on the roof.
+	tunnelClearance = 7,
+	roofThickness = 1,
+	-- Rock over a tunnel is at least this high, even under the First Rise.
+	tunnelRockTop = 12,
+	-- The cave in the middle of the big tunnel is taller.
+	caveClearance = 11,
+	caveRockTop = 16,
+	-- Terrain materials and colours: ground, then each rise.
+	groundColour = table.freeze({ 112, 112, 108 }),
+	riseColours = table.freeze({
+		table.freeze({ 184, 150, 104 }),
+		table.freeze({ 140, 104, 70 }),
+		table.freeze({ 100, 74, 54 }),
 	}),
-	-- Plain hills with no tunnel: centre X, centre Z, size, height.
-	hills = table.freeze({
-		table.freeze({ x = 120, z = -260, size = 60, height = 18 }),
-		table.freeze({ x = 300, z = -110, size = 50, height = 14 }),
-	}),
+	roofColour = table.freeze({ 80, 74, 66 }),
+	-- Patches of sand and grass on the slate ground.
+	sandPatches = 14,
+	grassPatches = 14,
+	patchMinRadius = 8,
+	patchMaxRadius = 20,
+	sandColour = table.freeze({ 212, 188, 138 }),
+	grassColour = table.freeze({ 122, 150, 78 }),
+	-- Leaning rock slabs along the cliff edges of each rise, so the edges
+	-- aren't straight walls.
+	slabSpacing = 5,
+	slabMinWidth = 5,
+	slabMaxWidth = 8,
+	slabMinThickness = 2,
+	slabMaxThickness = 3.5,
+	slabMaxTiltDegrees = 12,
+	slabMaxTurnDegrees = 14,
+	slabColourVariation = 12,
+	-- The bottom left hill: a ramp up and down across it, with a tunnel
+	-- along it under a flat top.
+	ridgeHeight = 11,
+	ridgeFlatTop = 16,
+	ridgeTunnelWidth = 12,
+	-- Cacti (decor; you walk through them). If ServerStorage has a folder
+	-- `Cacti` holding models named Ball, Short and Tall, those are used.
+	cacti = 40,
+	cactusClearance = 6,
+	ballCactusSize = table.freeze({ 2.5, 4 }),
+	shortCactusHeight = table.freeze({ 6, 8 }),
+	tallCactusHeight = table.freeze({ 11, 15 }),
+	cactusColour = table.freeze({ 70, 130, 70 }),
+	cactusFlowerColour = table.freeze({ 240, 110, 150 }),
+	-- Miner's lanterns hanging from the roof of the cave and tunnels.
+	caveLanternSpacing = 14,
+	tunnelLanternSpacing = 24,
+	lanternChain = 1.2,
+	lanternSize = 1.4,
+	lanternColour = table.freeze({ 255, 190, 90 }),
+	lanternFrameColour = table.freeze({ 60, 50, 40 }),
+	lanternRange = 20,
+	lanternBrightness = 1.4,
+	-- Cliff wall round the top and right edges: the arena border here.
+	-- It starts at the river bank and ends in a tall pillar at the
+	-- Grassland.
+	cliffStartX = 2,
+	cliffMinHeight = 20,
+	cliffMaxHeight = 40,
+	cliffMinLength = 10,
+	cliffMaxLength = 18,
+	cliffThickness = 10,
+	cliffMaxTiltDegrees = 5,
+	cliffColour = table.freeze({ 128, 126, 120 }),
+	cliffGrassColour = table.freeze({ 110, 150, 70 }),
+	pillarHeight = 52,
+	pillarSize = 14,
 })
 
 -- Forest: trees and hollow logs that only levels 1 and 2 fit through.
@@ -451,5 +520,8 @@ Map.Grassland = table.freeze({
 
 -- Keep spawned things this far from the map edge and the field edge.
 Map.edgeMargin = 12
+-- Random points tried when looking for a spot in a creature's area (the
+-- tunnels are small, so this is generous).
+Map.areaPointTries = 400
 
 return table.freeze(Map)

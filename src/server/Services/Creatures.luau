@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CreaturesConfig = require(ReplicatedStorage.Shared.Config.Creatures)
+local HillsShape = require(ReplicatedStorage.Shared.Config.HillsShape)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
@@ -27,7 +28,7 @@ export type Creature = {
 	id: string, -- creature id from Config/PowerUps, or "fly"
 	part: BasePart,
 	territory: string, -- territory name, or "Field" for flies
-	area: string, -- "Water", "Marsh" or "Land": where it may go
+	area: string, -- from MapRules.creatureArea: where it may go
 	x: number,
 	z: number,
 	targetX: number,
@@ -127,6 +128,15 @@ local function randomFieldPoint(): (number, number)
 	return math.cos(angle) * distance, math.sin(angle) * distance
 end
 
+-- Ground under a creature. Tunnel creatures are under the rock, so the
+-- ray (which stops on top of the rock) would put them on the roof.
+local function groundFor(area: string, x: number, z: number): number
+	if area == "Tunnel" then
+		return Map.groundY
+	end
+	return MapBuilder.groundY(x, z)
+end
+
 local function spawnCreature(id: string, territory: string, native: boolean)
 	local x, z
 	local area = MapRules.creatureArea(Map, id, native)
@@ -137,7 +147,7 @@ local function spawnCreature(id: string, territory: string, native: boolean)
 		colour = Color3.fromRGB(30, 30, 30)
 		label = "Fly"
 	else
-		x, z = MapRules.randomPointInArea(Map, territory, area, Util.random)
+		x, z = MapRules.randomPointInArea(Map, territory, area, Util.random, HillsShape)
 		local info = PowerUpsConfig.creatures[id]
 		size = CreaturesConfig.bodySize[info.size]
 		colour = Util.colour(PowerUpsConfig.families[info.family].colour)
@@ -147,7 +157,7 @@ local function spawnCreature(id: string, territory: string, native: boolean)
 		Name = id,
 		Shape = if id == "fly" then Enum.PartType.Ball else Enum.PartType.Block,
 		Size = Vector3.one * size,
-		Position = Vector3.new(x, MapBuilder.groundY(x, z) + size / 2, z),
+		Position = Vector3.new(x, groundFor(area, x, z) + size / 2, z),
 		Color = colour,
 		CanCollide = false,
 		CanTouch = false,
@@ -199,9 +209,12 @@ end
 local function newTarget(creature: Creature)
 	local tx, tz =
 		Steering.wanderTarget(creature.x, creature.z, CreaturesConfig.wanderRadius, Util.random)
-	-- Prefer a spot in the creature's own area (river, marsh or land).
+	-- Prefer a spot in the creature's own area (river, marsh, tunnel...).
 	for _ = 1, CreaturesConfig.areaTargetTries do
-		if creature.territory == "Field" or MapRules.areaAt(Map, tx, tz) == creature.area then
+		if
+			creature.territory == "Field"
+			or MapRules.creatureAllowed(creature.area, MapRules.areaAt(Map, tx, tz, HillsShape))
+		then
 			break
 		end
 		tx, tz =
@@ -230,7 +243,7 @@ local function moveTick(dt: number)
 	for _, creature in creatures do
 		local isFly = creature.id == "fly"
 		local oldX, oldZ = creature.x, creature.z
-		local oldGround = MapBuilder.groundY(oldX, oldZ)
+		local oldGround = groundFor(creature.area, oldX, oldZ)
 		if not isFly and now >= creature.dodgeUntil and now >= creature.dodgeReadyAt then
 			-- Dodge only at the last moment, then carry on.
 			local nearest, nearestDistance = nil, CreaturesConfig.dodgeDistance
@@ -267,13 +280,20 @@ local function moveTick(dt: number)
 				newTarget(creature)
 			end
 		end
-		if not isFly and MapRules.areaAt(Map, nx, nz) ~= creature.area then
-			-- Blowfish stay in the river, toads in the marsh, the rest on land.
+		if
+			not isFly
+			and not MapRules.creatureAllowed(
+				creature.area,
+				MapRules.areaAt(Map, nx, nz, HillsShape)
+			)
+		then
+			-- Blowfish stay in the river, toads in the marsh, bats in the
+			-- tunnels, chameleons on the First Rise, the rest on land.
 			nx, nz = oldX, oldZ
 			creature.dodgeUntil = 0
 			newTarget(creature)
 		end
-		local ground = MapBuilder.groundY(nx, nz)
+		local ground = groundFor(creature.area, nx, nz)
 		if not isFly and ground - oldGround > CreaturesConfig.maxClimb then
 			-- Too steep (a hill or wall): stay put and head somewhere else.
 			nx, nz, ground = oldX, oldZ, oldGround

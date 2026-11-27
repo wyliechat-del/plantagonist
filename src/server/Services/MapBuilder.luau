@@ -1,9 +1,10 @@
 --[[
 	Builds the blockout map from Config/Map when the server starts: ground for
 	each territory, the conservatory and safe field, the River quarter (river,
-	bridges, ford, marsh, lily pads, path, gate, hiding grass), caves,
-	forest and grassland. Everything is plain parts in Workspace.Map, so custom
-	art can replace it later.
+	bridges, ford, marsh, lily pads, path, gate, hiding grass), the Hills
+	(rises, ramps, tunnels, cave, cliffs, cacti), forest and grassland.
+	Mostly plain parts in Workspace.Map, so custom art can replace them later;
+	the river water and the Hills ground and rock are terrain.
 
 	Parts with a `RaisedMaxLevel` attribute (bridges, ford rocks, lily pads)
 	cancel water and mud slowdown for plants up to that level. Lily pads also
@@ -14,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Build = require(ReplicatedStorage.Shared.Config.Build)
+local HillsShape = require(ReplicatedStorage.Shared.Config.HillsShape)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
 
@@ -56,6 +58,10 @@ local function buildGround()
 	ground.Parent = folder
 	local half = Map.halfSize
 	for name, territory in Map.territories do
+		-- The Hills ground is slate terrain (see buildHills).
+		if name == "Hills" then
+			continue
+		end
 		Util.part({
 			Name = name,
 			Size = Vector3.new(half, 4, half),
@@ -1428,58 +1434,640 @@ local function buildRiverQuarter()
 	buildHidingGrass(decor)
 end
 
+-- Hills quarter ------------------------------------------------------------
+-- Terrain for the slate ground and the rock of the rises, from the traced
+-- outlines in Config/HillsShape; parts for the leaning cliff slabs, ramps,
+-- tunnel roofs, the bottom left hill and the edge cliff wall.
+
+local TERRAIN_CELL = 4
+local RISE_MATERIALS = { Enum.Material.Sandstone, Enum.Material.Rock, Enum.Material.Basalt }
+
+local function variedColour(rgb: { number }, amount: number): Color3
+	local shift = (Util.random() * 2 - 1) * amount
+	return Color3.fromRGB(
+		math.clamp(rgb[1] + shift, 0, 255),
+		math.clamp(rgb[2] + shift, 0, 255),
+		math.clamp(rgb[3] + shift, 0, 255)
+	)
+end
+
+local function inHillsQuarter(x: number, z: number): boolean
+	local limit = Map.halfSize - 1
+	return x > 1 and x < limit and z < -1 and z > -limit
+end
+
+-- Slate ground, with patches of sand and grass.
+local function hillsGround(terrain: Terrain)
+	local hills = Map.Hills
+	terrain:SetMaterialColor(Enum.Material.Slate, Util.colour(hills.groundColour))
+	terrain:SetMaterialColor(Enum.Material.Sand, Util.colour(hills.sandColour))
+	terrain:SetMaterialColor(Enum.Material.Grass, Util.colour(hills.grassColour))
+	local size = math.ceil(Map.halfSize / TERRAIN_CELL) * TERRAIN_CELL
+	terrain:FillBlock(
+		CFrame.new(size / 2, GROUND - TERRAIN_CELL / 2, -size / 2),
+		Vector3.new(size, TERRAIN_CELL, size),
+		Enum.Material.Slate
+	)
+	for _, patch in
+		{
+			{ count = hills.sandPatches, material = Enum.Material.Sand },
+			{ count = hills.grassPatches, material = Enum.Material.Grass },
+		}
+	do
+		for _ = 1, patch.count do
+			local x, z = MapRules.randomPointIn(Map, "Hills", Util.random)
+			terrain:FillCylinder(
+				CFrame.new(x, GROUND - TERRAIN_CELL / 2, z),
+				TERRAIN_CELL,
+				Util.roll(hills.patchMinRadius, hills.patchMaxRadius),
+				patch.material
+			)
+		end
+	end
+end
+
+-- The rock of the rises, filled in 4 stud columns (merged into rectangles
+-- of the same shape), with a roof part under the rock over each tunnel.
+local function hillsRock(terrain: Terrain, parent: Instance)
+	local hills = Map.Hills
+	for layer, material in RISE_MATERIALS do
+		terrain:SetMaterialColor(material, Util.colour(hills.riseColours[layer]))
+	end
+	local cells = math.ceil(Map.halfSize / TERRAIN_CELL)
+	type Rect = {
+		i0: number,
+		i1: number,
+		j0: number,
+		j1: number,
+		bottom: number,
+		top: number,
+		layer: number,
+	}
+	local finished: { Rect } = {}
+	local open: { [string]: Rect } = {}
+	for j = 1, cells do
+		local z = -(j - 0.5) * TERRAIN_CELL
+		local row: { [string]: Rect } = {}
+		local runKey, run = nil, nil
+		for i = 1, cells + 1 do
+			local key = nil
+			local bottom, top, layer = 0, 0, 0
+			if i <= cells then
+				bottom, top, layer =
+					MapRules.hillsRock(Map, HillsShape, (i - 0.5) * TERRAIN_CELL, z)
+				if top > bottom then
+					key = `{bottom}:{top}:{layer}`
+				end
+			end
+			if key ~= runKey then
+				if run then
+					row[`{run.i0}:{run.i1}:{runKey}`] = run
+				end
+				run = if key
+					then {
+						i0 = i,
+						i1 = i,
+						j0 = j,
+						j1 = j,
+						bottom = bottom,
+						top = top,
+						layer = layer,
+					}
+					else nil
+				runKey = key
+			elseif run then
+				run.i1 = i
+			end
+		end
+		-- Grow last row's rectangles that carry on into this row.
+		local nextOpen = {}
+		for key, rect in row do
+			local above = open[key]
+			if above then
+				above.j1 = j
+				nextOpen[key] = above
+				open[key] = nil
+			else
+				nextOpen[key] = rect
+			end
+		end
+		for _, rect in open do
+			table.insert(finished, rect)
+		end
+		open = nextOpen
+	end
+	for _, rect in open do
+		table.insert(finished, rect)
+	end
+	local roofColour = Util.colour(hills.roofColour)
+	for _, rect in finished do
+		local x0, x1 = (rect.i0 - 1) * TERRAIN_CELL, rect.i1 * TERRAIN_CELL
+		local z0, z1 = -(rect.j1 * TERRAIN_CELL), -((rect.j0 - 1) * TERRAIN_CELL)
+		local function fill(from: number, to: number, material: Enum.Material)
+			terrain:FillBlock(
+				CFrame.new((x0 + x1) / 2, GROUND + (from + to) / 2, (z0 + z1) / 2),
+				Vector3.new(x1 - x0, to - from, z1 - z0),
+				material
+			)
+		end
+		-- The whole column in the top rise's rock, then the lower rises'
+		-- rock over it, so cliff faces show the layers. Each fill runs
+		-- from the bottom, as terrain keeps the fuller of two fills.
+		fill(rect.bottom, rect.top, RISE_MATERIALS[rect.layer])
+		for layer = rect.layer - 1, 1, -1 do
+			local height = hills.riseHeights[layer]
+			if height > rect.bottom then
+				fill(rect.bottom, height, RISE_MATERIALS[layer])
+			end
+		end
+		if rect.bottom > 0 then
+			Util.part({
+				Name = "TunnelRoof",
+				Size = Vector3.new(x1 - x0, hills.roofThickness, z1 - z0),
+				Position = Vector3.new(
+					(x0 + x1) / 2,
+					GROUND + rect.bottom - hills.roofThickness / 2,
+					(z0 + z1) / 2
+				),
+				Color = roofColour,
+				Material = Enum.Material.Slate,
+				Parent = parent,
+			})
+		end
+	end
+end
+
+-- Leaning rock slabs along the cliff edges of each rise. None in front of
+-- tunnels, ramps or the bottom left hill, or along the map edge.
+local function hillsSlabs(parent: Instance)
+	local hills = Map.Hills
+	local function blocked(x: number, z: number): boolean
+		return not inHillsQuarter(x, z)
+			or MapRules.inTunnel(Map, HillsShape, x, z)
+			or MapRules.rampAt(HillsShape, x, z) ~= nil
+			or (MapRules.ridgeOffset(HillsShape, x, z))
+	end
+	for layer, outlines in HillsShape.rises do
+		local base = if layer > 1 then hills.riseHeights[layer - 1] else 0
+		local top = hills.riseHeights[layer]
+		for _, outline in outlines do
+			for k = 1, #outline do
+				local a, b = outline[k], outline[k % #outline + 1]
+				local ex, ez = b[1] - a[1], b[2] - a[2]
+				local length = math.sqrt(ex * ex + ez * ez)
+				local count = math.floor(length / hills.slabSpacing)
+				if count > 0 then
+					ex, ez = ex / length, ez / length
+					for n = 0, count - 1 do
+						local share = (n + 0.5) / count
+						local x, z = a[1] + ex * length * share, a[2] + ez * length * share
+						-- Outward is the side that isn't this rise.
+						local ox, oz = -ez, ex
+						if MapRules.inPolygon(outline, x + ox * 2, z + oz * 2) then
+							ox, oz = -ox, -oz
+						end
+						local width = Util.roll(hills.slabMinWidth, hills.slabMaxWidth)
+						local thickness = Util.roll(hills.slabMinThickness, hills.slabMaxThickness)
+						local half = width / 2
+						if
+							not blocked(x, z)
+							and not blocked(x + ex * half, z + ez * half)
+							and not blocked(x - ex * half, z - ez * half)
+							and not blocked(x + ox * 4, z + oz * 4)
+						then
+							local slabTop = top - Util.roll(0.2, 1)
+							local bottom = base - 1
+							local height = slabTop - bottom
+							local centre = Vector3.new(
+								x + ox * thickness * 0.25,
+								GROUND + bottom + height / 2,
+								z + oz * thickness * 0.25
+							)
+							local frame = CFrame.lookAt(centre, centre + Vector3.new(ox, 0, oz))
+								* CFrame.Angles(
+									0,
+									math.rad(Util.roll(-1, 1) * hills.slabMaxTurnDegrees),
+									0
+								)
+								* CFrame.Angles(
+									math.rad(Util.roll(-1, 1) * hills.slabMaxTiltDegrees),
+									0,
+									0
+								)
+							Util.part({
+								Name = "CliffSlab",
+								Size = Vector3.new(width, height, thickness),
+								CFrame = frame,
+								Color = variedColour(
+									hills.riseColours[layer],
+									hills.slabColourVariation
+								),
+								Material = Enum.Material.Slate,
+								Parent = parent,
+							})
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Ramps up to the First Rise: like a fallen piece of the rock, in its
+-- colours. A flat landing past the high end covers the gap to the rise.
+local function hillsRamps(parent: Instance)
+	local hills = Map.Hills
+	local rise = hills.riseHeights[1]
+	local colour = Util.colour(hills.riseColours[1])
+	for _, ramp in HillsShape.ramps do
+		local high1 = Vector3.new(ramp.high[1][1], 0, ramp.high[1][2])
+		local high2 = Vector3.new(ramp.high[2][1], 0, ramp.high[2][2])
+		local low1 = Vector3.new(ramp.low[1][1], 0, ramp.low[1][2])
+		local low2 = Vector3.new(ramp.low[2][1], 0, ramp.low[2][2])
+		local highMid, lowMid = (high1 + high2) / 2, (low1 + low2) / 2
+		local width = (high2 - high1).Magnitude
+		local length = (highMid - lowMid).Magnitude
+		local down = (lowMid - highMid).Unit
+		local middle = (highMid + lowMid) / 2 + Vector3.new(0, GROUND + rise / 2, 0)
+		local wedge = Instance.new("WedgePart")
+		wedge.Name = "Ramp"
+		wedge.Anchored = true
+		wedge.Size = Vector3.new(width, rise, length)
+		-- A wedge is high at its back and low at its front.
+		wedge.CFrame = CFrame.lookAt(middle, middle + down)
+		wedge.Color = colour
+		wedge.Material = Enum.Material.Sandstone
+		wedge.Parent = parent
+		local landing = middle - down * (length / 2 + TERRAIN_CELL / 2)
+		Util.part({
+			Name = "RampTop",
+			Size = Vector3.new(width, rise, TERRAIN_CELL),
+			CFrame = CFrame.lookAt(landing, landing + down),
+			Color = colour,
+			Material = Enum.Material.Sandstone,
+			Parent = parent,
+		})
+	end
+end
+
+-- The bottom left hill: slopes up both sides to a flat top, with a tunnel
+-- along it under the top.
+local function hillsRidge(parent: Instance)
+	local hills = Map.Hills
+	local ridge = HillsShape.ridge
+	local colour = Util.colour(hills.riseColours[1])
+	local centre = Vector3.new(ridge.x, GROUND, ridge.z)
+	local along = Vector3.new(ridge.dx, 0, ridge.dz)
+	-- Local X runs across the hill, Z along it.
+	local frame = CFrame.lookAt(centre, centre + along)
+	local height, clearance = hills.ridgeHeight, hills.tunnelClearance
+	local flat, tunnel = hills.ridgeFlatTop, hills.ridgeTunnelWidth
+	local function block(name: string, size: Vector3, offset: Vector3)
+		Util.part({
+			Name = name,
+			Size = size,
+			CFrame = frame * CFrame.new(offset),
+			Color = colour,
+			Material = Enum.Material.Sandstone,
+			Parent = parent,
+		})
+	end
+	block(
+		"HillTop",
+		Vector3.new(flat, height - clearance, ridge.length),
+		Vector3.new(0, clearance + (height - clearance) / 2, 0)
+	)
+	local wall = (flat - tunnel) / 2
+	local run = ridge.width / 2 - flat / 2
+	for _, side in { -1, 1 } do
+		block(
+			"TunnelWall",
+			Vector3.new(wall, clearance, ridge.length),
+			Vector3.new(side * (tunnel / 2 + wall / 2), clearance / 2, 0)
+		)
+		local slopeCentre = (frame * CFrame.new(side * (flat / 2 + run / 2), height / 2, 0)).Position
+		local outward = frame.RightVector * side
+		local slope = Instance.new("WedgePart")
+		slope.Name = "HillSlope"
+		slope.Anchored = true
+		slope.Size = Vector3.new(ridge.length, height, run)
+		slope.CFrame = CFrame.lookAt(slopeCentre, slopeCentre + outward)
+		slope.Color = colour
+		slope.Material = Enum.Material.Sandstone
+		slope.Parent = parent
+	end
+end
+
+-- A miner's lantern hanging from a roof at `roofY` (world height).
+local function lantern(parent: Instance, x: number, z: number, roofY: number, chain: number)
+	local hills = Map.Hills
+	local size = hills.lanternSize
+	local frameColour = Util.colour(hills.lanternFrameColour)
+	local model = Instance.new("Model")
+	model.Name = "Lantern"
+	model.Parent = parent
+	local function piece(
+		name: string,
+		sizeOf: Vector3,
+		y: number,
+		colour: Color3,
+		material: Enum.Material
+	)
+		return Util.part({
+			Name = name,
+			Size = sizeOf,
+			Position = Vector3.new(x, y, z),
+			Color = colour,
+			Material = material,
+			CanCollide = false,
+			CanQuery = false,
+			CastShadow = false,
+			Parent = model,
+		})
+	end
+	if chain > 0 then
+		piece(
+			"Chain",
+			Vector3.new(0.15, chain, 0.15),
+			roofY - chain / 2,
+			frameColour,
+			Enum.Material.Metal
+		)
+	end
+	local top = roofY - chain
+	piece("Cap", Vector3.new(size, 0.25, size), top - 0.125, frameColour, Enum.Material.Metal)
+	local glass = piece(
+		"Glass",
+		Vector3.new(size * 0.7, size, size * 0.7),
+		top - 0.25 - size / 2,
+		Util.colour(hills.lanternColour),
+		Enum.Material.Neon
+	)
+	piece("Base", Vector3.new(size, 0.2, size), top - 0.35 - size, frameColour, Enum.Material.Metal)
+	local light = Instance.new("PointLight")
+	light.Color = Util.colour(hills.lanternColour)
+	light.Range = hills.lanternRange
+	light.Brightness = hills.lanternBrightness
+	light.Shadows = true
+	light.Parent = glass
+end
+
+local function hillsLanterns(parent: Instance)
+	local hills = Map.Hills
+	local function grid(spacing: number, place: (x: number, z: number) -> ())
+		local x = spacing / 2
+		while x < Map.halfSize do
+			local z = -spacing / 2
+			while z > -Map.halfSize do
+				place(x, z)
+				z -= spacing
+			end
+			x += spacing
+		end
+	end
+	-- The cave: on chains from its tall roof.
+	grid(hills.caveLanternSpacing, function(x, z)
+		if MapRules.inCave(HillsShape, x, z) then
+			lantern(parent, x, z, GROUND + hills.caveClearance, hills.lanternChain)
+		end
+	end)
+	-- Tunnels under rock: flat to the low roof.
+	grid(hills.tunnelLanternSpacing, function(x, z)
+		local bottom = MapRules.hillsRock(Map, HillsShape, x, z)
+		if bottom > 0 and not MapRules.inCave(HillsShape, x, z) then
+			lantern(parent, x, z, GROUND + hills.tunnelClearance, 0)
+		end
+	end)
+	-- Along the tunnel through the bottom left hill.
+	local ridge = HillsShape.ridge
+	local along = -ridge.length / 2 + hills.tunnelLanternSpacing / 2
+	while along < ridge.length / 2 do
+		lantern(
+			parent,
+			ridge.x + ridge.dx * along,
+			ridge.z + ridge.dz * along,
+			GROUND + hills.tunnelClearance,
+			0
+		)
+		along += hills.tunnelLanternSpacing
+	end
+end
+
+-- A cylinder between two points (for cactus arms).
+local function cylinderBetween(
+	parent: Instance,
+	a: Vector3,
+	b: Vector3,
+	diameter: number,
+	colour: Color3
+)
+	local up = math.abs((b - a).Unit.Y) > 0.99
+	Util.part({
+		Name = "Stem",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new((b - a).Magnitude, diameter, diameter),
+		CFrame = if up
+			then CFrame.new((a + b) / 2) * CFrame.Angles(0, 0, math.rad(90))
+			else CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.rad(90), 0),
+		Color = colour,
+		Material = Enum.Material.Grass,
+		CanCollide = false,
+		CanQuery = false,
+		Parent = parent,
+	})
+	Util.part({
+		Name = "Tip",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(diameter, diameter, diameter),
+		Position = b,
+		Color = colour,
+		Material = Enum.Material.Grass,
+		CanCollide = false,
+		CanQuery = false,
+		Parent = parent,
+	})
+end
+
+-- One cactus: "Ball", "Short" (two arms) or "Tall" (three arms).
+local function cactus(parent: Instance, kind: string, base: CFrame)
+	local hills = Map.Hills
+	local custom = ServerStorage:FindFirstChild("Cacti")
+	local template = custom and custom:FindFirstChild(kind)
+	if template and template:IsA("Model") then
+		local copy = template:Clone()
+		copy:PivotTo(base)
+		copy.Parent = parent
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = `Cactus{kind}`
+	model.Parent = parent
+	local colour = variedColour(hills.cactusColour, 10)
+	local function at(x: number, y: number, z: number): Vector3
+		return (base * CFrame.new(x, y, z)).Position
+	end
+	if kind == "Ball" then
+		local size = Util.roll(hills.ballCactusSize[1], hills.ballCactusSize[2])
+		Util.part({
+			Name = "Ball",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(size, size, size),
+			Position = at(0, size * 0.35, 0),
+			Color = colour,
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+			CanQuery = false,
+			Parent = model,
+		})
+		Util.part({
+			Name = "Flower",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(0.8, 0.5, 0.8),
+			Position = at(0, size * 0.85, 0),
+			Color = Util.colour(hills.cactusFlowerColour),
+			CanCollide = false,
+			CanQuery = false,
+			Parent = model,
+		})
+		return
+	end
+	local range = if kind == "Tall" then hills.tallCactusHeight else hills.shortCactusHeight
+	local height = Util.roll(range[1], range[2])
+	local trunk = if kind == "Tall" then 1.9 else 1.5
+	cylinderBetween(model, at(0, 0, 0), at(0, height, 0), trunk, colour)
+	-- Each arm: sideways out from the trunk, then up. Side angle, height
+	-- up the trunk, and how far up it reaches.
+	local arms = if kind == "Tall"
+		then { { 0, 0.4, 0.3 }, { 180, 0.55, 0.25 }, { 90, 0.7, 0.2 } }
+		else { { 0, 0.4, 0.3 }, { 180, 0.5, 0.25 } }
+	local armSize = trunk * 0.7
+	for _, arm in arms do
+		local turn = math.rad(arm[1])
+		local dx, dz = math.cos(turn), math.sin(turn)
+		local out = trunk * 1.1
+		local y = height * arm[2]
+		local elbow = at(dx * out, y, dz * out)
+		cylinderBetween(model, at(dx * trunk * 0.3, y, dz * trunk * 0.3), elbow, armSize, colour)
+		cylinderBetween(model, elbow, at(dx * out, y + height * arm[3], dz * out), armSize, colour)
+	end
+end
+
+local function hillsCacti(parent: Instance)
+	local hills = Map.Hills
+	local clear = hills.cactusClearance
+	local kinds = { "Ball", "Short", "Tall" }
+	local placed, tries = 0, 0
+	while placed < hills.cacti and tries < hills.cacti * 20 do
+		tries += 1
+		local x, z = MapRules.randomPointIn(Map, "Hills", Util.random)
+		local open = MapRules.areaAt(Map, x, z, HillsShape) == "Land"
+		for _, offset in { { 0, 0 }, { clear, 0 }, { -clear, 0 }, { 0, clear }, { 0, -clear } } do
+			local px, pz = x + offset[1], z + offset[2]
+			if
+				MapRules.hillsHeight(Map, HillsShape, px, pz) > 0
+				or MapRules.inTunnel(Map, HillsShape, px, pz)
+			then
+				open = false
+			end
+		end
+		if open then
+			local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
+			cactus(parent, kinds[placed % #kinds + 1], base)
+			placed += 1
+		end
+	end
+end
+
+-- Cliff wall round the top and right edges, from the river bank to a tall
+-- pillar where the Hills meet the Grassland.
+local function hillsCliffWall(parent: Instance)
+	local hills = Map.Hills
+	local edge = Map.halfSize
+	local thickness = hills.cliffThickness
+	-- Most of the wall's thickness is outside the arena.
+	local line = edge - thickness * 0.2
+	local function rock(name: string, centre: Vector3, along: Vector3, size: Vector3)
+		local frame = CFrame.lookAt(centre, centre + along)
+			* CFrame.Angles(0, math.rad(Util.roll(-4, 4)), 0)
+			* CFrame.Angles(0, 0, math.rad(Util.roll(-1, 1) * hills.cliffMaxTiltDegrees))
+		Util.part({
+			Name = name,
+			Size = size,
+			CFrame = frame,
+			Color = variedColour(hills.cliffColour, hills.slabColourVariation),
+			Material = Enum.Material.Slate,
+			Parent = parent,
+		})
+		-- Grass on top.
+		Util.part({
+			Name = "CliffGrass",
+			Size = Vector3.new(size.X * 0.85, 0.8, size.Z * 0.9),
+			CFrame = frame * CFrame.new(0, size.Y / 2 + 0.2, 0),
+			Color = variedColour(hills.cliffGrassColour, 8),
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+			Parent = parent,
+		})
+	end
+	local function run(from: number, to: number, place: (position: number, length: number) -> ())
+		local position = from
+		while position < to do
+			local length =
+				math.min(Util.roll(hills.cliffMinLength, hills.cliffMaxLength), to - position)
+			place(position + length / 2, length + 2)
+			position += length
+		end
+	end
+	local function height(): number
+		return Util.roll(hills.cliffMinHeight, hills.cliffMaxHeight)
+	end
+	-- Top edge (local Z along the edge, so X is the thickness).
+	run(hills.cliffStartX, edge, function(x, length)
+		local tall = height()
+		rock(
+			"CliffWall",
+			Vector3.new(x, GROUND + tall / 2 - 1, -line),
+			Vector3.xAxis,
+			Vector3.new(thickness, tall + 2, length)
+		)
+	end)
+	-- Right edge, stopping at the pillar.
+	run(hills.pillarSize, edge, function(z, length)
+		local tall = height()
+		rock(
+			"CliffWall",
+			Vector3.new(line, GROUND + tall / 2 - 1, -z),
+			Vector3.zAxis,
+			Vector3.new(thickness, tall + 2, length)
+		)
+	end)
+	local size = hills.pillarSize
+	rock(
+		"CliffPillar",
+		Vector3.new(edge - size / 2 + 2, GROUND + hills.pillarHeight / 2 - 1, -size / 2),
+		Vector3.zAxis,
+		Vector3.new(size, hills.pillarHeight + 2, size)
+	)
+end
+
+-- The Hills: walkable rock goes in `Hills` (seen by the ground ray, with
+-- the terrain); cacti and lanterns in `HillsDecor`.
 local function buildHills()
 	local hills = Instance.new("Folder")
 	hills.Name = "Hills"
 	hills.Parent = folder
-	local rock = Color3.fromRGB(130, 120, 100)
-	local caves = Map.Caves
-	for _, cave in caves.list do
-		local width = 60
-		local sideWidth = (width - caves.width) / 2
-		for _, side in { -1, 1 } do
-			Util.part({
-				Name = "CaveHill",
-				Size = Vector3.new(cave.length, cave.hillHeight, sideWidth),
-				Position = Vector3.new(
-					cave.x,
-					GROUND + cave.hillHeight / 2,
-					cave.z + side * (caves.width / 2 + sideWidth / 2)
-				),
-				Color = rock,
-				Material = Enum.Material.Rock,
-				Parent = hills,
-			})
-		end
-		Util.part({
-			Name = "CaveRoof",
-			Size = Vector3.new(cave.length, cave.hillHeight - caves.clearance, caves.width),
-			Position = Vector3.new(
-				cave.x,
-				GROUND + caves.clearance + (cave.hillHeight - caves.clearance) / 2,
-				cave.z
-			),
-			Color = rock,
-			Material = Enum.Material.Rock,
-			Parent = hills,
-		})
-	end
-	for _, hill in caves.hills do
-		for _, direction in { 1, -1 } do
-			local slope = Instance.new("WedgePart")
-			slope.Name = "Hill"
-			slope.Anchored = true
-			slope.Size = Vector3.new(hill.size, hill.height, hill.size / 2)
-			slope.CFrame = CFrame.new(
-				hill.x,
-				GROUND + hill.height / 2,
-				hill.z + direction * hill.size / 4
-			) * CFrame.Angles(0, if direction == 1 then math.pi else 0, 0)
-			slope.Color = Color3.fromRGB(150, 140, 100)
-			slope.Material = Enum.Material.Grass
-			slope.Parent = hills
-		end
-	end
+	local decor = Instance.new("Folder")
+	decor.Name = "HillsDecor"
+	decor.Parent = folder
+	local terrain = workspace.Terrain
+	hillsGround(terrain)
+	hillsRock(terrain, hills)
+	hillsSlabs(hills)
+	hillsRamps(hills)
+	hillsRidge(hills)
+	hillsCliffWall(hills)
+	hillsLanterns(decor)
+	hillsCacti(decor)
 end
 
 local function buildForest()
@@ -1606,8 +2194,11 @@ function MapBuilder.start()
 	buildGround()
 	buildHills()
 	buildRiverQuarter()
-	-- The ground ray only looks at walkable ground, not trees or grass.
+	-- The ground ray only looks at walkable ground, not trees or grass
+	-- (terrain is the Hills rock; water is skipped).
+	rayParams.IgnoreWater = true
 	rayParams.FilterDescendantsInstances = {
+		workspace.Terrain,
 		folder:FindFirstChild("Ground") :: Instance,
 		folder:FindFirstChild("Hills") :: Instance,
 		folder:FindFirstChild("River") :: Instance,
