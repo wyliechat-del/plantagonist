@@ -389,6 +389,16 @@ From Wylie's drawing of 2026-11-27.
 3. The rope bridge swings 5 studs each way at the middle (was 6).
 4. The flag says Build 16A.
 
+## 2zg. New in build 16B: Grassland grass domes
+
+1. Each Grassland grass circle's see-through grass is a low dome (about
+   3 studs at the middle, sloping to nothing at the edge), not a cylinder.
+2. The dome's edge just overlaps the middle of the three blade rows; the
+   outer row stands on open ground.
+3. 14 waving blades are scattered inside each dome.
+4. Plants still hide anywhere in the circle.
+5. The flag says Build 16B.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

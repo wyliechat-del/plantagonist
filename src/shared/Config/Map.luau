@@ -761,10 +761,13 @@ Map.Forest = table.freeze({
 -- Grassland: tall grass to hide in, and cow fields (laid out from Wylie's
 -- revised map, build 16A).
 Map.Grassland = table.freeze({
-	-- Hiding grass circles. To save parts each is a see-through grass fill a
-	-- third of the blade height (`fillShare`), with `ringRows` rows of
-	-- waving blades (Map.HidingGrass) round the edge. Plants hide in them
-	-- like in the River quarter's patches.
+	-- Hiding grass circles. To save parts each is a see-through grass dome
+	-- a third of the blade height (`fillShare`) at its middle, with
+	-- `ringRows` rows of waving blades (Map.HidingGrass) round the edge. The
+	-- dome's edge reaches `domeOverlap` studs past ring `domeEdgeRow`
+	-- (0 is the outermost), and `bladesInside` blades are scattered inside
+	-- it. Plants hide anywhere in the circle, like in the River quarter's
+	-- patches (builds 16A, 16B).
 	grassCircles = table.freeze({
 		table.freeze({ x = 146, z = 70, radius = 43 }),
 		table.freeze({ x = 219, z = 177, radius = 43 }),
@@ -774,6 +777,9 @@ Map.Grassland = table.freeze({
 	fillColour = table.freeze({ 150, 200, 80 }),
 	fillTransparency = 0.35,
 	ringRows = 3,
+	domeEdgeRow = 1,
+	domeOverlap = 1,
+	bladesInside = 14,
 	cowFields = table.freeze({
 		table.freeze({ x = 96, z = 180, size = 90 }),
 		table.freeze({ x = 280, z = 90, size = 60 }),

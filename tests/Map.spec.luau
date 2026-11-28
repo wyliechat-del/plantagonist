@@ -249,6 +249,16 @@ return function(t)
 		end
 	end)
 
+	t.test("grassland grass dome: edge just past the middle ring", function()
+		local land = Map.Grassland
+		local radius = land.grassCircles[1].radius
+		local dome = MapRules.grassDomeRadius(Map, radius)
+		local middle = MapRules.grassRingRadius(Map, radius, 1)
+		local outer = MapRules.grassRingRadius(Map, radius, 0)
+		t.expect(dome > middle and dome < outer, "covers the middle ring, not the outer one")
+		t.expect(dome < radius, "inside the circle")
+	end)
+
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()
 		local circle = Map.HidingGrass.circles[1]
 		t.expect(MapRules.hiddenInGrass(Map, 3, circle.x, circle.z, 10, 0))

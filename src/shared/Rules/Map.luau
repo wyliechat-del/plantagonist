@@ -614,6 +614,20 @@ function MapRules.creatureAllowed(home: string, area: string): boolean
 	return MapRules.spawnAllowed(home, area)
 end
 
+-- Radius of blade ring `row` (0 is the outermost) in a Grassland grass
+-- circle of `radius`.
+function MapRules.grassRingRadius(map: any, radius: number, row: number): number
+	local grass = map.HidingGrass
+	return radius - grass.bladeSpread - row * grass.bladeSpacing * 0.87
+end
+
+-- Radius of the see-through dome in a Grassland grass circle of `radius`:
+-- just past ring `domeEdgeRow`.
+function MapRules.grassDomeRadius(map: any, radius: number): number
+	local land = map.Grassland
+	return MapRules.grassRingRadius(map, radius, land.domeEdgeRow) + land.domeOverlap
+end
+
 function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
 	for _, list in { map.HidingGrass.circles, map.Grassland.grassCircles } do
 		for _, circle in list do

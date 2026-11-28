@@ -2795,8 +2795,8 @@ local function buildGrassland()
 	local grass = Instance.new("Folder")
 	grass.Name = "Grassland"
 	grass.Parent = folder
-	-- Hiding grass circles: a low see-through grass fill with a ring of
-	-- waving blades round the edge.
+	-- Hiding grass circles: a low see-through grass dome with rows of
+	-- waving blades round the edge and a few scattered inside.
 	local land = Map.Grassland
 	local hiding = Map.HidingGrass
 	local blades = Instance.new("Model")
@@ -2804,23 +2804,39 @@ local function buildGrassland()
 	blades.Parent = grass
 	local fillHeight = hiding.height * land.fillShare
 	for _, circle in land.grassCircles do
-		Util.part({
+		-- The dome: a flattened ball centred on the ground, so only its top
+		-- half shows, sloping to nothing at its edge.
+		local domeRadius = MapRules.grassDomeRadius(Map, circle.radius)
+		local dome = Util.part({
 			Name = "TallGrass",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(fillHeight, circle.radius * 2, circle.radius * 2),
-			CFrame = CFrame.new(circle.x, GROUND + fillHeight / 2, circle.z)
-				* CFrame.Angles(0, 0, math.rad(90)),
+			Size = Vector3.new(domeRadius * 2, fillHeight * 2, domeRadius * 2),
+			Position = Vector3.new(circle.x, GROUND, circle.z),
 			Color = Util.colour(land.fillColour),
 			Material = Enum.Material.Grass,
 			Transparency = land.fillTransparency,
 			CanCollide = false,
 			CanQuery = false,
+			CastShadow = false,
 			Parent = grass,
 		})
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = dome
 		local spacing = hiding.bladeSpacing
 		local spread = hiding.bladeSpread
+		-- Blades scattered inside, clear of the innermost ring.
+		local inner = MapRules.grassRingRadius(Map, circle.radius, land.ringRows - 1) - spacing
+		for _ = 1, land.bladesInside do
+			local angle = Util.random() * 2 * math.pi
+			local distance = inner * math.sqrt(Util.random())
+			grassBlade(
+				blades,
+				circle.x + math.cos(angle) * distance,
+				circle.z + math.sin(angle) * distance
+			)
+		end
 		for row = 0, land.ringRows - 1 do
-			local ringRadius = circle.radius - spread - row * spacing * 0.87
+			local ringRadius = MapRules.grassRingRadius(Map, circle.radius, row)
 			local count = math.floor(2 * math.pi * ringRadius / spacing)
 			local shift = if row % 2 == 0 then 0 else 0.5
 			for i = 0, count - 1 do
