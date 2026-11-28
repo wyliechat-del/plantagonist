@@ -127,10 +127,9 @@ return function(t)
 		t.expectEqual(MapRules.lilyPadLayout(Map)[30][1], pads[30][1], "same layout every time")
 	end)
 
-	t.test("grass blades: tall enough to hide in, waving only a little", function()
+	t.test("grass clumps: tall enough to hide in, waving only a little", function()
 		local grass = Map.HidingGrass
-		local visible = grass.height * grass.sizeRange[2] * (1 - grass.bladeSunk)
-		t.expect(visible >= grass.height * 0.85, "the biggest blades stand near the grass height")
+		t.expect(grass.height * grass.sizeRange[1] - grass.clumpSunk >= 7.4, "taller than a plant")
 		t.expect(grass.sizeRange[1] < 1 and grass.sizeRange[2] > 1, "sizes go both ways")
 		t.expectEqual(#grass.bladeColours, 3)
 		local most = 0
@@ -265,15 +264,32 @@ return function(t)
 		t.expect(MapRules.grasslandGrassGround(Map, 300, 300), "grass elsewhere")
 	end)
 
-	t.test("grassland grass dome: edge just past the middle ring", function()
-		local land = Map.Grassland
-		local radius = land.grassCircles[1].radius
-		local dome = MapRules.grassDomeRadius(Map, radius)
-		local middle = MapRules.grassRingRadius(Map, radius, 1)
-		local outer = MapRules.grassRingRadius(Map, radius, 0)
-		t.expect(dome > middle and dome < outer, "covers the middle ring, not the outer one")
-		t.expect(dome < radius, "inside the circle")
-		t.expect(dome - land.domeHeight > 0, "room for the flat top")
+	t.test("grass clumps fill each circle without too many parts", function()
+		local seed = 0
+		local function random(): number
+			seed = (seed * 9301 + 49297) % 233280
+			return seed / 233280
+		end
+		local grass = Map.HidingGrass
+		local total = 0
+		local circles = {}
+		for _, circle in grass.circles do
+			table.insert(circles, circle)
+		end
+		for _, circle in Map.Grassland.grassCircles do
+			table.insert(circles, circle)
+		end
+		for _, circle in circles do
+			local spots = MapRules.grassClumpSpots(Map, circle, random)
+			t.expect(#spots >= 60 and #spots <= 130, `about 90 clumps a circle, got {#spots}`)
+			local limit = circle.radius - grass.clumpEdgeMargin + 1e-6
+			for _, spot in spots do
+				local distance = math.sqrt((spot[1] - circle.x) ^ 2 + (spot[2] - circle.z) ^ 2)
+				t.expect(distance <= limit, "inside the circle")
+			end
+			total += #spots
+		end
+		t.expect(total <= 600, `under 600 grass parts in all, got {total}`)
 	end)
 
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()

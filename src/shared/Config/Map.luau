@@ -470,28 +470,31 @@ Map.HidingGrass = table.freeze({
 	checkSeconds = 0.2,
 	-- The pale patch under the grass.
 	colour = table.freeze({ 170, 200, 90 }),
-	-- The grass is single blades (Wylie's drawing, 2026-11-27): one
-	-- narrow pointed shape, widest a quarter of the way up. Each blade is
-	-- one part, a stretched ellipsoid set `bladeSunk` of its length into
-	-- the ground so the visible part is widest near the bottom. Blades
-	-- stand `bladeSpacing` apart (up to `bladeSpread` off the grid), turned
-	-- any way, sized `sizeRange` times, in one of `bladeColours`. A
-	-- blade's length is `height` times its size; its width is
-	-- `bladeWidth` of its length.
-	bladeSpacing = 2.2,
-	bladeSpread = 0.9,
-	sizeRange = table.freeze({ 0.75, 1.1 }),
-	bladeWidth = 0.12,
-	bladeThickness = 0.12,
-	bladeSunk = 0.2,
+	-- The grass is clumps of Wylie's Creator Store grass mesh (build 16D):
+	-- one MeshPart per clump, no texture, so each takes one of
+	-- `bladeColours`. If ServerStorage holds a MeshPart named
+	-- `clumpTemplateName` it is used; otherwise the server makes one from
+	-- `clumpMeshId`. Every clump has the proportions `clumpShape` (the size
+	-- Wylie saved it at), is `height` studs tall times `sizeRange`, turned
+	-- any way and sunk `clumpSunk` studs into the ground. Clumps stand
+	-- `clumpSpacing` apart on a staggered grid, up to `clumpSpread` off it,
+	-- none closer than `clumpEdgeMargin` to the circle's edge.
+	clumpTemplateName = "Grass",
+	clumpMeshId = "rbxassetid://3228553749",
+	clumpShape = table.freeze({ 3.31, 2.64, 3.65 }),
+	clumpSpacing = 8,
+	clumpSpread = 2,
+	clumpEdgeMargin = 3,
+	clumpSunk = 0.3,
+	sizeRange = table.freeze({ 0.9, 1.1 }),
 	bladeColours = table.freeze({
 		table.freeze({ 140, 198, 63 }), -- #8cc63f
 		table.freeze({ 93, 124, 44 }), -- #5d7c2c
 		table.freeze({ 187, 196, 65 }), -- #bbc441
 	}),
-	-- Each blade waves (on each player's own screen): leans up to
+	-- Each clump waves (on each player's own screen): leans up to
 	-- `waveDegrees` and back every `waveSeconds`, the wave moving across
-	-- the grass (`waveSpread` of a turn per stud). Only blades within
+	-- the grass (`waveSpread` of a turn per stud). Only clumps within
 	-- `waveDistance` of the camera move, `waveRate` times a second.
 	waveDegrees = 2,
 	waveSeconds = 4,
@@ -761,29 +764,14 @@ Map.Forest = table.freeze({
 -- Grassland: tall grass to hide in, and cow fields (laid out from Wylie's
 -- revised map, build 16A).
 Map.Grassland = table.freeze({
-	-- Hiding grass circles. To save parts each is a see-through grass dome
-	-- with a flat top `domeHeight` studs up and a rounded edge (a quarter
-	-- circle down to the ground), with `ringRows` rows of waving blades
-	-- (Map.HidingGrass) round the edge. The dome's edge reaches `domeOverlap`
-	-- studs past ring `domeEdgeRow` (0 is the outermost), and `bladesInside`
-	-- blades, `insideBladeScale` times the usual height, are scattered inside
-	-- it. Plants hide anywhere in the circle, like in the River quarter's
-	-- patches (builds 16A to 16C). The rounded edge is made of balls
-	-- `domeEdgeSpacing` studs apart, joined to the middle into one part.
+	-- Hiding grass circles, filled with grass clumps like the River
+	-- quarter's patches (Map.HidingGrass; build 16D replaced the see-through
+	-- domes and blade rings of builds 16A to 16C).
 	grassCircles = table.freeze({
 		table.freeze({ x = 146, z = 70, radius = 43 }),
 		table.freeze({ x = 219, z = 177, radius = 43 }),
 		table.freeze({ x = 92, z = 284, radius = 43 }),
 	}),
-	domeHeight = 6,
-	domeEdgeSpacing = 3,
-	insideBladeScale = 1.25,
-	fillColour = table.freeze({ 150, 200, 80 }),
-	fillTransparency = 0.35,
-	ringRows = 3,
-	domeEdgeRow = 1,
-	domeOverlap = 1,
-	bladesInside = 14,
 	-- The ground: terrain grass like the River quarter's (Map.River's
 	-- groundMaterial and colour; a terrain material has one colour), kept
 	-- this far off the grass circles and the cow pens (build 16C).

@@ -614,18 +614,32 @@ function MapRules.creatureAllowed(home: string, area: string): boolean
 	return MapRules.spawnAllowed(home, area)
 end
 
--- Radius of blade ring `row` (0 is the outermost) in a Grassland grass
--- circle of `radius`.
-function MapRules.grassRingRadius(map: any, radius: number, row: number): number
+-- Where the grass clumps stand in a hiding grass `circle` ({ x, z,
+-- radius }): a staggered grid `clumpSpacing` apart, each spot moved up to
+-- `clumpSpread` by `random` (0 to 1), none closer than `clumpEdgeMargin` to
+-- the edge. Returns a list of { x, z }.
+function MapRules.grassClumpSpots(map: any, circle: any, random: () -> number): { { number } }
 	local grass = map.HidingGrass
-	return radius - grass.bladeSpread - row * grass.bladeSpacing * 0.87
-end
-
--- Radius of the see-through dome in a Grassland grass circle of `radius`:
--- just past ring `domeEdgeRow`.
-function MapRules.grassDomeRadius(map: any, radius: number): number
-	local land = map.Grassland
-	return MapRules.grassRingRadius(map, radius, land.domeEdgeRow) + land.domeOverlap
+	local spacing = grass.clumpSpacing
+	local spread = grass.clumpSpread
+	local limit = circle.radius - grass.clumpEdgeMargin
+	local spots = {}
+	local row = 0
+	local across = -circle.radius
+	while across <= circle.radius do
+		local along = -circle.radius + (if row % 2 == 0 then 0 else spacing / 2)
+		while along <= circle.radius do
+			local dx = along + (random() * 2 - 1) * spread
+			local dz = across + (random() * 2 - 1) * spread
+			if dx * dx + dz * dz <= limit * limit then
+				table.insert(spots, { circle.x + dx, circle.z + dz })
+			end
+			along += spacing
+		end
+		across += spacing * 0.87
+		row += 1
+	end
+	return spots
 end
 
 -- Whether the Grassland's terrain grass may cover (x, z): not in or near

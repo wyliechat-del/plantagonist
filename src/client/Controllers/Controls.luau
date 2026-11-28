@@ -94,6 +94,7 @@ local function candidates(plantsOnly: boolean): { Aim.Candidate }
 		local level = model:GetAttribute("PlantLevel")
 		local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hidden = model:GetAttribute("Invisible") == true
+			or model:GetAttribute("InGrass") == true
 			or model:GetAttribute("Protected") == true
 		if type(level) == "number" and root and not hidden then
 			local p = root.Position

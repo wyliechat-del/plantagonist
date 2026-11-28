@@ -410,6 +410,7 @@ local function fireProjectile(
 			for _, other in Plants.all() do
 				local distance = (other.root.Position - point).Magnitude - Plants.radius(other)
 				local hidden = other.model:GetAttribute("Invisible") == true
+					or other.model:GetAttribute("InGrass") == true
 				if other ~= attacker and other.alive and not hidden and distance < best then
 					homing, best = other, distance
 				end

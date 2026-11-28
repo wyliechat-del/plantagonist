@@ -78,7 +78,11 @@ local function seen(brain: Brain): ({ NpcRules.Seen }, { NpcRules.Seen })
 	local position = me.root.Position
 	local plants, creatures = {}, {}
 	for _, other in Plants.all() do
-		if other ~= me and other.model:GetAttribute("Invisible") ~= true then
+		-- Plants using the Invisible power or hiding in grass can't be seen.
+		local model = other.model
+		local unseen = model:GetAttribute("Invisible") == true
+			or model:GetAttribute("InGrass") == true
+		if other ~= me and not unseen then
 			local there = other.root.Position
 			if Util.flatDistance(position, there) <= NpcConfig.sightDistance then
 				-- Protected plants can still scare an NPC, but aren't worth hunting.

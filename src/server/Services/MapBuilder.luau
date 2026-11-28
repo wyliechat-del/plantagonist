@@ -11,6 +11,7 @@
 	carry `LilyPad`, which the client uses for the frog hop.
 ]]
 
+local AssetService = game:GetService("AssetService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -1363,34 +1364,73 @@ local function buildLilyPads(parent: Instance)
 	rimShape:Destroy()
 end
 
--- One grass blade standing at (x, z): a thin stretched ellipsoid, part
--- sunk into the ground, turned any way, sized and coloured at random. It
--- keeps its base in a `BladeBase` attribute so clients can wave it.
-local function grassBlade(parent: Instance, x: number, z: number, scale: number?)
+-- The grass clump every hiding grass clump is copied from: Wylie's own
+-- copy in ServerStorage if there is one, otherwise made from the mesh id.
+-- nil (with a warning) if neither works.
+local clumpTemplate: MeshPart? = nil
+local function grassClumpTemplate(): MeshPart?
+	if clumpTemplate then
+		return clumpTemplate
+	end
 	local grass = Map.HidingGrass
-	local length = grass.height
-		* Util.between(grass.sizeRange[1], grass.sizeRange[2])
-		* (scale or 1)
-	local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
-	local blade = Instance.new("Part")
-	blade.Name = "Blade"
-	blade.Anchored = true
-	blade.CanCollide = false
-	blade.CanQuery = false
-	blade.CanTouch = false
-	blade.CastShadow = false
-	blade.Material = Enum.Material.SmoothPlastic
-	blade.Color = Util.colour(Util.pick(grass.bladeColours))
-	blade.Size = Vector3.new(grass.bladeThickness, length, length * grass.bladeWidth)
-	blade.CFrame = base * CFrame.new(0, length * (0.5 - grass.bladeSunk), 0)
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Parent = blade
-	blade:SetAttribute("BladeBase", base)
-	blade.Parent = parent
+	local saved = ServerStorage:FindFirstChild(grass.clumpTemplateName)
+	if saved and saved:IsA("MeshPart") then
+		clumpTemplate = saved:Clone()
+	else
+		local ok, made = pcall(function()
+			return AssetService:CreateMeshPartAsync(grass.clumpMeshId)
+		end)
+		if ok and made then
+			clumpTemplate = made
+		else
+			warn(
+				"[MapBuilder] Couldn't make the grass mesh; drag assets/grass.rbxm into ServerStorage:",
+				made
+			)
+			return nil
+		end
+	end
+	local template = clumpTemplate :: MeshPart
+	template.Anchored = true
+	template.CanCollide = false
+	template.CanQuery = false
+	template.CanTouch = false
+	template.CastShadow = false
+	template.Material = Enum.Material.SmoothPlastic
+	template.TextureID = ""
+	return template
 end
 
--- Hiding grass: a pale patch covered in single grass blades, tall enough
+-- One grass clump standing at (x, z): a copy of the grass mesh, turned any
+-- way, sized and coloured at random. It keeps its foot in a `BladeBase`
+-- attribute so clients can wave it.
+local function grassClump(parent: Instance, x: number, z: number)
+	local template = grassClumpTemplate()
+	if template == nil then
+		return
+	end
+	local grass = Map.HidingGrass
+	local shape = grass.clumpShape
+	local height = grass.height * Util.between(grass.sizeRange[1], grass.sizeRange[2])
+	local scale = height / shape[2]
+	local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
+	local clump = template:Clone()
+	clump.Name = "GrassClump"
+	clump.Color = Util.colour(Util.pick(grass.bladeColours))
+	clump.Size = Vector3.new(shape[1], shape[2], shape[3]) * scale
+	clump.CFrame = base * CFrame.new(0, height / 2 - grass.clumpSunk, 0)
+	clump:SetAttribute("BladeBase", base)
+	clump.Parent = parent
+end
+
+-- Fills a hiding grass `circle` with grass clumps.
+local function fillGrassCircle(parent: Instance, circle: any)
+	for _, spot in MapRules.grassClumpSpots(Map, circle, Util.random) do
+		grassClump(parent, spot[1], spot[2])
+	end
+end
+
+-- Hiding grass: a pale patch filled with grass clumps, tall enough
 -- to hide a level 3 plant. Nothing in it blocks clicks or movement.
 local function buildHidingGrass(parent: Instance)
 	local grass = Map.HidingGrass
@@ -1411,26 +1451,7 @@ local function buildHidingGrass(parent: Instance)
 			CanQuery = false,
 			Parent = model,
 		})
-		local spacing = grass.bladeSpacing
-		local offset = -circle.radius
-		local rowIndex = 0
-		while offset <= circle.radius do
-			local shift = if rowIndex % 2 == 0 then 0 else spacing / 2
-			local along = -circle.radius + shift
-			while along <= circle.radius do
-				if offset * offset + along * along <= (circle.radius - 2) ^ 2 then
-					local spread = grass.bladeSpread
-					grassBlade(
-						model,
-						circle.x + along + Util.between(-spread, spread),
-						circle.z + offset + Util.between(-spread, spread)
-					)
-				end
-				along += spacing
-			end
-			offset += spacing * 0.87
-			rowIndex += 1
-		end
+		fillGrassCircle(model, circle)
 	end
 end
 
@@ -2801,75 +2822,6 @@ local function buildForest()
 	end
 end
 
--- A see-through grass dome at (x, z): flat on top, `Grassland.domeHeight`
--- up, with a rounded edge down to the ground at `radius`. A middle
--- cylinder and a ring of balls round its edge, joined into one part; if
--- the join fails the pieces stay as they are.
-local function grassDome(parent: Instance, x: number, z: number, radius: number)
-	local land = Map.Grassland
-	local height = land.domeHeight
-	local look = {
-		Color = Util.colour(land.fillColour),
-		Material = Enum.Material.Grass,
-		Transparency = land.fillTransparency,
-		CanCollide = false,
-		CanQuery = false,
-		CanTouch = false,
-		CastShadow = false,
-	}
-	local function piece(props: { [string]: any }): Part
-		for key, value in look do
-			props[key] = value
-		end
-		props.Parent = parent
-		return Util.part(props)
-	end
-	-- Everything is centred on the ground, so only the top half shows.
-	local inner = radius - height
-	local core = piece({
-		Name = "TallGrass",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(height * 2, inner * 2, inner * 2),
-		CFrame = CFrame.new(x, GROUND, z) * CFrame.Angles(0, 0, math.rad(90)),
-	})
-	local balls = {}
-	local count = math.ceil(2 * math.pi * inner / land.domeEdgeSpacing)
-	for i = 0, count - 1 do
-		local angle = i / count * 2 * math.pi
-		table.insert(
-			balls,
-			piece({
-				Name = "TallGrassEdge",
-				Shape = Enum.PartType.Ball,
-				Size = Vector3.new(height * 2, height * 2, height * 2),
-				Position = Vector3.new(
-					x + math.cos(angle) * inner,
-					GROUND,
-					z + math.sin(angle) * inner
-				),
-			})
-		)
-	end
-	local ok, union = pcall(function()
-		return core:UnionAsync(balls)
-	end)
-	if ok and union then
-		union.Name = "TallGrass"
-		union.UsePartColor = true
-		for key, value in look do
-			(union :: any)[key] = value
-		end
-		union.Anchored = true
-		union.Parent = parent
-		core:Destroy()
-		for _, ball in balls do
-			ball:Destroy()
-		end
-	else
-		warn("[MapBuilder] Grass dome join failed, using loose pieces:", union)
-	end
-end
-
 local function buildGrassland()
 	local grass = Instance.new("Folder")
 	grass.Name = "Grassland"
@@ -2877,41 +2829,12 @@ local function buildGrassland()
 	grassGround(1, 1, function(x, z)
 		return MapRules.grasslandGrassGround(Map, x, z)
 	end)
-	-- Hiding grass circles: a low see-through grass dome with rows of
-	-- waving blades round the edge and a few scattered inside.
-	local land = Map.Grassland
-	local hiding = Map.HidingGrass
-	local blades = Instance.new("Model")
-	blades.Name = "HidingGrass"
-	blades.Parent = grass
-	for _, circle in land.grassCircles do
-		grassDome(grass, circle.x, circle.z, MapRules.grassDomeRadius(Map, circle.radius))
-		local spacing = hiding.bladeSpacing
-		local spread = hiding.bladeSpread
-		-- Blades scattered inside, clear of the innermost ring.
-		local inner = MapRules.grassRingRadius(Map, circle.radius, land.ringRows - 1) - spacing
-		for _ = 1, land.bladesInside do
-			local angle = Util.random() * 2 * math.pi
-			local distance = inner * math.sqrt(Util.random())
-			grassBlade(
-				blades,
-				circle.x + math.cos(angle) * distance,
-				circle.z + math.sin(angle) * distance
-			)
-		end
-		for row = 0, land.ringRows - 1 do
-			local ringRadius = MapRules.grassRingRadius(Map, circle.radius, row)
-			local count = math.floor(2 * math.pi * ringRadius / spacing)
-			local shift = if row % 2 == 0 then 0 else 0.5
-			for i = 0, count - 1 do
-				local angle = (i + shift) / count * 2 * math.pi
-				grassBlade(
-					blades,
-					circle.x + math.cos(angle) * ringRadius + Util.between(-spread, spread),
-					circle.z + math.sin(angle) * ringRadius + Util.between(-spread, spread)
-				)
-			end
-		end
+	-- Hiding grass circles, filled with grass clumps.
+	local clumps = Instance.new("Model")
+	clumps.Name = "HidingGrass"
+	clumps.Parent = grass
+	for _, circle in Map.Grassland.grassCircles do
+		fillGrassCircle(clumps, circle)
 	end
 	for _, field in Map.Grassland.cowFields do
 		local half = field.size / 2
