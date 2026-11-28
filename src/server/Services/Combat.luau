@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local CombatConfig = require(ReplicatedStorage.Shared.Config.Combat)
 local CreaturesConfig = require(ReplicatedStorage.Shared.Config.Creatures)
 local Levels = require(ReplicatedStorage.Shared.Config.Levels)
+local Map = require(ReplicatedStorage.Shared.Config.Map)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local Rings = require(ReplicatedStorage.Shared.Config.Rings)
@@ -27,6 +28,7 @@ local Creatures = require(script.Parent.Creatures)
 local Data = require(script.Parent.Data)
 local Effects = require(script.Parent.Effects)
 local Log = require(script.Parent.Log)
+local MapBuilder = require(script.Parent.MapBuilder)
 local Pickups = require(script.Parent.Pickups)
 local PlantModel = require(script.Parent.PlantModel)
 local Plants = require(script.Parent.Plants)
@@ -48,6 +50,27 @@ local function gapTo(attacker: Plant, position: Vector3, radius: number): number
 		position.Z,
 		radius
 	)
+end
+
+-- Is there rock (or other solid map) between two points? Bites and shots
+-- don't go through cliffs or cave walls.
+local function rockBetween(from: Vector3, to: Vector3): boolean
+	local direction = to - from
+	if direction.Magnitude < 0.01 then
+		return false
+	end
+	return workspace:Raycast(from, direction, MapBuilder.raycastParams()) ~= nil
+end
+
+-- Out of reach: too far, or with rock in the way.
+local function outOfReach(
+	attacker: Plant,
+	position: Vector3,
+	radius: number,
+	reach: number
+): boolean
+	return gapTo(attacker, position, radius) > reach
+		or rockBetween(attacker.root.Position, position)
 end
 
 local function canAct(plant: Plant, now: number): boolean
@@ -192,7 +215,7 @@ local function afterRoar(attacker: Plant, victim: Plant, reach: number, land: ()
 		end
 		local inReach = victim.alive
 			and victim.root.Parent ~= nil
-			and gapTo(attacker, victim.root.Position, Plants.radius(victim)) <= reach
+			and not outOfReach(attacker, victim.root.Position, Plants.radius(victim), reach)
 		if inReach and not Plants.isProtected(victim) then
 			land()
 		else
@@ -211,6 +234,8 @@ function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boole
 		return false
 	end
 	local reach = Bite.reachStuds(CombatConfig, attacker.level) + PlantsConfig.hitTolerance
+	-- Attacking from hiding grass gives the plant away.
+	attacker.grassRevealUntil = now + Map.HidingGrass.revealSeconds
 
 	if target == nil then
 		miss(attacker, point, now)
@@ -220,7 +245,7 @@ function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boole
 	if Creatures.isCow(target) then
 		local part = target :: BasePart
 		local size = math.max(part.Size.X, part.Size.Z) / 2
-		if gapTo(attacker, part.Position, size) > reach then
+		if outOfReach(attacker, part.Position, size, reach) then
 			return false
 		end
 		attacker.lastBiteAt = now
@@ -242,7 +267,7 @@ function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boole
 
 	local creature = Creatures.fromInstance(target)
 	if creature then
-		if gapTo(attacker, creature.part.Position, creature.radius) > reach then
+		if outOfReach(attacker, creature.part.Position, creature.radius, reach) then
 			return false
 		end
 		attacker.lastBiteAt = now
@@ -255,7 +280,7 @@ function Combat.bite(attacker: Plant, target: Instance?, point: Vector3?): boole
 		if victim.model:GetAttribute("Invisible") == true then
 			return false
 		end
-		if gapTo(attacker, victim.root.Position, Plants.radius(victim)) > reach then
+		if outOfReach(attacker, victim.root.Position, Plants.radius(victim), reach) then
 			return false
 		end
 		attacker.lastBiteAt = now
@@ -441,6 +466,7 @@ local function stepProjectiles(dt: number)
 		end
 		local step = shot.velocity * dt
 		local position = shot.part.Position + step
+		local intoRock = rockBetween(shot.part.Position, position)
 		shot.travelled += step.Magnitude
 		shot.part.CFrame = CFrame.new(position)
 		local hit: Plant? = nil
@@ -453,7 +479,10 @@ local function stepProjectiles(dt: number)
 				break
 			end
 		end
-		if hit or shot.travelled >= shot.range or not shot.owner.alive then
+		if intoRock then
+			hit = nil
+		end
+		if intoRock or hit or shot.travelled >= shot.range or not shot.owner.alive then
 			if hit and shot.owner.alive then
 				Combat.powerUpHit(shot.owner, hit, shot.id, shot.boost)
 			end
@@ -525,6 +554,7 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?, point: V
 	end
 	local id = slot.id
 	local boost = slot.boost
+	plant.grassRevealUntil = now + Map.HidingGrass.revealSeconds
 	local kind = PowerUps.kindOf(PowerUpsConfig, id)
 	local victim = Plants.fromModel(target)
 	if victim == plant or (victim and victim.model:GetAttribute("Invisible") == true) then
@@ -533,7 +563,9 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?, point: V
 
 	if kind == "melee" then
 		local reach = Bite.reachStuds(CombatConfig, plant.level) + PlantsConfig.hitTolerance
-		if victim == nil or gapTo(plant, victim.root.Position, Plants.radius(victim)) > reach then
+		if
+			victim == nil or outOfReach(plant, victim.root.Position, Plants.radius(victim), reach)
+		then
 			Effects.notify(plant.player, "Get closer to a plant to use that.", "info")
 			return false
 		end
@@ -552,7 +584,7 @@ function Combat.useSlot(plant: Plant, index: number, target: Instance?, point: V
 		end
 	elseif kind == "range" then
 		local range = Bite.rangeStuds(CombatConfig, plant.level) + PlantsConfig.hitTolerance
-		if victim and gapTo(plant, victim.root.Position, Plants.radius(victim)) > range then
+		if victim and outOfReach(plant, victim.root.Position, Plants.radius(victim), range) then
 			victim = nil
 		end
 		fireProjectile(plant, id, victim, boost, point)

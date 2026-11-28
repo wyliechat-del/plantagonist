@@ -106,6 +106,310 @@ Then press **Play** and check:
 5. **Coloured light**: pink, yellow, green and orange pools of light on the floor inside. Rojo now sets **Lighting > Technology** to **Future** so these lights show properly; phones lower it on their own if needed.
 6. **Doors**: plants walk in and out of all 4 doors, and can't pass through the walls or windows.
 
+## 2g. New in build 7: the River quarter
+
+The flag should read "Build 7". Walk out of the safe field into the River
+quarter (top left from above) and check:
+
+1. **River**: blue terrain water with small waves winds from the top edge to
+   the left edge. You wade through it (no swimming) at about 60% speed.
+2. **Moon bridge**: a grey stone arch. Walk over it. At level 4 or below you
+   can also walk under the middle through the water; level 5 bumps into it.
+3. **Paver path** of separate stones runs from the moon bridge to a black
+   iron **gate** with three cream pillars and lit lamps in the top wall.
+4. **Marsh**: brown mud with reeds. Levels 1 to 3 move at full speed,
+   levels 4 to 6 slower.
+5. **Lily pads** with a notch cut out. Land on one and you spring up and can
+   steer for about 0.75 s; land on another and you spring again.
+6. **Rope bridge** to the Hills sways a little. **Rock ford** near the left
+   edge: walk across on the rocks without jumping.
+7. **Hiding grass** (two pale circles): at level 1 to 3 you look see-through
+   to yourself and another player can't see you, only your name. Bite
+   something and you show for 3 seconds.
+8. Blowfish appear in the river and toads on the marsh; other creatures stay
+   on dry land.
+
+## 2h. New in build 8: River quarter fixes
+
+1. **Gate** has a side gate at each end and a big brass padlock on the
+   middle post.
+2. **Loose stone wall** runs from the gate east to the river, and west to
+   the corner and down the left edge to the river.
+3. **Moon bridge** is higher (15 in the middle): a level 4 walks under
+   without its head going through. Level 5 now fits too.
+4. **Ford**: more loose rocks up and down the river, and white spray on the
+   upstream rocks.
+5. **Lily pads**: three times as many, plus 22 white water lilies. The hop
+   is lower (about 10 studs).
+6. **Rope bridge** swings like a cradle from the post tops. Standing on it
+   should feel smooth, with no camera shake.
+
+## 2i. New in build 9: the Hills quarter
+
+Walk out of the field to the top right (the Hills).
+
+1. **Ground** is grey slate terrain with patches of sand and grass, and
+   about 40 cacti (ball, short with two arms, tall with three). You walk
+   through cacti.
+2. **First Rise** (light brown) is one jump up (6). **Second Rise** (medium
+   brown) is one more jump (12). **Third Rise** (dark brown, 24) can't be
+   jumped onto, and bat flight can't get over it from the ground.
+3. Cliff edges have leaning rock slabs, so they look broken up, not
+   straight.
+4. **Two ramps** (light brown) lead from the ground up to the First Rise.
+5. **Tunnels** at ground level: levels 1 to 3 walk through, level 4 can't
+   get in. The big tunnel has a **cave** in the middle with miner's
+   lanterns on chains. Walking on the rock above the tunnels works.
+6. **Bottom left hill**: walk up one side, over the top and down the other;
+   a tunnel runs through it lengthways.
+7. **Cliff wall** of grey rock with grass on top runs along the top and
+   right edges, from the river to a tall pillar where the Grassland starts.
+8. **Spawns**: bats (the Hills creature with the Fly move) appear in the
+   tunnels, chameleons on the First Rise. Others don't go into tunnels.
+
+## 2j. New in build 10: Hills fixes
+
+1. The slate stops at the edge of the safe field; the field is grass again.
+2. Ball cacti are barrel cacti: ribbed, with a pale top and spines.
+3. **Tunnels** have arched roofs, 10 high in the middle and 7 at the
+   walls. Level 3 walks through; level 4 (about 12 tall) can't get in.
+4. **Rises**: First 12 (a stud over the tunnel roofs; use a ramp or fly
+   up), Second 18 (one jump from the First), Third 30. The pillar right
+   of centre is 12, 24 and 48.
+5. **Cave**: arched, 14 high, with 6 lanterns on its walls. Tunnels have a
+   wall lantern every 24 studs.
+6. **Bottom left hill** is 12 high with the arched tunnel through it.
+7. **Sand** round the foot of every cliff on the ground, wider in places.
+   The loose sand patches are gone (grass patches stay).
+8. **Ramps** are longer (out into the ground) and in three pieces: a lower
+   slope, a ledge and an upper slope, turned a little from each other,
+   with Second Rise boulders along the sides.
+
+## 2k. Build 11 (replaced by build 12)
+
+Build 11 tried ray-placed lanterns and cacti, ramp boulders, a dressed
+bottom left hill, wider cliff sand, attacks blocked by rock, and flying
+bats. The flying bats are gone in build 12; the cave lanterns are fixed;
+cacti come next.
+
+## 2l. New in build 12: the cave
+
+1. Four miner's lanterns in the cave, two on each long wall, clear of the
+   rock face. The Output window says "Hills: 4 cave lanterns placed".
+2. The decorative flying bats are gone.
+3. Bat creatures still spawn in the tunnels and cave, but now wander
+   slowly (40% of normal creature speed) and can leave the tunnels onto
+   the Hills ground and the First Rise.
+
+## 2m. New in build 12B: cave grass and cacti
+
+1. No grass patches in the cave or tunnels (grass patches only go on open
+   ground, clear of rock).
+2. Cacti stand on the slate, set in 0.3 studs. Output says
+   "Hills: 40 cacti, feet from ... to ... studs high; 0 surface rays
+   missed". Feet on the ground should read about 0 (or a bit under); if
+   rays missed is above 0, tell Claude.
+3. Each cactus on the ground has sand round its foot, 6 to 12 studs
+   across (in 4 stud terrain squares).
+4. The flag says Build 12B.
+
+## 2n. New in build 12C: barrel cacti sit on the ground
+
+1. The round barrel cacti are rounder and sit on top of the ground (and
+   sand): you see the whole ribbed ball, with only its rounded bottom
+   touching the ground.
+2. Tall and short cacti are unchanged.
+3. The flag says Build 12C.
+
+## 2o. New in build 12D: tunnel grass and round barrels
+
+1. No grass in any tunnel, the cave or on the bottom left hill (grass
+   patches keep clear of all of them).
+2. Barrel cacti are nearly round balls, widest half way up, with the whole
+   ball above the ground. If they float, lower `barrelLift` in
+   Config/Map.
+3. The flag says Build 12D.
+
+## 2p. New in build 12E: barrels on top of the ground
+
+1. Barrel cacti (same design as 12D) sit fully on top of the ground, even
+   on slopes: each stands on the highest ground under its ball, lifted
+   `barrelLift` (2 studs). If they float, lower it in Config/Map.
+2. Output prints "Hills: first barrel ray hit ..." (what the ray stood the
+   barrel on); send that line to Claude if barrels still look wrong.
+3. No cacti on the bottom left hill.
+4. The flag says Build 12E.
+
+## 2q. New in build 13: the first (bottom left) hill
+
+From Wylie's drawing of 2026-11-27.
+
+1. The hill has the uneven outline from the drawing, with steep First Rise
+   rock sides and leaning slabs like the other rises, 12 studs high.
+2. The tunnel along it is as before (same walls, arched roof, lanterns).
+3. Two ramps, one down each long side as drawn, in pieces (slope, ledge,
+   slope) in the same stone colour as the other ramps, with boulders like
+   the other ramps. Each has ragged broken pieces at its low end. The
+   right ramp meets the foot of the big ramp next to it.
+4. Sand round the foot of the hill and round its ramps.
+5. Four clusters of rough Second Rise boulders on top, where the dark
+   patches are in the drawing. No boulders on the old slopes, no cacti.
+6. The flag says Build 13.
+
+## 2r. New in build 13B: boulder heights
+
+1. Rise Two boulders on terrain (the hill top, the ground round the
+   ramps) sit on the ground, lifted `boulderTerrainLift` (2 studs) like
+   the barrel cacti, instead of showing as thin slivers.
+2. No boulders in or at the edge of the river.
+3. The flag says Build 13B.
+
+## 2s. New in build 13C: chunky boulders on the first hill
+
+1. The boulder clusters on the first hill stand up as chunky rough blocks
+   like the boulders on the other ramps, not flat shapes in the rock.
+2. Output prints "Hills: N of M boulders found the ground lower than the
+   map height (by up to X studs)"; send that line to Claude.
+3. The flag says Build 13C.
+
+## 2t. New in build 13D: boulders are chunky again
+
+1. Every Rise Two boulder is a chunky rough block (they were flat sheets:
+   their height came from a whole-number roll, so 0.55 to 0.9 gave 0).
+   They sit on the ground the ray finds, with no extra lift.
+2. Boulders on the ramps are spread along and across the ramp instead of
+   lining up at its ends and middle.
+3. The flag says Build 13D.
+
+## 2u. New in build 13E: short cacti, level 4 in tunnels, brown ground
+
+1. Short (two arm) cacti stand 2 studs higher, so their arms aren't near
+   the ground. Barrel and tall cacti are unchanged.
+2. Grow to level 4 (or more) inside a tunnel or the cave: you are put out
+   at the nearest way out, on open ground. Try it in the cave, a tunnel
+   and the bottom left hill's tunnel.
+3. The Hills ground is brown rock a little darker than the sand (colour
+   `groundColour` in Config/Map; say if you want another shade).
+4. The flag says Build 13E.
+
+## 2v. New in build 13F: darker ground
+
+1. The Hills ground is a darker brown (150, 120, 86) so the sand stands
+   out more. The flag says Build 13F.
+
+## 2w. New in build 14A: grass blades in the hiding grass
+
+1. The hiding grass (marsh side of the River quarter) is single blades in
+   three shapes and greens (Wylie's drawing): tall light green curling
+   over, a dark green leaf, a short yellow green S curve.
+2. Each blade is turned a different way and sized 90% to 110%.
+3. The blades wave a little, like a breeze moving across the grass.
+4. Hiding still works as before (levels 1 to 3 vanish for others).
+5. About 9,000 small parts in all: if the game stutters near the grass,
+   tell Claude (`clumpSpacing` in Config/Map thins it out).
+6. The flag says Build 14A.
+
+## 2x. New in build 14B: lighter grass, stone pavers
+
+1. The hiding grass is one blade shape (narrow, pointed, widest low
+   down), one part per blade (about 2,500 in all, down from 9,000),
+   sized 75% to 110%, in #8cc63f, #5d7c2c and #bbc441, swaying gently.
+2. The gate path pavers are each a single stone (Limestone), not bricks.
+3. The flag says Build 14B.
+
+## 2y. New in build 14C: grassy River quarter ground
+
+1. The River quarter ground away from the marsh is terrain grass
+   (LeafyGrass, with short blades) in green, not teal tiles. The path
+   and a ring next to the safe field keep the plain green ground.
+2. The flag says Build 14C.
+
+## 2z. New in build 14D: terrain grass off the river and hiding grass
+
+1. The river is one long stream again, not pools in a grass field: the
+   terrain grass stops 4 studs from the water's edge.
+2. The tall hiding grass patches stand on plain green ground with a
+   4 stud ring round them, so the terrain blades don't cover them.
+3. The flag says Build 14D.
+
+## 2za. New in build 14E: marsh without terrain grass, lilies beside pads
+
+1. The marsh shows only its mud and cattails: the terrain grass stops
+   4 studs outside the marsh edge.
+2. Each white water lily grows on the water just beside its pad, on the
+   side with the most room, not on top of the pad.
+3. The flag says Build 14E.
+
+## 2zb. New in build 15A: river reeds, taller grass, path lights
+
+1. Reed clumps (with cattails) stand along both river banks about every
+   25 studs, with a couple of single reeds between, clear of the bridges,
+   the ford and the path.
+2. The tall hiding grass is 9.5 studs (was 7).
+3. Six black iron gaslights stand along the grass side of the path, evenly
+   spaced from the gates to the moon bridge, one gap in from each end. Each
+   is about as tall as the gate pillars, with a glass lantern and a warm
+   glow.
+4. The flag says Build 15A.
+
+## 2zc. New in build 15B: moon bridge towers
+
+1. Four short grey stone towers stand at the moon bridge's ends, one either
+   side of the deck at each end, on the bank outside the side walls.
+2. Each has a lit gas lamp (the path light's lantern) on a short iron post
+   on top, with no cap over it.
+3. The flag says Build 15B.
+
+## 2zd. New in build 15C: swinging rope bridge
+
+1. The rope bridge deck, ropes and hangers swing side to side from a line
+   30 studs above, about 2 studs each way at the middle, once every
+   3 seconds. The ends stay at the posts, so the deck bends. The posts and
+   ramps stay still.
+2. A plant standing on it rides along and is not thrown off.
+3. Two players see it in the same place.
+4. The flag says Build 15C.
+
+## 2ze. New in build 15D: rope bridge swing fixed and bigger
+
+1. The rope bridge actually swings now (in 15C the client looked for its
+   parts once, before they had arrived, and never looked again).
+2. It swings from a line 20 studs above the deck, the middle moving about
+   6 studs each way, once every 3 seconds. The ends stay at the posts.
+3. The flag says Build 15D.
+
+## 2zf. New in build 16A: Grassland laid out from the revised map
+
+1. The 14 grass boxes are gone. Three hiding grass circles stand where the
+   revised map shows them: a see-through grass fill about 3 studs tall,
+   with three rows of waving blades round the edge. A level 1 to 3 plant
+   inside one is hidden, like in the River quarter's grass.
+2. The top right cow field is unchanged. The other has moved left, near
+   the safe field, with its cows.
+3. The rope bridge swings 5 studs each way at the middle (was 6).
+4. The flag says Build 16A.
+
+## 2zg. New in build 16B: Grassland grass domes
+
+1. Each Grassland grass circle's see-through grass is a low dome (about
+   3 studs at the middle, sloping to nothing at the edge), not a cylinder.
+2. The dome's edge just overlaps the middle of the three blade rows; the
+   outer row stands on open ground.
+3. 14 waving blades are scattered inside each dome.
+4. Plants still hide anywhere in the circle.
+5. The flag says Build 16B.
+
+## 2zh. New in build 16C: Grassland ground and grass domes
+
+1. The Grassland ground is terrain grass like the River quarter's (same
+   green), clear of the grass circles, the cow pens and the safe field.
+2. Each cow pen has a brown dirt floor.
+3. Each grass dome is about 6 studs tall with a flat top and a rounded edge
+   down to the ground. If the Output shows "Grass dome join failed", the
+   dome is built from loose pieces instead (overlaps may look darker).
+4. The 14 blades inside each dome are a quarter taller (about 12 studs).
+5. The flag says Build 16C.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

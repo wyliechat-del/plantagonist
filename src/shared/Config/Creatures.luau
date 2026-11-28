@@ -14,6 +14,11 @@ Creatures.spawnEverySeconds = 2
 -- Movement in studs per second. Catching creatures shouldn't be the
 -- challenge, so they are much slower than every plant (a Rex runs at 6).
 Creatures.wanderSpeed = 2
+-- Creatures that wander slower than `wanderSpeed`: share of it, by id.
+-- Bats drift slowly out of the cave they spawn in.
+Creatures.wanderSpeedShare = table.freeze({
+	bat = 0.4,
+})
 -- A creature only dodges at the last moment: when a plant comes within
 -- `dodgeDistance` studs it runs at `dodgeSpeed` for `dodgeSeconds`,
 -- then can't dodge again for `dodgeCooldown` seconds.
@@ -32,6 +37,9 @@ Creatures.maxClimb = 1.5
 Creatures.spawnMix = table.freeze({ native = 0.7, neighbour = 0.2, opposite = 0.1 })
 -- A wandering creature picks a new spot within this distance.
 Creatures.wanderRadius = 30
+-- Tries at finding a wander spot in the creature's own area (river, marsh
+-- or land; see `Config/Map.luau` CreatureAreas) before settling for any.
+Creatures.areaTargetTries = 6
 
 -- Body size in studs by creature size.
 Creatures.bodySize = table.freeze({ Small = 1.5, Medium = 2.5, Large = 3.5 })

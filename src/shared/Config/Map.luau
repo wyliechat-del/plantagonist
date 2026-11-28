@@ -16,7 +16,7 @@ Map.wallHeight = 60
 Map.territories = table.freeze({
 	Grassland = table.freeze({ signX = 1, signZ = 1, colour = table.freeze({ 120, 190, 90 }) }),
 	Forest = table.freeze({ signX = -1, signZ = 1, colour = table.freeze({ 60, 120, 60 }) }),
-	River = table.freeze({ signX = -1, signZ = -1, colour = table.freeze({ 90, 150, 120 }) }),
+	River = table.freeze({ signX = -1, signZ = -1, colour = table.freeze({ 108, 158, 66 }) }),
 	Hills = table.freeze({ signX = 1, signZ = -1, colour = table.freeze({ 150, 140, 100 }) }),
 })
 
@@ -88,45 +88,663 @@ Map.Field = table.freeze({
 	pushOutMargin = 6,
 })
 
--- River: a slow band across the River quarter, with log bridges over it.
+--[[
+	River quarter (redesigned 2026-11-26 from Wylie's map). Points are
+	{ x, z } in studs, traced from the map picture
+	(/mnt/project-files/plantagonist/art/map-redesign/wylie-revised-map.png).
+]]
+
+local function points(list: { { number } }): { { number } }
+	for _, point in list do
+		table.freeze(point)
+	end
+	return table.freeze(list)
+end
+
+-- River: winds from the top edge, along the Hills border, past the safe
+-- field and out of the left edge. Plants wade through it anywhere, slowly.
 Map.River = table.freeze({
-	minX = -350,
-	maxX = -75,
-	minZ = -190,
-	maxZ = -160,
-	-- Everyone wades at this share of their speed unless on a bridge.
+	-- The ground away from the marsh: terrain grass (LeafyGrass, with its
+	-- own blades) in this colour, except under the path and next to the
+	-- safe field. Was teal tiles (the quarter's part) until build 14C.
+	groundMaterial = "LeafyGrass",
+	groundColour = table.freeze({ 108, 158, 66 }),
+	-- Studs of plain ground kept clear of terrain grass round the river
+	-- edge and round each hiding grass patch, so the terrain's own blades
+	-- don't grow through the water or hide the tall grass (build 14D).
+	groundRiverMargin = 4,
+	groundHidingGrassMargin = 4,
+	-- And round the marsh, which keeps its mud (build 14E).
+	groundMarshMargin = 4,
+	-- Centre line, from the top edge to the left edge.
+	centreLine = points({
+		{ -21, -356 },
+		{ -21, -265 },
+		{ -29, -212 },
+		{ -51, -171 },
+		{ -92, -139 },
+		{ -120, -116 },
+		{ -145, -82 },
+		{ -173, -45 },
+		{ -214, -27 },
+		{ -271, -21 },
+		{ -356, -21 },
+	}),
+	width = 40,
+	-- Everyone wades at this share of their speed unless on a crossing.
 	speedFactor = 0.6,
-	bridgeXs = table.freeze({ -120, -230, -320 }),
-	bridgeWidth = 10,
-	bridgeHeight = 3,
+	-- Water depth above the ground. Shallow, so plants wade, not swim.
+	depth = 1.6,
+	-- Roblox terrain water (moving waves, reflections). Set to false to use a
+	-- plain see-through blue part instead.
+	terrainWater = true,
+	waterColour = table.freeze({ 60, 130, 160 }),
+	waterTransparency = 0.6,
+	waterReflectance = 0.6,
+	waveSize = 0.08,
+	waveSpeed = 8,
+	-- Colour of the plain part used when `terrainWater` is false.
+	plainColour = table.freeze({ 60, 130, 200 }),
 })
 
--- Swamp: mud slows big plants; small plants hop across lily pads.
-Map.Swamp = table.freeze({
-	minX = -330,
-	maxX = -110,
-	minZ = -335,
-	maxZ = -225,
+-- Stone moon bridge: a steep arch that plants up to `passUnderMaxLevel`
+-- can walk under through the water. `x`, `z` is its middle; it lies across
+-- the river.
+Map.MoonBridge = table.freeze({
+	x = -120,
+	z = -116,
+	width = 16,
+	-- Length from bank to bank, and how high the middle of the deck is.
+	span = 64,
+	rise = 15,
+	thickness = 2,
+	segments = 20,
+	parapetHeight = 2.5,
+	parapetThickness = 1,
+	passUnderMaxLevel = 4,
+	-- Studs to spare above a level 4 plant (Plants.heightAtScale1 times
+	-- its scale), checked a little off the middle too.
+	headroom = 0.5,
+	colour = table.freeze({ 150, 150, 140 }),
+	parapetColour = table.freeze({ 130, 130, 122 }),
+	-- Short square towers in the parapet stone on the banks beside each end
+	-- of the deck, with a gas lamp (Map.PathLights' lantern) on a short post
+	-- on top, no cap (build 15B).
+	towers = table.freeze({
+		size = 3,
+		height = 6,
+		lampPost = 2,
+	}),
+})
+
+-- Rope bridge from the marsh to the Hills. It sways a little (client side,
+-- for looks).
+Map.RopeBridge = table.freeze({
+	x = -21,
+	z = -302,
+	width = 10,
+	length = 60,
+	-- Deck height at the ends and how far it sags in the middle (keep the
+	-- middle above `River.depth`).
+	endHeight = 3,
+	sag = 0.8,
+	plankLength = 1.2,
+	plankGap = 0.25,
+	plankThickness = 0.4,
+	postHeight = 8,
+	postDiameter = 1.6,
+	ropeHeight = 3.5,
+	ropeThickness = 0.35,
+	rampLength = 5,
+	-- Sway (looks only): the deck, ropes and hangers swing side to side like
+	-- a cradle hanging from a line `swayPivotHeight` studs above the deck
+	-- ends, the middle moving `swayStuds` each way, once every
+	-- `swaySeconds`. The ends stay tied to the posts, so the swing fades to
+	-- nothing towards them and the deck bends (builds 15C, 15D, 16A).
+	swayStuds = 5,
+	swaySeconds = 3,
+	swayPivotHeight = 20,
+	plankColour = table.freeze({ 140, 105, 70 }),
+	postColour = table.freeze({ 115, 85, 55 }),
+	ropeColour = table.freeze({ 175, 150, 105 }),
+})
+
+-- Rock ford near the left edge: a wide band of flat rocks across the river,
+-- close enough together to walk over like a bridge.
+Map.Ford = table.freeze({
+	x = -300,
+	z = -21,
+	-- Rocks in each row across the river, and rows along the river.
+	rocksAcross = 10,
+	rows = 2,
+	spacing = 5,
+	-- Rock sizes, and top heights above the ground (above `River.depth`).
+	minSize = 6.5,
+	maxSize = 8.5,
+	minTop = 1.9,
+	maxTop = 2.5,
+	-- The first and last rock in each row are lower, as a step up from the bank.
+	bankTop = 1.2,
+	-- Rocks tip this many degrees at most, so they don't look laid flat.
+	tiltDegrees = 4,
+	-- Small rocks scattered in the water near the ford, for looks.
+	looseRocks = 26,
+	looseMinSize = 1.5,
+	looseMaxSize = 4,
+	-- How far up and down the river from the ford the loose rocks spread.
+	looseSpread = 22,
+	-- Splashes: white spray on the upstream side of this many ford rocks.
+	splashRocks = 8,
+	splashRate = 14,
+	splashSpeed = 6,
+	splashLifetime = 0.7,
+	splashSize = 1.4,
+	colours = table.freeze({
+		table.freeze({ 120, 115, 105 }),
+		table.freeze({ 105, 100, 95 }),
+		table.freeze({ 135, 125, 110 }),
+		table.freeze({ 95, 95, 90 }),
+		table.freeze({ 125, 120, 115 }),
+	}),
+})
+
+-- Path of separate stone pavers from the moon bridge to the gate.
+Map.Path = table.freeze({
+	centreLine = points({
+		{ -140, -141 },
+		{ -165, -155 },
+		{ -182, -175 },
+		{ -202, -216 },
+		{ -214, -257 },
+		{ -222, -298 },
+		{ -228, -346 },
+	}),
+	width = 22,
+	paverSize = 4.2,
+	paverGap = 1,
+	paverThickness = 0.3,
+	-- Pavers turn up to this many degrees either way, and sit up to this far
+	-- off the grid, so the path looks laid by hand.
+	paverTurnDegrees = 8,
+	paverJitter = 0.4,
+	-- One stone per paver (Pavement showed bricks until build 14B).
+	paverMaterial = "Limestone",
+	colours = table.freeze({
+		table.freeze({ 205, 195, 165 }),
+		table.freeze({ 190, 180, 150 }),
+		table.freeze({ 215, 205, 180 }),
+	}),
+})
+
+-- Decorative iron gate in the top wall at the end of the path. It does not
+-- open. Black iron between cream pillars, with lamps on top.
+-- Gaslights along the grass side of the path, from the gates to the moon
+-- bridge, one gap in from each end (build 15A). Black iron post with a
+-- glass lantern, about as tall as the gate pillars, with a warm glow.
+Map.PathLights = table.freeze({
+	count = 6,
+	-- Studs from the path's edge to the post.
+	edgeOffset = 2,
+	baseDiameter = 1.6,
+	baseHeight = 1.6,
+	postDiameter = 0.6,
+	-- Height of the crossbar and of the lantern's bottom.
+	crossbarHeight = 10,
+	crossbarLength = 2.6,
+	lanternBottom = 10.8,
+	lanternSize = 1.5,
+	lanternHeight = 2,
+	-- Total height to the top of the finial (gate pillars are 14).
+	height = 14.5,
+	ironColour = table.freeze({ 25, 25, 25 }),
+	glassColour = table.freeze({ 255, 225, 170 }),
+	glassTransparency = 0.45,
+	flameColour = table.freeze({ 255, 200, 110 }),
+	lightBrightness = 1.2,
+	lightRange = 20,
+})
+
+Map.Gate = table.freeze({
+	x = -228,
+	-- Total width, and the small side gate's share of it.
+	-- Side gate, pillar, big double gate, pillar, side gate, with pillars at
+	-- both ends.
+	width = 62,
+	sideGateWidth = 10,
+	height = 12,
+	pillarSize = 4,
+	pillarHeight = 14,
+	barSpacing = 1.2,
+	barThickness = 0.35,
+	-- How much the top rail of the big gate arches up in the middle.
+	archRise = 2,
+	lampBrightness = 2,
+	lampRange = 18,
+	ironColour = table.freeze({ 25, 25, 25 }),
+	pillarColour = table.freeze({ 235, 220, 190 }),
+	lampColour = table.freeze({ 255, 210, 140 }),
+	-- Big padlock on the middle of the double gate.
+	padlockSize = 2.6,
+	padlockHeight = 5,
+	padlockColour = table.freeze({ 190, 150, 60 }),
+})
+
+-- Loose stone wall along the edge of the River quarter: from the gate east
+-- to the river, and from the gate west to the corner and down the left edge
+-- to the river. Each quarter will get its own border.
+Map.StoneWall = table.freeze({
+	-- Runs of wall as { fromX, fromZ, toX, toZ }, inside the edge.
+	runs = table.freeze({
+		table.freeze({ -197, -347.5, -44, -347.5 }),
+		table.freeze({ -259, -347.5, -347.5, -347.5 }),
+		table.freeze({ -347.5, -347.5, -347.5, -44 }),
+	}),
+	height = 4.5,
+	thickness = 3,
+	-- Stones on the face and top: lengths and heights vary between these.
+	minStoneLength = 2.6,
+	maxStoneLength = 4.4,
+	minStoneHeight = 1.2,
+	maxStoneHeight = 1.8,
+	coreColour = table.freeze({ 95, 90, 82 }),
+	colours = table.freeze({
+		table.freeze({ 150, 140, 125 }),
+		table.freeze({ 135, 128, 115 }),
+		table.freeze({ 165, 155, 135 }),
+		table.freeze({ 120, 115, 105 }),
+		table.freeze({ 175, 165, 150 }),
+	}),
+})
+
+-- Marsh between the path and the river: mud that slows big plants.
+Map.Marsh = table.freeze({
+	outline = points({
+		{ -214, -350 },
+		{ -42, -350 },
+		{ -42, -249 },
+		{ -53, -196 },
+		{ -71, -175 },
+		{ -108, -155 },
+		{ -133, -139 },
+		{ -153, -145 },
+		{ -171, -167 },
+		{ -193, -204 },
+		{ -205, -245 },
+		{ -212, -294 },
+	}),
 	slowFromLevel = 4,
-	speedFactor = 0.7,
-	lilyPads = 30,
+	speedFactor = 0.8,
+	colour = table.freeze({ 105, 100, 55 }),
+	-- The mud is laid in strips this wide (smaller follows the outline more
+	-- closely but uses more parts).
+	stripWidth = 4,
+	-- Reed clumps for looks (no collision).
+	reedClumps = 26,
+	reedColour = table.freeze({ 110, 130, 60 }),
+	cattailColour = table.freeze({ 100, 65, 40 }),
 })
 
--- Caves in the Hills: tunnels through hills whose ceiling only lets
--- levels 1 to 3 through (see `Config/Plants.luau` for plant heights).
-Map.Caves = table.freeze({
-	clearance = 7,
-	width = 12,
-	-- Each cave: centre X, centre Z, length along X, hill height.
-	list = table.freeze({
-		table.freeze({ x = 200, z = -150, length = 90, hillHeight = 30 }),
-		table.freeze({ x = 260, z = -280, length = 70, hillHeight = 24 }),
+-- Reeds along both river banks (build 15A): marsh style clumps every
+-- `clumpSpacing` studs along each bank, with single reeds between, kept
+-- clear of the bridges, the ford and the path. Looks only.
+Map.RiverReeds = table.freeze({
+	clumpSpacing = 25,
+	-- How far a clump may slide along the bank either way.
+	clumpJitter = 5,
+	singlesBetween = 2,
+	-- Studs out from the water's edge, nearest and furthest.
+	bankOffset = table.freeze({ 0.5, 3 }),
+	-- Studs kept clear round the bridges' and the ford's ends, and the path.
+	crossingClear = 8,
+	layoutSeed = 11,
+})
+
+-- Lily pads on the marsh. Landing on one springs a plant up for a frog hop:
+-- up to `hopHeight` studs, steering at `hopSpeed` studs per second for
+-- `hopSeconds`. The map has `extraPadsPer` more pads round each guide
+-- position (placed by a fixed seed, so every server matches).
+Map.LilyPads = table.freeze({
+	positions = points({
+		{ -175, -335 },
+		{ -146, -326 },
+		{ -94, -323 },
+		{ -59, -324 },
+		{ -206, -306 },
+		{ -180, -313 },
+		{ -161, -301 },
+		{ -135, -305 },
+		{ -115, -313 },
+		{ -98, -301 },
+		{ -73, -306 },
+		{ -117, -290 },
+		{ -191, -281 },
+		{ -171, -273 },
+		{ -146, -282 },
+		{ -91, -278 },
+		{ -69, -280 },
+		{ -125, -197 },
+		{ -144, -181 },
+		{ -113, -181 },
+		{ -91, -190 },
+		{ -126, -164 },
 	}),
-	-- Plain hills with no tunnel: centre X, centre Z, size, height.
-	hills = table.freeze({
-		table.freeze({ x = 120, z = -260, size = 60, height = 18 }),
-		table.freeze({ x = 300, z = -110, size = 50, height = 14 }),
+	size = 6,
+	-- Each pad is up to this share bigger or smaller.
+	sizeVariation = 0.12,
+	thickness = 0.5,
+	-- The classic cut: a wedge from the edge to the middle.
+	notchDegrees = 40,
+	colour = table.freeze({ 80, 165, 70 }),
+	rimColour = table.freeze({ 55, 120, 50 }),
+	extraPadsPer = 2,
+	extraMinDistance = 7,
+	extraMaxDistance = 13,
+	layoutSeed = 7,
+	-- White water lilies (decoration only), one per guide position, growing
+	-- on the water beside its pad, not on it (build 14E). The flower's middle
+	-- sits this far out from the pad's edge (its petals reach 1.5).
+	lilyFlowers = 22,
+	flowerOffset = 1.6,
+	petalColour = table.freeze({ 250, 250, 245 }),
+	petalTipColour = table.freeze({ 245, 215, 225 }),
+	flowerCentreColour = table.freeze({ 250, 205, 60 }),
+	hopHeight = 10.3,
+	hopSeconds = 0.75,
+	hopSpeed = 28,
+})
+
+-- Grass to hide in. Plants up to `hideMaxLevel` can't be seen by other
+-- players inside it (their name tag still shows). Attacking reveals the
+-- attacker for `revealSeconds`.
+Map.HidingGrass = table.freeze({
+	circles = table.freeze({
+		table.freeze({ x = -292, z = -288, radius = 43 }),
+		table.freeze({ x = -249, z = -115, radius = 43 }),
 	}),
+	hideMaxLevel = 3,
+	revealSeconds = 3,
+	height = 9.5,
+	-- How see-through your own plant looks to you while hidden.
+	ownTransparency = 0.5,
+	-- How often each client checks who is hiding (seconds).
+	checkSeconds = 0.2,
+	-- The pale patch under the grass.
+	colour = table.freeze({ 170, 200, 90 }),
+	-- The grass is single blades (Wylie's drawing, 2026-11-27): one
+	-- narrow pointed shape, widest a quarter of the way up. Each blade is
+	-- one part, a stretched ellipsoid set `bladeSunk` of its length into
+	-- the ground so the visible part is widest near the bottom. Blades
+	-- stand `bladeSpacing` apart (up to `bladeSpread` off the grid), turned
+	-- any way, sized `sizeRange` times, in one of `bladeColours`. A
+	-- blade's length is `height` times its size; its width is
+	-- `bladeWidth` of its length.
+	bladeSpacing = 2.2,
+	bladeSpread = 0.9,
+	sizeRange = table.freeze({ 0.75, 1.1 }),
+	bladeWidth = 0.12,
+	bladeThickness = 0.12,
+	bladeSunk = 0.2,
+	bladeColours = table.freeze({
+		table.freeze({ 140, 198, 63 }), -- #8cc63f
+		table.freeze({ 93, 124, 44 }), -- #5d7c2c
+		table.freeze({ 187, 196, 65 }), -- #bbc441
+	}),
+	-- Each blade waves (on each player's own screen): leans up to
+	-- `waveDegrees` and back every `waveSeconds`, the wave moving across
+	-- the grass (`waveSpread` of a turn per stud). Only blades within
+	-- `waveDistance` of the camera move, `waveRate` times a second.
+	waveDegrees = 2,
+	waveSeconds = 4,
+	waveSpread = 0.03,
+	waveDistance = 90,
+	waveRate = 30,
+})
+
+-- Creature spawns: native creatures listed here spawn (and wander) only in
+-- that area; every other creature keeps out of the water, the marsh, the
+-- tunnels and the Third Rise.
+Map.CreatureAreas = table.freeze({
+	blowfish = "Water",
+	toad = "Marsh",
+	bat = "Tunnel",
+	-- The chameleon's id is `snake` (Config/PowerUps).
+	snake = "FirstRise",
+})
+
+-- Hills quarter, from Wylie's Hills map. The outlines of the rises,
+-- tunnels, ramps and the bottom left hill are traced from the picture
+-- into `Config/HillsShape.luau` (scripts/map/trace_hills.py); heights and
+-- looks are here.
+Map.Hills = table.freeze({
+	-- Height of each rise's flat top above the ground. The First Rise is
+	-- higher than a jump (reach it by a ramp or flying) so tunnels fit
+	-- under it; the Second is one jump more; the Third blocks walking and
+	-- bat flight (Plants.flyHeight 18 above the Second Rise is under it).
+	riseHeights = table.freeze({ 12, 18, 30 }),
+	-- The rise right of centre is a tall pillar with its own heights.
+	pillar = table.freeze({
+		x = 264,
+		z = -238,
+		radius = 30,
+		heights = table.freeze({ 12, 24, 48 }),
+	}),
+	-- Tunnels at ground level fit levels 1 to 3, not 4 (plant heights:
+	-- Plants.heightAtScale1 times the level's scale). The roof is an arch:
+	-- `tunnelWallHeight` at the walls, `tunnelClearance` in the middle,
+	-- reached `tunnelArchReach` studs from a wall.
+	tunnelWallHeight = 7,
+	tunnelClearance = 10,
+	tunnelArchReach = 6,
+	-- Terrain rock over a tunnel starts here (a multiple of 4, the terrain
+	-- cell size); parts fill between the arch and the rock.
+	tunnelRockBottom = 12,
+	-- A plant that grows past this level in a tunnel or the cave is put
+	-- out at the nearest way out: the search walks the tunnel in steps of
+	-- `tunnelExitStep` studs (up to `tunnelExitReach` away), then puts
+	-- the plant `tunnelExitMargin` studs further out onto open ground.
+	tunnelMaxLevel = 3,
+	tunnelExitStep = 2,
+	tunnelExitReach = 300,
+	tunnelExitMargin = 6,
+	-- The cave in the middle of the big tunnel: a taller arch.
+	caveWallHeight = 9,
+	caveClearance = 14,
+	caveArchReach = 10,
+	caveRockBottom = 16,
+	-- Rock over the cave is at least this high.
+	caveRockTop = 20,
+	-- Arch roofs are built in squares this size. Terrain cells are 4.
+	archStep = 2,
+	terrainCell = 4,
+	-- Terrain materials and colours: ground, then each rise. The ground
+	-- is brown rock a little darker than the sand (was grey slate,
+	-- 112, 112, 108, until build 13E; 186, 158, 118 in 13E).
+	groundColour = table.freeze({ 150, 120, 86 }),
+	riseColours = table.freeze({
+		table.freeze({ 184, 150, 104 }),
+		table.freeze({ 140, 104, 70 }),
+		table.freeze({ 100, 74, 54 }),
+	}),
+	-- Patches of grass on the slate ground.
+	grassPatches = 14,
+	patchMinRadius = 8,
+	patchMaxRadius = 20,
+	sandColour = table.freeze({ 212, 188, 138 }),
+	grassColour = table.freeze({ 122, 150, 78 }),
+	-- Sand round the foot of each cliff on the ground; the width wanders
+	-- between these.
+	cliffSandMinWidth = 4,
+	cliffSandMaxWidth = 16,
+	-- Leaning rock slabs along the cliff edges of each rise, so the edges
+	-- aren't straight walls.
+	slabSpacing = 5,
+	slabMinWidth = 5,
+	slabMaxWidth = 8,
+	slabMinThickness = 2,
+	slabMaxThickness = 3.5,
+	slabMaxTiltDegrees = 12,
+	slabMaxTurnDegrees = 14,
+	slabColourVariation = 12,
+	-- Ramps up to the First Rise: longer than drawn by `rampExtend` (out
+	-- into the ground), in two slopes turned a little from each other with
+	-- a ledge between at `rampLedgeHeight`. `rampSplit` is where along the
+	-- ramp the ledge starts and ends (share of the length).
+	rampExtend = 18,
+	rampLedgeHeight = 5,
+	rampSplit = table.freeze({ 0.45, 0.56 }),
+	rampTurnDegrees = 6,
+	-- Second Rise boulders round each ramp, and on its surface (leaving a
+	-- clear path up the middle).
+	rampBoulders = 16,
+	rampSurfaceBoulders = 8,
+	surfaceBoulderMaxSize = 4,
+	boulderMinSize = 2,
+	boulderMaxSize = 6,
+	-- The bottom left hill: a First Rise hill (riseHeights[1] high) with
+	-- steep rock sides and a tunnel along its length (HillsShape.ridge).
+	-- The tunnel is built of parts: side walls `ridgeWallWidth` thick and a
+	-- roof over them; the rest of the hill is terrain rock.
+	ridgeTunnelWidth = 12,
+	ridgeWallWidth = 6,
+	-- Its outline, ramps and boulder patches, from Wylie's drawing
+	-- (2026-11-27, about 13 pixels a stud, with the tunnel ends on the
+	-- ends of HillsShape.ridge). The ramps are moved out from the drawing
+	-- so their tops meet the outside of the tunnel walls. Ramps are built
+	-- like the others (see rampExtend), with ragged pieces at the low end.
+	firstHill = table.freeze({
+		outline = table.freeze({
+			table.freeze({ 83.6, -140.5 }),
+			table.freeze({ 98.1, -134.4 }),
+			table.freeze({ 122.6, -120.7 }),
+			table.freeze({ 127.6, -99.6 }),
+			table.freeze({ 120.7, -94.2 }),
+			table.freeze({ 135.9, -75.2 }),
+			table.freeze({ 118.0, -60.5 }),
+			table.freeze({ 102.7, -58.1 }),
+			table.freeze({ 100.4, -72.8 }),
+			table.freeze({ 80.5, -78.6 }),
+			table.freeze({ 77.2, -98.9 }),
+			table.freeze({ 82.0, -104.2 }),
+			table.freeze({ 64.8, -125.7 }),
+		}),
+		-- Each ramp's top edge (on the hill) and bottom edge (as drawn).
+		ramps = table.freeze({
+			table.freeze({
+				high = table.freeze({
+					table.freeze({ 64.8, -125.7 }),
+					table.freeze({ 82.0, -104.2 }),
+				}),
+				low = table.freeze({
+					table.freeze({ 36.2, -115.3 }),
+					table.freeze({ 58.2, -88.6 }),
+				}),
+			}),
+			table.freeze({
+				high = table.freeze({
+					table.freeze({ 120.7, -94.2 }),
+					table.freeze({ 135.9, -75.2 }),
+				}),
+				low = table.freeze({
+					table.freeze({ 140.6, -110.0 }),
+					table.freeze({ 162.8, -86.5 }),
+				}),
+			}),
+		}),
+		-- Patches on top covered with Second Rise boulders, one boulder
+		-- for every `patchBoulderArea` square studs.
+		rockPatches = table.freeze({
+			table.freeze({
+				table.freeze({ 79.0, -134.9 }),
+				table.freeze({ 92.8, -133.2 }),
+				table.freeze({ 103.1, -126.6 }),
+				table.freeze({ 82.4, -123.2 }),
+			}),
+			table.freeze({
+				table.freeze({ 108.7, -113.4 }),
+				table.freeze({ 117.6, -115.8 }),
+				table.freeze({ 124.3, -102.6 }),
+				table.freeze({ 116.1, -98.8 }),
+				table.freeze({ 107.3, -101.3 }),
+			}),
+			table.freeze({
+				table.freeze({ 83.9, -98.8 }),
+				table.freeze({ 97.7, -95.7 }),
+				table.freeze({ 99.1, -80.3 }),
+				table.freeze({ 82.9, -82.0 }),
+			}),
+			table.freeze({
+				table.freeze({ 107.3, -69.1 }),
+				table.freeze({ 114.2, -70.2 }),
+				table.freeze({ 117.1, -62.7 }),
+				table.freeze({ 104.8, -60.7 }),
+			}),
+		}),
+		patchBoulderArea = 10,
+		-- How much further out than drawn its ramps run (less than the
+		-- others: the right one meets the foot of the next ramp).
+		rampExtend = 6,
+		-- Ragged low end of each ramp: broken flat pieces sticking out of
+		-- it, `toeLength` studs long, `toeHeight` high, turned up to
+		-- `toeTurnDegrees`.
+		toePieces = 6,
+		toeLength = table.freeze({ 3, 8 }),
+		toeHeight = 0.8,
+		toeTurnDegrees = 25,
+	}),
+	-- Cacti (decor; you walk through them). If ServerStorage has a folder
+	-- `Cacti` holding models named Ball, Short and Tall, those are used.
+	cacti = 40,
+	cactusClearance = 6,
+	-- Sand round the foot of each cactus on the ground (studs across).
+	cactusSandMin = 6,
+	cactusSandMax = 12,
+	-- How far a cactus's foot sits below the surface, so it looks planted.
+	cactusSink = 0.3,
+	-- How far a barrel cactus's foot sits above the highest ground the ray
+	-- finds under it. In Studio the ground showed about 2 studs higher
+	-- than the ray found (builds 12B to 12D), hiding the bottom of the
+	-- ball. Lower this if barrels float.
+	barrelLift = 2,
+	-- Ball cacti are barrel cacti: a nearly round ribbed ball with a pale top.
+	ballCactusSize = table.freeze({ 3, 5 }),
+	barrelRibs = 12,
+	barrelSpinesPerRib = 2,
+	barrelTopColour = table.freeze({ 225, 215, 120 }),
+	spineColour = table.freeze({ 240, 230, 170 }),
+	shortCactusHeight = table.freeze({ 6, 8 }),
+	-- Short cacti stand this far above the measured ground instead of
+	-- being set in (they looked sunk, like the barrels; see barrelLift).
+	shortCactusLift = 2,
+	tallCactusHeight = table.freeze({ 11, 15 }),
+	cactusColour = table.freeze({ 70, 130, 70 }),
+	-- Miner's lanterns on the walls: in the cave, `caveLanternsPerWall` on
+	-- each of its two long walls (spread along the cave's length); in the
+	-- tunnels, one every `tunnelLanternSpacing` studs. `lanternWallGap`
+	-- keeps a lantern clear of the rock face (terrain bulges a little).
+	caveLanternsPerWall = 2,
+	lanternWallGap = 1,
+	caveLanternHeight = 6,
+	tunnelLanternSpacing = 24,
+	tunnelLanternHeight = 5,
+	lanternSize = 1.4,
+	lanternColour = table.freeze({ 255, 190, 90 }),
+	lanternFrameColour = table.freeze({ 60, 50, 40 }),
+	lanternRange = 20,
+	lanternBrightness = 1.4,
+	-- Cliff wall round the top and right edges: the arena border here.
+	-- It starts at the river bank and ends in a tall pillar at the
+	-- Grassland.
+	cliffStartX = 2,
+	cliffMinHeight = 20,
+	cliffMaxHeight = 40,
+	cliffMinLength = 10,
+	cliffMaxLength = 18,
+	cliffThickness = 10,
+	cliffMaxTiltDegrees = 5,
+	cliffColour = table.freeze({ 128, 126, 120 }),
+	cliffGrassColour = table.freeze({ 110, 150, 70 }),
+	pillarHeight = 52,
+	pillarSize = 14,
 })
 
 -- Forest: trees and hollow logs that only levels 1 and 2 fit through.
@@ -137,19 +755,52 @@ Map.Forest = table.freeze({
 		table.freeze({ x = -260, z = 260, length = 50 }),
 		table.freeze({ x = -240, z = 110, length = 36 }),
 	}),
-	logClearance = 4.5,
+	logClearance = 7,
 })
 
--- Grassland: tall grass to hide in, and cow fields.
+-- Grassland: tall grass to hide in, and cow fields (laid out from Wylie's
+-- revised map, build 16A).
 Map.Grassland = table.freeze({
-	grassPatches = 14,
+	-- Hiding grass circles. To save parts each is a see-through grass dome
+	-- with a flat top `domeHeight` studs up and a rounded edge (a quarter
+	-- circle down to the ground), with `ringRows` rows of waving blades
+	-- (Map.HidingGrass) round the edge. The dome's edge reaches `domeOverlap`
+	-- studs past ring `domeEdgeRow` (0 is the outermost), and `bladesInside`
+	-- blades, `insideBladeScale` times the usual height, are scattered inside
+	-- it. Plants hide anywhere in the circle, like in the River quarter's
+	-- patches (builds 16A to 16C). The rounded edge is made of balls
+	-- `domeEdgeSpacing` studs apart, joined to the middle into one part.
+	grassCircles = table.freeze({
+		table.freeze({ x = 146, z = 70, radius = 43 }),
+		table.freeze({ x = 219, z = 177, radius = 43 }),
+		table.freeze({ x = 92, z = 284, radius = 43 }),
+	}),
+	domeHeight = 6,
+	domeEdgeSpacing = 3,
+	insideBladeScale = 1.25,
+	fillColour = table.freeze({ 150, 200, 80 }),
+	fillTransparency = 0.35,
+	ringRows = 3,
+	domeEdgeRow = 1,
+	domeOverlap = 1,
+	bladesInside = 14,
+	-- The ground: terrain grass like the River quarter's (Map.River's
+	-- groundMaterial and colour; a terrain material has one colour), kept
+	-- this far off the grass circles and the cow pens (build 16C).
+	groundCircleMargin = 4,
+	groundPenMargin = 4,
+	-- Cow pens have a dirt floor.
+	penDirtColour = table.freeze({ 115, 85, 55 }),
 	cowFields = table.freeze({
-		table.freeze({ x = 180, z = 180, size = 90 }),
+		table.freeze({ x = 96, z = 180, size = 90 }),
 		table.freeze({ x = 280, z = 90, size = 60 }),
 	}),
 })
 
 -- Keep spawned things this far from the map edge and the field edge.
 Map.edgeMargin = 12
+-- Random points tried when looking for a spot in a creature's area (the
+-- tunnels are small, so this is generous).
+Map.areaPointTries = 400
 
 return table.freeze(Map)

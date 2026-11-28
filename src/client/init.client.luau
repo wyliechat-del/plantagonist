@@ -1,8 +1,9 @@
--- Client entry point. Keep this thin: start the HUD, controls and effects.
+-- Client entry point. Keep this thin: start the HUD, controls, effects and
+-- map features.
 
 local Controllers = script:WaitForChild("Controllers")
 
-for _, name in { "Hud", "Controls", "Effects" } do
+for _, name in { "Hud", "Controls", "Effects", "World" } do
 	local controller = require(Controllers:WaitForChild(name)) :: any
 	local ok, err = pcall(controller.start)
 	if not ok then

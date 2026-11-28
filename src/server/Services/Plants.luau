@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Levels = require(ReplicatedStorage.Shared.Config.Levels)
+local Map = require(ReplicatedStorage.Shared.Config.Map)
 local PlantsConfig = require(ReplicatedStorage.Shared.Config.Plants)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local Npc = require(ReplicatedStorage.Shared.Config.Npc)
@@ -58,6 +59,8 @@ export type Plant = {
 	ballUntil: number,
 	burstUntil: number,
 	invisibleUntil: number,
+	-- Hiding grass doesn't hide a plant that attacked until this time.
+	grassRevealUntil: number,
 	stickyUntil: number,
 	fertilised: boolean,
 	inField: boolean,
@@ -204,6 +207,15 @@ function Plants.setRings(plant: Plant, rings: number, cause: string): { string }
 			Effects.notify(player, `You grew into a {info.name}!`, "good")
 			Effects.send(player, "sound", { name = "levelUp" })
 			Log.event(player, `ReachedLevel{newLevel}`, math.floor(now - plant.spawnedAt), cause)
+			-- Too big for the tunnels: put out at the nearest way out.
+			if newLevel > Map.Hills.tunnelMaxLevel and oldLevel <= Map.Hills.tunnelMaxLevel then
+				local exit = MapBuilder.tunnelExit(Plants.position(plant))
+				if exit then
+					-- Dropped from its own height, so it lands on its feet.
+					local height = PlantsConfig.heightAtScale1 * Plants.scale(plant)
+					Plants.teleport(plant, exit + Vector3.new(0, height, 0))
+				end
+			end
 			if newLevel == #Levels.list then
 				Data.count(player, "reachedTopLevel")
 				if not plant.droppedSinceSpawn then
@@ -346,6 +358,7 @@ local function resetTimers(plant: Plant, now: number)
 	plant.ballUntil = 0
 	plant.burstUntil = 0
 	plant.invisibleUntil = 0
+	plant.grassRevealUntil = 0
 	plant.stickyUntil = 0
 	plant.fertilised = false
 	plant.droppedSinceSpawn = false
@@ -412,6 +425,7 @@ function Plants.register(model: Model, player: Player?, name: string): Plant?
 		ballUntil = 0,
 		burstUntil = 0,
 		invisibleUntil = 0,
+		grassRevealUntil = 0,
 		stickyUntil = 0,
 		fertilised = false,
 		inField = false,

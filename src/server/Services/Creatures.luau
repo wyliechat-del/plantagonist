@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CreaturesConfig = require(ReplicatedStorage.Shared.Config.Creatures)
+local HillsShape = require(ReplicatedStorage.Shared.Config.HillsShape)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local PowerUpsConfig = require(ReplicatedStorage.Shared.Config.PowerUps)
 local MapRules = require(ReplicatedStorage.Shared.Rules.Map)
@@ -27,6 +28,7 @@ export type Creature = {
 	id: string, -- creature id from Config/PowerUps, or "fly"
 	part: BasePart,
 	territory: string, -- territory name, or "Field" for flies
+	area: string, -- from MapRules.creatureArea: where it may go
 	x: number,
 	z: number,
 	targetX: number,
@@ -126,8 +128,18 @@ local function randomFieldPoint(): (number, number)
 	return math.cos(angle) * distance, math.sin(angle) * distance
 end
 
-local function spawnCreature(id: string, territory: string)
+-- Ground under a creature. In a tunnel it is under the rock, so the ray
+-- (which stops on top of the rock) would put it on the roof.
+local function groundFor(area: string, x: number, z: number): number
+	if area == "Tunnel" and MapRules.inTunnel(Map, HillsShape, x, z) then
+		return Map.groundY
+	end
+	return MapBuilder.groundY(x, z)
+end
+
+local function spawnCreature(id: string, territory: string, native: boolean)
 	local x, z
+	local area = MapRules.creatureArea(Map, id, native)
 	local size, colour, label
 	if id == "fly" then
 		x, z = randomFieldPoint()
@@ -135,7 +147,7 @@ local function spawnCreature(id: string, territory: string)
 		colour = Color3.fromRGB(30, 30, 30)
 		label = "Fly"
 	else
-		x, z = MapRules.randomPointIn(Map, territory, Util.random)
+		x, z = MapRules.randomPointInArea(Map, territory, area, Util.random, HillsShape)
 		local info = PowerUpsConfig.creatures[id]
 		size = CreaturesConfig.bodySize[info.size]
 		colour = Util.colour(PowerUpsConfig.families[info.family].colour)
@@ -145,7 +157,7 @@ local function spawnCreature(id: string, territory: string)
 		Name = id,
 		Shape = if id == "fly" then Enum.PartType.Ball else Enum.PartType.Block,
 		Size = Vector3.one * size,
-		Position = Vector3.new(x, MapBuilder.groundY(x, z) + size / 2, z),
+		Position = Vector3.new(x, groundFor(area, x, z) + size / 2, z),
 		Color = colour,
 		CanCollide = false,
 		CanTouch = false,
@@ -159,6 +171,7 @@ local function spawnCreature(id: string, territory: string)
 		id = id,
 		part = part,
 		territory = territory,
+		area = area,
 		x = x,
 		z = z,
 		targetX = x,
@@ -185,17 +198,28 @@ local function spawnTick()
 			-- Mostly native creatures, some from next door, a few from across the map.
 			local source =
 				MapRules.spawnSource(Map, territory, CreaturesConfig.spawnMix, Util.random)
-			spawnCreature(Util.pick(idsByTerritory[source] or ids), territory)
+			spawnCreature(Util.pick(idsByTerritory[source] or ids), territory, source == territory)
 		end
 	end
 	if (counts.Field or 0) < CreaturesConfig.flies.cap then
-		spawnCreature("fly", "Field")
+		spawnCreature("fly", "Field", true)
 	end
 end
 
 local function newTarget(creature: Creature)
 	local tx, tz =
 		Steering.wanderTarget(creature.x, creature.z, CreaturesConfig.wanderRadius, Util.random)
+	-- Prefer a spot in the creature's own area (river, marsh, tunnel...).
+	for _ = 1, CreaturesConfig.areaTargetTries do
+		if
+			creature.territory == "Field"
+			or MapRules.creatureAllowed(creature.area, MapRules.areaAt(Map, tx, tz, HillsShape))
+		then
+			break
+		end
+		tx, tz =
+			Steering.wanderTarget(creature.x, creature.z, CreaturesConfig.wanderRadius, Util.random)
+	end
 	if creature.territory == "Field" then
 		local distance = MapRules.distanceFromCentre(tx, tz)
 		local limit = Map.Field.radius - 6
@@ -219,7 +243,7 @@ local function moveTick(dt: number)
 	for _, creature in creatures do
 		local isFly = creature.id == "fly"
 		local oldX, oldZ = creature.x, creature.z
-		local oldGround = MapBuilder.groundY(oldX, oldZ)
+		local oldGround = groundFor(creature.area, oldX, oldZ)
 		if not isFly and now >= creature.dodgeUntil and now >= creature.dodgeReadyAt then
 			-- Dodge only at the last moment, then carry on.
 			local nearest, nearestDistance = nil, CreaturesConfig.dodgeDistance
@@ -243,7 +267,10 @@ local function moveTick(dt: number)
 			nx, nz = creature.x + creature.dodgeX * step, creature.z + creature.dodgeZ * step
 			nx, nz = MapRules.clampToTerritory(Map, creature.territory, nx, nz)
 		else
-			local speed = if isFly then CreaturesConfig.flies.speed else CreaturesConfig.wanderSpeed
+			local speed = if isFly
+				then CreaturesConfig.flies.speed
+				else CreaturesConfig.wanderSpeed
+					* (CreaturesConfig.wanderSpeedShare[creature.id] or 1)
 			local arrived
 			nx, nz, arrived = Steering.moveTowards(
 				creature.x,
@@ -256,7 +283,20 @@ local function moveTick(dt: number)
 				newTarget(creature)
 			end
 		end
-		local ground = MapBuilder.groundY(nx, nz)
+		if
+			not isFly
+			and not MapRules.creatureAllowed(
+				creature.area,
+				MapRules.areaAt(Map, nx, nz, HillsShape)
+			)
+		then
+			-- Blowfish stay in the river, toads in the marsh, bats in the
+			-- tunnels, chameleons on the First Rise, the rest on land.
+			nx, nz = oldX, oldZ
+			creature.dodgeUntil = 0
+			newTarget(creature)
+		end
+		local ground = groundFor(creature.area, nx, nz)
 		if not isFly and ground - oldGround > CreaturesConfig.maxClimb then
 			-- Too steep (a hill or wall): stay put and head somewhere else.
 			nx, nz, ground = oldX, oldZ, oldGround

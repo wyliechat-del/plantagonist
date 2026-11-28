@@ -1,7 +1,8 @@
 --[[
 	Runs a few times a second for every plant: keeps big plants out of the
 	safe field, gives spawn protection on leaving it, sets walking speed
-	(level, swamp, river, strangle, speed burst) and ends timed effects.
+	(level, marsh, river, strangle, speed burst), hides small plants in
+	hiding grass and ends timed effects.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -98,6 +99,19 @@ local function step()
 		if plant.stickyUntil > 0 and now >= plant.stickyUntil then
 			plant.stickyUntil = 0
 			PlantModel.setVenomSack(model, false)
+		end
+		-- Small plants in hiding grass vanish for other players (clients
+		-- hide models with this attribute; the name tag stays).
+		local inGrass = MapRules.hiddenInGrass(
+			Map,
+			plant.level,
+			position.X,
+			position.Z,
+			now,
+			plant.grassRevealUntil
+		)
+		if (model:GetAttribute("InGrass") == true) ~= inGrass then
+			model:SetAttribute("InGrass", inGrass)
 		end
 		local protected = Plants.isProtected(plant, now)
 		if model:GetAttribute("Protected") ~= protected then

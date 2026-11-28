@@ -51,3 +51,16 @@ Roblox game. Code syncs into Studio with Rojo (`default.project.json`).
 - Imported MeshPart textures don't show a PNG's see-through pixels (a sign
   showed as a box). Images that need transparency (signs, stained glass roof)
   are swapped for Decals at runtime; see `asDecal` in MapBuilder.
+- A Highlight with no Adornee outlines its parent. The aim Highlight is
+  parented to Workspace, so with no target it outlined the terrain water and
+  ford rocks. Keep it disabled when there is no target.
+- Terrain keeps the fuller of two fills in a cell, not the sum. Two fills
+  that each half fill a 4 stud cell (0 to 6, then 6 to 12) leave it half
+  empty, a hole in the rock. Fill every piece of a column from its bottom.
+- `Util.roll` returns whole numbers only, so `Util.roll(0.55, 0.9)` gives
+  0 or 1. Boulders came out as flat sheets (builds 9 to 13C) from that.
+  Use `Util.between` for any range that isn't whole numbers.
+- A client script that looks for server-built map parts once can run
+  before they arrive (the rope bridge stood still in build 15C). Look again
+  every second, and keep each part's rest pose in an attribute (like
+  `SwayBase`) so a second look mid move is safe.
