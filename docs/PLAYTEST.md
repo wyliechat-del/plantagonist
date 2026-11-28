@@ -399,6 +399,17 @@ From Wylie's drawing of 2026-11-27.
 4. Plants still hide anywhere in the circle.
 5. The flag says Build 16B.
 
+## 2zh. New in build 16C: Grassland ground and grass domes
+
+1. The Grassland ground is terrain grass like the River quarter's (same
+   green), clear of the grass circles, the cow pens and the safe field.
+2. Each cow pen has a brown dirt floor.
+3. Each grass dome is about 6 studs tall with a flat top and a rounded edge
+   down to the ground. If the Output shows "Grass dome join failed", the
+   dome is built from loose pieces instead (overlaps may look darker).
+4. The 14 blades inside each dome are a quarter taller (about 12 studs).
+5. The flag says Build 16C.
+
 ## 3. Things Claude couldn't check without Studio
 
 These are the most likely to need a fix:

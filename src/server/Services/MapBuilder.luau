@@ -1366,9 +1366,11 @@ end
 -- One grass blade standing at (x, z): a thin stretched ellipsoid, part
 -- sunk into the ground, turned any way, sized and coloured at random. It
 -- keeps its base in a `BladeBase` attribute so clients can wave it.
-local function grassBlade(parent: Instance, x: number, z: number)
+local function grassBlade(parent: Instance, x: number, z: number, scale: number?)
 	local grass = Map.HidingGrass
-	local length = grass.height * Util.between(grass.sizeRange[1], grass.sizeRange[2])
+	local length = grass.height
+		* Util.between(grass.sizeRange[1], grass.sizeRange[2])
+		* (scale or 1)
 	local base = CFrame.new(x, GROUND, z) * CFrame.Angles(0, Util.random() * math.pi * 2, 0)
 	local blade = Instance.new("Part")
 	blade.Name = "Blade"
@@ -1437,7 +1439,10 @@ end
 -- Grass terrain over the River quarter's ground, in rows of 4 stud cells
 -- (the terrain cell size). None next to the safe field (it has its own
 -- grass) or under the path (terrain grass blades would poke through).
-local function riverGround()
+-- Terrain grass (Map.River's ground material and colour) over one
+-- quarter's ground, `signX`, `signZ` saying which, on each cell where
+-- `grassy(x, z)` says so, and never in the safe field.
+local function grassGround(signX: number, signZ: number, grassy: (number, number) -> boolean)
 	local river = Map.River
 	local terrain = workspace.Terrain
 	local material = (Enum.Material :: any)[river.groundMaterial]
@@ -1446,27 +1451,32 @@ local function riverGround()
 	local count = math.ceil(Map.halfSize / cell)
 	local fieldClear = Map.Field.radius + cell
 	for j = 1, count do
-		local z = -(j - 0.5) * cell
+		local z = signZ * (j - 0.5) * cell
 		local start = nil
 		for i = 1, count + 1 do
-			local x = -(i - 0.5) * cell
-			local grassy = i <= count
-				and x * x + z * z > fieldClear * fieldClear
-				and not MapRules.onPath(Map, x, z)
-				and not MapRules.keepGrassGroundOff(Map, x, z)
-			if grassy and start == nil then
+			local x = signX * (i - 0.5) * cell
+			local fill = i <= count and x * x + z * z > fieldClear * fieldClear and grassy(x, z)
+			if fill and start == nil then
 				start = i
-			elseif not grassy and start ~= nil then
-				local x0, x1 = -(start - 1) * cell, -(i - 1) * cell
+			elseif not fill and start ~= nil then
+				local x0, x1 = signX * (start - 1) * cell, signX * (i - 1) * cell
 				terrain:FillBlock(
 					CFrame.new((x0 + x1) / 2, GROUND - cell / 2, z),
-					Vector3.new(x0 - x1, cell, cell),
+					Vector3.new(math.abs(x0 - x1), cell, cell),
 					material
 				)
 				start = nil
 			end
 		end
 	end
+end
+
+-- The River quarter's ground away from the marsh: terrain grass, except
+-- under the path and near the river, marsh and hiding grass.
+local function riverGround()
+	grassGround(-1, -1, function(x, z)
+		return not MapRules.onPath(Map, x, z) and not MapRules.keepGrassGroundOff(Map, x, z)
+	end)
 end
 
 -- Reed clumps and single reeds along both river banks.
@@ -2791,10 +2801,82 @@ local function buildForest()
 	end
 end
 
+-- A see-through grass dome at (x, z): flat on top, `Grassland.domeHeight`
+-- up, with a rounded edge down to the ground at `radius`. A middle
+-- cylinder and a ring of balls round its edge, joined into one part; if
+-- the join fails the pieces stay as they are.
+local function grassDome(parent: Instance, x: number, z: number, radius: number)
+	local land = Map.Grassland
+	local height = land.domeHeight
+	local look = {
+		Color = Util.colour(land.fillColour),
+		Material = Enum.Material.Grass,
+		Transparency = land.fillTransparency,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+	}
+	local function piece(props: { [string]: any }): Part
+		for key, value in look do
+			props[key] = value
+		end
+		props.Parent = parent
+		return Util.part(props)
+	end
+	-- Everything is centred on the ground, so only the top half shows.
+	local inner = radius - height
+	local core = piece({
+		Name = "TallGrass",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(height * 2, inner * 2, inner * 2),
+		CFrame = CFrame.new(x, GROUND, z) * CFrame.Angles(0, 0, math.rad(90)),
+	})
+	local balls = {}
+	local count = math.ceil(2 * math.pi * inner / land.domeEdgeSpacing)
+	for i = 0, count - 1 do
+		local angle = i / count * 2 * math.pi
+		table.insert(
+			balls,
+			piece({
+				Name = "TallGrassEdge",
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.new(height * 2, height * 2, height * 2),
+				Position = Vector3.new(
+					x + math.cos(angle) * inner,
+					GROUND,
+					z + math.sin(angle) * inner
+				),
+			})
+		)
+	end
+	local ok, union = pcall(function()
+		return core:UnionAsync(balls)
+	end)
+	if ok and union then
+		union.Name = "TallGrass"
+		union.UsePartColor = true
+		for key, value in look do
+			(union :: any)[key] = value
+		end
+		union.Anchored = true
+		union.Parent = parent
+		core:Destroy()
+		for _, ball in balls do
+			ball:Destroy()
+		end
+	else
+		warn("[MapBuilder] Grass dome join failed, using loose pieces:", union)
+	end
+end
+
 local function buildGrassland()
 	local grass = Instance.new("Folder")
 	grass.Name = "Grassland"
 	grass.Parent = folder
+	grassGround(1, 1, function(x, z)
+		return MapRules.grasslandGrassGround(Map, x, z)
+	end)
 	-- Hiding grass circles: a low see-through grass dome with rows of
 	-- waving blades round the edge and a few scattered inside.
 	local land = Map.Grassland
@@ -2802,26 +2884,8 @@ local function buildGrassland()
 	local blades = Instance.new("Model")
 	blades.Name = "HidingGrass"
 	blades.Parent = grass
-	local fillHeight = hiding.height * land.fillShare
 	for _, circle in land.grassCircles do
-		-- The dome: a flattened ball centred on the ground, so only its top
-		-- half shows, sloping to nothing at its edge.
-		local domeRadius = MapRules.grassDomeRadius(Map, circle.radius)
-		local dome = Util.part({
-			Name = "TallGrass",
-			Size = Vector3.new(domeRadius * 2, fillHeight * 2, domeRadius * 2),
-			Position = Vector3.new(circle.x, GROUND, circle.z),
-			Color = Util.colour(land.fillColour),
-			Material = Enum.Material.Grass,
-			Transparency = land.fillTransparency,
-			CanCollide = false,
-			CanQuery = false,
-			CastShadow = false,
-			Parent = grass,
-		})
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Parent = dome
+		grassDome(grass, circle.x, circle.z, MapRules.grassDomeRadius(Map, circle.radius))
 		local spacing = hiding.bladeSpacing
 		local spread = hiding.bladeSpread
 		-- Blades scattered inside, clear of the innermost ring.
@@ -2851,6 +2915,14 @@ local function buildGrassland()
 	end
 	for _, field in Map.Grassland.cowFields do
 		local half = field.size / 2
+		Util.part({
+			Name = "PenDirt",
+			Size = Vector3.new(field.size, 0.2, field.size),
+			Position = Vector3.new(field.x, GROUND + 0.1, field.z),
+			Color = Util.colour(Map.Grassland.penDirtColour),
+			Material = Enum.Material.Ground,
+			Parent = grass,
+		})
 		local step = 8
 		local offset = -half
 		while offset <= half do

@@ -762,24 +762,35 @@ Map.Forest = table.freeze({
 -- revised map, build 16A).
 Map.Grassland = table.freeze({
 	-- Hiding grass circles. To save parts each is a see-through grass dome
-	-- a third of the blade height (`fillShare`) at its middle, with
-	-- `ringRows` rows of waving blades (Map.HidingGrass) round the edge. The
-	-- dome's edge reaches `domeOverlap` studs past ring `domeEdgeRow`
-	-- (0 is the outermost), and `bladesInside` blades are scattered inside
+	-- with a flat top `domeHeight` studs up and a rounded edge (a quarter
+	-- circle down to the ground), with `ringRows` rows of waving blades
+	-- (Map.HidingGrass) round the edge. The dome's edge reaches `domeOverlap`
+	-- studs past ring `domeEdgeRow` (0 is the outermost), and `bladesInside`
+	-- blades, `insideBladeScale` times the usual height, are scattered inside
 	-- it. Plants hide anywhere in the circle, like in the River quarter's
-	-- patches (builds 16A, 16B).
+	-- patches (builds 16A to 16C). The rounded edge is made of balls
+	-- `domeEdgeSpacing` studs apart, joined to the middle into one part.
 	grassCircles = table.freeze({
 		table.freeze({ x = 146, z = 70, radius = 43 }),
 		table.freeze({ x = 219, z = 177, radius = 43 }),
 		table.freeze({ x = 92, z = 284, radius = 43 }),
 	}),
-	fillShare = 1 / 3,
+	domeHeight = 6,
+	domeEdgeSpacing = 3,
+	insideBladeScale = 1.25,
 	fillColour = table.freeze({ 150, 200, 80 }),
 	fillTransparency = 0.35,
 	ringRows = 3,
 	domeEdgeRow = 1,
 	domeOverlap = 1,
 	bladesInside = 14,
+	-- The ground: terrain grass like the River quarter's (Map.River's
+	-- groundMaterial and colour; a terrain material has one colour), kept
+	-- this far off the grass circles and the cow pens (build 16C).
+	groundCircleMargin = 4,
+	groundPenMargin = 4,
+	-- Cow pens have a dirt floor.
+	penDirtColour = table.freeze({ 115, 85, 55 }),
 	cowFields = table.freeze({
 		table.freeze({ x = 96, z = 180, size = 90 }),
 		table.freeze({ x = 280, z = 90, size = 60 }),

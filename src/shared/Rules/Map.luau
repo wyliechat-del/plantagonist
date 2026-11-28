@@ -628,6 +628,25 @@ function MapRules.grassDomeRadius(map: any, radius: number): number
 	return MapRules.grassRingRadius(map, radius, land.domeEdgeRow) + land.domeOverlap
 end
 
+-- Whether the Grassland's terrain grass may cover (x, z): not in or near
+-- a grass circle or a cow pen (the safe field is the builder's to skip).
+function MapRules.grasslandGrassGround(map: any, x: number, z: number): boolean
+	local land = map.Grassland
+	for _, circle in land.grassCircles do
+		local reach = circle.radius + land.groundCircleMargin
+		if (x - circle.x) ^ 2 + (z - circle.z) ^ 2 <= reach * reach then
+			return false
+		end
+	end
+	for _, field in land.cowFields do
+		local half = field.size / 2 + land.groundPenMargin
+		if math.abs(x - field.x) <= half and math.abs(z - field.z) <= half then
+			return false
+		end
+	end
+	return true
+end
+
 function MapRules.inHidingGrass(map: any, x: number, z: number): boolean
 	for _, list in { map.HidingGrass.circles, map.Grassland.grassCircles } do
 		for _, circle in list do

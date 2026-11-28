@@ -249,6 +249,22 @@ return function(t)
 		end
 	end)
 
+	t.test("grassland terrain grass stays off the grass circles and cow pens", function()
+		local land = Map.Grassland
+		for _, circle in land.grassCircles do
+			t.expect(not MapRules.grasslandGrassGround(Map, circle.x, circle.z), "off a circle")
+			local edge = circle.radius + land.groundCircleMargin - 0.5
+			t.expect(
+				not MapRules.grasslandGrassGround(Map, circle.x + edge, circle.z),
+				"off its edge"
+			)
+		end
+		for _, field in land.cowFields do
+			t.expect(not MapRules.grasslandGrassGround(Map, field.x, field.z), "off a pen")
+		end
+		t.expect(MapRules.grasslandGrassGround(Map, 300, 300), "grass elsewhere")
+	end)
+
 	t.test("grassland grass dome: edge just past the middle ring", function()
 		local land = Map.Grassland
 		local radius = land.grassCircles[1].radius
@@ -257,6 +273,7 @@ return function(t)
 		local outer = MapRules.grassRingRadius(Map, radius, 0)
 		t.expect(dome > middle and dome < outer, "covers the middle ring, not the outer one")
 		t.expect(dome < radius, "inside the circle")
+		t.expect(dome - land.domeHeight > 0, "room for the flat top")
 	end)
 
 	t.test("hiding grass hides levels 1 to 3 until they attack", function()
